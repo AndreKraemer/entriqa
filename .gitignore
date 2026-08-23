@@ -1,0 +1,5 @@
+.azurite/
+**/bin/
+**/obj/
+node_modules/
+local.settings.json.bak

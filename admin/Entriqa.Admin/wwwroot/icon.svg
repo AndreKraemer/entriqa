@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22.5 -7 250 250" role="img" aria-label="entriqa">
+  <!-- Signet aus dem entriqa-Logo. Navy wechselt im dunklen Browser-Tab auf Hell, Cyan bleibt. -->
+  <style>
+    .n { stroke: #0B2F6B; }
+    .nf { fill: #0B2F6B; }
+    @media (prefers-color-scheme: dark) {
+      .n { stroke: #E8EDF2; }
+      .nf { fill: #E8EDF2; }
+    }
+  </style>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path class="n" stroke-width="18"
+          d="M118 22 L50 54 L50 120
+             M118 22 L118 86
+             M118 214 L50 182 L50 116
+             M118 214 L118 150" />
+    <path stroke="#12B8D4" stroke-width="12" d="M0 118 H98" />
+    <circle cx="0" cy="118" r="16" fill="#12B8D4" stroke="none"/>
+    <path class="n" stroke-width="10" d="M98 118 C126 118 135 80 160 80 H206" />
+    <path stroke="#12B8D4" stroke-width="10" d="M98 118 H206" />
+    <path class="n" stroke-width="10" d="M98 118 C126 118 135 156 160 156 H206" />
+    <circle class="nf" cx="206" cy="80" r="15" stroke="none"/>
+    <circle cx="206" cy="118" r="15" fill="#12B8D4" stroke="none"/>
+    <circle class="nf" cx="206" cy="156" r="15" stroke="none"/>
+  </g>
+</svg>

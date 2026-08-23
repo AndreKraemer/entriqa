@@ -1,0 +1,114 @@
+@page "/"
+@inject AdminApi Api
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject Ui T
+
+<h1>@T["Formulare"]</h1>
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_forms is null) { <p>@T["Lade …"]</p> }
+else
+{
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>Slug</th><th>Name</th><th>@T["Typ"]</th><th>@T["Status"]</th><th>@T["Version"]</th><th>@T["Einsendungen · 14 Tage"]</th><th>@T["Geändert"]</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var f in _forms)
+        {
+            var activity = _activity?.GetValueOrDefault(f.Slug);
+            <tr>
+                <td><code>@f.Slug</code></td>
+                <td>@f.Name</td>
+                <td>@T[TypeLabel(f.Type)]</td>
+                <td><span class="chip @(f.Status == "published" ? "chip--ok" : "chip--busy")">@(f.Status == "published" ? T["Veröffentlicht"] : T["Entwurf"])</span></td>
+                <td>@(f.PublishedVersion > 0 ? $"v{f.PublishedVersion}" : "–")</td>
+                <td>
+                    @if (activity is { Total: > 0 })
+                    {
+                        <span>@activity.Total</span>
+                        <span class="spark">
+                            @foreach (var (d, i) in activity.Daily.Select((d, i) => (d, i)))
+                            {
+                                <i class="@(i >= 7 ? "spark--recent" : "")" style="height:@(SparkHeight(activity.Daily, d))px"></i>
+                            }
+                        </span>
+                        <div class="hint">@T.F("{0} in 7 Tagen", activity.Daily.Skip(7).Sum())</div>
+                    }
+                    else { <span>–</span> }
+                </td>
+                <td>@f.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>
+                    <a class="btn" href="forms/@f.Slug">@T["Bearbeiten"]</a>
+                    <a class="btn" href="einsendungen/@f.Slug">@T["Einsendungen"]</a>
+                    <button class="btn" disabled="@(f.Status != "published")" @onclick="() => _snippetSlug = f.Slug">@T["Einbetten"]</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+
+    <div class="new-form">
+        <input placeholder="@T["Name des neuen Formulars"]" style="min-width:240px" @bind="_newName" @bind:event="oninput" />
+        <select @bind="_newType">
+            <option value="contact">@T["Kontakt"]</option>
+            <option value="leadmagnet">@T["Lead-Magnet"]</option>
+            <option value="quiz">@T["Quiz"]</option>
+        </select>
+        @if (NewSlug.Length > 0) { <code>/f/@NewSlug/</code> }
+        <button class="btn btn--primary" disabled="@(NewSlug.Length == 0 || _forms.Any(f => f.Slug == NewSlug))" @onclick="CreateNew">@T["Anlegen"]</button>
+        @if (_forms.Any(f => f.Slug == NewSlug)) { <span class="hint">@T["Slug existiert schon."]</span> }
+    </div>
+}
+
+@if (_snippetSlug is not null)
+{
+    <div class="scrim" @onclick="() => _snippetSlug = null">
+        <div class="modal" @onclick:stopPropagation>
+            <h2 style="margin-top:0">@T.F("Einbetten: {0}", _snippetSlug)</h2>
+            <p class="hint">@T["Shortcode in eine Hugo-Seite einfügen oder die eigenständige Adresse teilen. Beides zeigt immer die zuletzt veröffentlichte Version."]</p>
+            <div class="snip"><code>{{&lt; form "@_snippetSlug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< form \"{_snippetSlug}\" >}}}}"))">@T["Kopieren"]</button></div>
+            <div class="snip"><code>/f/@_snippetSlug/</code><button class="btn" @onclick="@(() => Copy($"/f/{_snippetSlug}/"))">@T["Kopieren"]</button></div>
+            <div class="actions"><button class="btn btn--primary" @onclick="() => _snippetSlug = null">@T["Fertig"]</button></div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<FormListItem>? _forms;
+    private Dictionary<string, FormActivity>? _activity;
+    private string? _error, _snippetSlug;
+    private string _newName = "";
+    private string _newType = "contact";
+
+    private string NewSlug => FormTemplates.Slugify(_newName);
+
+    private static string TypeLabel(string type) => type switch
+    {
+        "contact" => "Kontakt", "leadmagnet" => "Lead-Magnet", "quiz" => "Quiz", _ => type,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _forms = await Api.ListFormsAsync();
+            _activity = await Api.GetActivityAsync();
+        }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private static int SparkHeight(List<int> daily, int value)
+    {
+        var max = Math.Max(daily.Max(), 1);
+        return Math.Max(2, (int)Math.Round(value * 16.0 / max));
+    }
+
+    private void CreateNew() => Nav.NavigateTo($"forms/{NewSlug}?typ={_newType}");
+
+    private async Task Copy(string text)
+    {
+        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { /* Clipboard braucht HTTPS/Fokus */ }
+    }
+}

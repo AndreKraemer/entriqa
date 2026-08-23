@@ -1,0 +1,10 @@
+{{- /*
+  In baseof.html vor </body> einbinden: {{ partial "forms-assets.html" . }}
+  Lädt forms.css und forms.js IMMER (klein, fingerprinted, deferred). Bewusst ohne Bedingung:
+  Die Formular-Partials werden teils per partialCached eingebunden – ein Store-Flag aus dem
+  Embed liefe dann nur auf der ersten gerenderten Seite und die Assets fehlten überall sonst.
+*/ -}}
+{{- $css := resources.Get "css/forms.css" | minify | fingerprint -}}
+{{- $js := resources.Get "js/forms.js" | minify | fingerprint -}}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>

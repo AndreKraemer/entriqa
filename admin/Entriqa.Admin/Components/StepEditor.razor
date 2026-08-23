@@ -1,0 +1,270 @@
+@* Eine Karte je Pipeline-Schritt: Katalog-Infos, Bedingung, Kritikalität, Konfiguration schema-getrieben.
+   Formate: brevo-template/brevo-list → Dropdowns aus dem Verzeichnis, blob → Datei-Picker + Upload,
+   rc-template → ReportingCloud-Vorlagen, enum attach → nur tatsächlich vorher erzeugte Artefakte. *@
+@using System.Text.Json.Nodes
+@inject AdminApi Api
+@inject Ui T
+
+<div class="card">
+    <div class="card-head">
+        <span class="card-title" title="@Step.Key">@T[Descriptor?.Name ?? Step.Key]</span>
+        @if (Descriptor is { Mode: "deferred" }) { <span class="chip chip--wait">@T["Hintergrund"]</span> }
+        @if (Descriptor is { SplitsPhase: true }) { <span class="chip chip--busy">@T["teilt: alles danach erst nach Bestätigung"]</span> }
+        <span class="spacer"></span>
+        <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">▲</button>
+        <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">▼</button>
+        <button class="btn btn--icon btn--danger" title="@T["Entfernen"]" @onclick="() => OnRemove.InvokeAsync()">✕</button>
+    </div>
+    @if (Descriptor is not null) { <p class="hint">@T[Descriptor.Description]</p> }
+    @if (_error is not null) { <p class="error">@_error</p> }
+
+    <div class="row">
+        <label>@T["Ausführen"]
+            <select value="@WhenKind" @onchange="OnWhenChange">
+                <option value="always">@T["immer"]</option>
+                <option value="hasEmail">@T["nur mit E-Mail-Adresse"]</option>
+                <option value="result">@T["nur bei Quiz-Ergebnis …"]</option>
+            </select>
+        </label>
+        @if (WhenKind == "result")
+        {
+            <select value="@WhenResult" @onchange="SetWhenResult">
+                <option value="">@T["– Ergebnis wählen –"]</option>
+                @foreach (var r in QuizResults) { <option value="@r.Id" selected="@(WhenResult == r.Id)">@r.Title</option> }
+            </select>
+        }
+        <label>@T["Bei Fehler"]
+            <select value="@CriticalValue" @onchange="OnCriticalChange">
+                <option value="default">@T.F("Standard ({0})", Descriptor?.CriticalByDefault == false ? T["weiterlaufen"] : T["anhalten"])</option>
+                <option value="true">@T["Folgeschritte anhalten"]</option>
+                <option value="false">@T["Folgeschritte weiterlaufen lassen"]</option>
+            </select>
+        </label>
+    </div>
+
+    @if (Step.Schema is { } schema)
+    {
+        @foreach (var p in schema.Properties)
+        {
+            var prop = p;
+            <div class="config-row">
+                <label class="ltext-label">@T[prop.Title] @(schema.Required.Contains(prop.Name) ? "*" : "")</label>
+                @if (prop.Name == "templates" && prop.Type == "object" && QuizResults.Count > 0)
+                {
+                    <table>
+                        <tbody>
+                        @foreach (var r in QuizResults)
+                        {
+                            var result = r;
+                            <tr>
+                                <td class="label">@result.Title</td>
+                                <td>@RcTemplateSelect(TemplateFor(result.Id), v => SetTemplateFor(result.Id, v))</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+                else if (prop.Format == "brevo-template" && Directory is { BrevoConfigured: true, BrevoTemplates.Count: > 0 })
+                {
+                    <select value="@Get(prop.Name)" @onchange="e => Set(prop.Name, e.Value?.ToString())">
+                        <option value="">@T["– Vorlage wählen –"]</option>
+                        @foreach (var t in Directory.BrevoTemplates)
+                        {
+                            <option value="@t.Id" selected="@(Get(prop.Name) == t.Id.ToString())">@t.Name · #@t.Id</option>
+                        }
+                    </select>
+                }
+                else if (prop.Format == "brevo-list" && Directory is { BrevoConfigured: true, BrevoLists.Count: > 0 })
+                {
+                    @foreach (var l in Directory.BrevoLists)
+                    {
+                        var list = l;
+                        <label class="inline"><input type="checkbox" checked="@ListSelected(prop.Name, list.Id)"
+                               @onchange="e => ToggleList(prop.Name, list.Id, (bool)e.Value!)" /> @list.Name</label>
+                    }
+                }
+                else if (prop.Format == "blob")
+                {
+                    <div class="row">
+                        <select value="@Get(prop.Name)" @onchange="e => Set(prop.Name, e.Value?.ToString())">
+                            <option value="">@T["– Datei wählen –"]</option>
+                            @foreach (var m in Directory?.LeadMagnets ?? new())
+                            {
+                                <option value="@m.Path" selected="@(Get(prop.Name) == m.Path)">@m.Path (@FormatSize(m.Size))</option>
+                            }
+                        </select>
+                        <InputFile OnChange="UploadBlob" />
+                        @if (_uploading) { <span class="hint">@T["lädt hoch …"]</span> }
+                    </div>
+                }
+                else if (prop.Format == "form-field")
+                {
+                    <select value="@Get(prop.Name)" @onchange="e => Set(prop.Name, e.Value?.ToString())">
+                        <option value="">@T["– Feld wählen –"]</option>
+                        @foreach (var f in FormFields)
+                        {
+                            <option value="@f.Id" selected="@(Get(prop.Name) == f.Id)">@f.Label</option>
+                        }
+                    </select>
+                }
+                else if (prop.Format == "rc-template")
+                {
+                    @RcTemplateSelect(Get(prop.Name), v => Set(prop.Name, v))
+                }
+                else if (prop.Enum is { Count: > 0 })
+                {
+                    <select value="@(Get(prop.Name) is { Length: > 0 } cur ? cur : prop.Default ?? prop.Enum[0])"
+                            @onchange="e => Set(prop.Name, e.Value?.ToString())">
+                        @foreach (var v in EnumOptions(prop))
+                        {
+                            <option value="@v" selected="@(Get(prop.Name) == v)">@EnumLabel(v)</option>
+                        }
+                    </select>
+                    @if (prop.Name == "attach" && ProducedBefore.Count == 0)
+                    {
+                        <div class="hint">@T["Kein vorheriger Schritt erzeugt etwas zum Mitschicken."]</div>
+                    }
+                }
+                else if (prop.Type == "object")
+                {
+                    <textarea rows="4" class="mono" value="@Get(prop.Name)"
+                              @onchange="e => Set(prop.Name, e.Value?.ToString())"></textarea>
+                }
+                else
+                {
+                    <input value="@Get(prop.Name)" placeholder="@prop.Default"
+                           @onchange="e => Set(prop.Name, e.Value?.ToString())" />
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public StepModel Step { get; set; } = default!;
+    [Parameter] public StepDescriptorDto? Descriptor { get; set; }
+    [Parameter] public IntegrationDirectory? Directory { get; set; }
+    [Parameter] public List<string> ProducedBefore { get; set; } = new();
+    [Parameter] public List<QuizResultRef> QuizResults { get; set; } = new();
+    [Parameter] public List<FieldRef> FormFields { get; set; } = new();
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback<int> OnMove { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
+
+    public sealed record QuizResultRef(string Id, string Title);
+    public sealed record FieldRef(string Id, string Label);
+
+    private string? _error;
+    private bool _uploading;
+
+    private string WhenKind => Step.When.StartsWith("result:") ? "result" : Step.When;
+    private string WhenResult => Step.When.StartsWith("result:") ? Step.When[7..] : "";
+    private string CriticalValue => Step.Critical switch { true => "true", false => "false", null => "default" };
+
+    private string Get(string name) => Step.ConfigText.GetValueOrDefault(name) ?? "";
+    private void Set(string name, string? value) { Step.ConfigText[name] = value ?? ""; Notify(); }
+
+    private bool ListSelected(string prop, long id) =>
+        Get(prop).Split(',', StringSplitOptions.TrimEntries).Contains(id.ToString());
+
+    private void ToggleList(string prop, long id, bool on)
+    {
+        var ids = Get(prop).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (on && !ids.Contains(id.ToString())) ids.Add(id.ToString());
+        if (!on) ids.Remove(id.ToString());
+        Set(prop, string.Join(", ", ids));
+    }
+
+    private IEnumerable<string> EnumOptions(StepSchemaProperty prop) =>
+        prop.Name != "attach" ? prop.Enum! : prop.Enum!.Where(v => v switch
+        {
+            "download" => ProducedBefore.Contains("download"),
+            "report" or "reportLink" => ProducedBefore.Contains("report"),
+            _ => true,
+        });
+
+    private string EnumLabel(string v) => v switch
+    {
+        "none" => T["nichts"], "download" => T["Download-Link"], "report" => T["PDF als Anhang"], "reportLink" => T["PDF als Link"],
+        _ => v,
+    };
+
+    private string TemplateFor(string resultId)
+    {
+        try
+        {
+            var obj = JsonNode.Parse(Get("templates"))?.AsObject();
+            return obj?[resultId]?.GetValue<string>() ?? "";
+        }
+        catch { return ""; }
+    }
+
+    private void SetTemplateFor(string resultId, string? template)
+    {
+        JsonObject obj;
+        try { obj = JsonNode.Parse(Get("templates"))?.AsObject() ?? new JsonObject(); }
+        catch { obj = new JsonObject(); }
+        if (string.IsNullOrEmpty(template)) obj.Remove(resultId);
+        else obj[resultId] = template;
+        Set("templates", obj.ToJsonString());
+    }
+
+    private RenderFragment RcTemplateSelect(string current, Action<string?> set) => __builder =>
+    {
+        @if (Directory is { ReportingCloudConfigured: true, ReportTemplates.Count: > 0 })
+        {
+            <select value="@current" @onchange="e => set(e.Value?.ToString())">
+                <option value="">@T["– Vorlage wählen –"]</option>
+                @foreach (var t in Directory.ReportTemplates)
+                {
+                    <option value="@t" selected="@(current == t)">@t</option>
+                }
+            </select>
+        }
+        else
+        {
+            <input value="@current" placeholder="vorlage.docx" @onchange="e => set(e.Value?.ToString())" />
+        }
+    };
+
+    private async Task UploadBlob(InputFileChangeEventArgs e)
+    {
+        _uploading = true; _error = null;
+        try
+        {
+            var info = await Api.UploadLeadMagnetAsync(e.File);
+            Directory?.LeadMagnets.RemoveAll(m => m.Path == info.Path);
+            Directory?.LeadMagnets.Add(info);
+            Set("blob", info.Path);
+        }
+        catch (Exception ex) { _error = T.F("Upload fehlgeschlagen: {0}", ex.Message); }
+        finally { _uploading = false; }
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
+        _ => $"{bytes / 1024.0 / 1024.0:F1} MB",
+    };
+
+    private void OnWhenChange(ChangeEventArgs e)
+    {
+        Step.When = e.Value!.ToString()! == "result" ? "result:" : e.Value!.ToString()!;
+        Notify();
+    }
+
+    private void SetWhenResult(ChangeEventArgs e)
+    {
+        Step.When = "result:" + (e.Value?.ToString() ?? "");
+        Notify();
+    }
+
+    private void OnCriticalChange(ChangeEventArgs e)
+    {
+        Step.Critical = e.Value!.ToString() switch { "true" => true, "false" => false, _ => null };
+        Notify();
+    }
+
+    private void Notify() => Changed.InvokeAsync();
+}

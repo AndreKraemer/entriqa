@@ -1,0 +1,90 @@
+@inherits LayoutComponentBase
+@inject AdminApi Api
+@inject Ui T
+@inject IJSRuntime Js
+
+<header class="topbar">
+    <a class="brand" href="">
+        @* Signet: Navy-Anteile laufen über currentColor und werden auf der dunklen Leiste weiß; Cyan bleibt. *@
+        <svg class="brand-mark" viewBox="-22.5 -7 250 250" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="currentColor" stroke-width="18" d="M118 22 L50 54 L50 120 M118 22 L118 86 M118 214 L50 182 L50 116 M118 214 L118 150" />
+            <path stroke="#12B8D4" stroke-width="12" d="M0 118 H98" />
+            <circle cx="0" cy="118" r="16" fill="#12B8D4" />
+            <path stroke="currentColor" stroke-width="10" d="M98 118 C126 118 135 80 160 80 H206" />
+            <path stroke="#12B8D4" stroke-width="10" d="M98 118 H206" />
+            <path stroke="currentColor" stroke-width="10" d="M98 118 C126 118 135 156 160 156 H206" />
+            <circle cx="206" cy="80" r="15" fill="currentColor" />
+            <circle cx="206" cy="118" r="15" fill="#12B8D4" />
+            <circle cx="206" cy="156" r="15" fill="currentColor" />
+        </svg>
+        <span class="brand-word">entr<span class="brand-iq">iq</span>a</span>
+    </a>
+    <nav class="topbar-nav">
+        <NavLink class="topnav" href="" Match="NavLinkMatch.All">@T["Formulare"]</NavLink>
+        <NavLink class="topnav" href="einsendungen">@T["Einsendungen"] @if (_newCount > 0) { <span class="badge">@_newCount @T["neu"]</span> }</NavLink>
+        <NavLink class="topnav" href="kontakte">@T["Kontakte"]</NavLink>
+        <NavLink class="topnav" href="auswertungen">@T["Auswertungen"]</NavLink>
+        <NavLink class="topnav" href="einstellungen">@T["Einstellungen"]</NavLink>
+    </nav>
+    <div class="topbar-right">
+        <div class="uilang" role="group" aria-label="UI-Sprache">
+            <button class="@(T.Lang == "de" ? "uilang--on" : "")" @onclick="@(() => SetLang("de"))">DE</button>
+            <button class="@(T.Lang == "en" ? "uilang--on" : "")" @onclick="@(() => SetLang("en"))">EN</button>
+        </div>
+        @if (_me is not null)
+        {
+            <span class="whoami" title="@string.Join(", ", _me.UserRoles)">
+                <span class="avatar">@Initials(_me.UserDetails)</span>
+                <span class="whoami-name">@_me.UserDetails</span>
+            </span>
+            <a class="topnav" href="/.auth/logout">@T["Abmelden"]</a>
+        }
+        else if (_meLoaded)
+        {
+            <a class="topnav" href="/.auth/login/aad">@T["Anmelden"]</a>
+        }
+    </div>
+</header>
+@if (_unlicensed)
+{
+    <div class="license-banner">@T["Unlizenziert – nur für Entwicklung."] <a href="einstellungen">@T["Details"]</a></div>
+}
+<main class="content">
+    @Body
+</main>
+
+@code {
+    private int _newCount;
+    private AuthInfo? _me;
+    private bool _meLoaded, _unlicensed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _me = await Api.GetMeAsync();
+        _meLoaded = true;
+        try
+        {
+            var r = await Api.ListRecentAsync(null);
+            _newCount = r.Items.Count(s => r.LastVisitAt is null || s.CreatedAt > r.LastVisitAt);
+            _unlicensed = (await Api.GetStatusAsync()).License is not { Valid: true };
+        }
+        catch { /* Badge/Banner sind Komfort – Fehler zeigt die jeweilige Seite */ }
+    }
+
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var clean = name.Split('@')[0];
+        var parts = clean.Split(new[] { ' ', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}"
+            : clean[..Math.Min(2, clean.Length)].ToUpperInvariant();
+    }
+
+    private async Task SetLang(string lang)
+    {
+        if (lang == T.Lang) return;
+        await Js.InvokeVoidAsync("localStorage.setItem", Ui.StorageKey, lang);
+        await Js.InvokeVoidAsync("location.reload");    // Neustart der App – alle Seiten schalten konsistent um
+    }
+}

@@ -1,0 +1,21 @@
+{{- define "main" -}}
+{{- /*
+  Eigenständige Formularseite unter /f/{slug}/. Eine einzige statische Seite; der Slug kommt aus der URL.
+  staticwebapp.config.json schreibt /f/* auf /f/index.html um. Ohne JS gibt es hier nichts zu sehen – das ist Absicht.
+*/ -}}
+{{- $api := "/api" -}}
+{{- with site.Params.forms }}{{ with .apiBase }}{{ $api = . }}{{ end }}{{ end -}}
+<article class="eq-standalone">
+  <div id="eq-standalone-host" class="eq-form-host" data-api="{{ $api }}" data-lang="{{ .Language.Lang }}"></div>
+</article>
+<script>
+  (function () {
+    var m = window.location.pathname.match(/\/f\/([a-z0-9-]+)\/?$/);
+    var host = document.getElementById('eq-standalone-host');
+    if (!m) { host.innerHTML = '<p class="eq-message eq-message--error">Kein Formular angegeben.</p>'; return; }
+    host.setAttribute('data-form', m[1]);
+    if (window.eqForms) window.eqForms.init();
+    else document.addEventListener('DOMContentLoaded', function () { window.eqForms && window.eqForms.init(); });
+  })();
+</script>
+{{- end -}}

@@ -1,0 +1,30 @@
+# Housekeeping-Schedule für das Formularsystem.
+# In das Site-Repo kopieren und als eigene Pipeline anlegen; SWA-Managed-Functions haben keine
+# Timer-Trigger, deshalb ruft dieser Cron den HTTP-Endpunkt mit Secret-Header auf.
+#
+# Variablen (als geheime Pipeline-Variablen oder Variable Group):
+#   SiteBaseUrl      z. B. https://qualitybytes.de
+#   HousekeepingKey  identisch mit App-Setting Entriqa__HousekeepingKey der SWA
+
+trigger: none
+pr: none
+
+schedules:
+  - cron: "*/15 * * * *"
+    displayName: Housekeeping alle 15 Minuten
+    branches:
+      include: [master]
+    always: true          # auch ohne neue Commits laufen
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: none
+  - bash: |
+      set -e
+      status=$(curl -s -o response.json -w "%{http_code}" -X POST "$(SiteBaseUrl)/api/housekeeping" \
+        -H "x-housekeeping-key: $(HousekeepingKey)")
+      cat response.json
+      if [ "$status" != "200" ]; then echo "Housekeeping fehlgeschlagen: HTTP $status"; exit 1; fi
+    displayName: POST /api/housekeeping

@@ -1,0 +1,178 @@
+@* Quiz-Builder: Fragen mit Weichen, Findings je Option, Ergebnisse. Pfadprüfung live über die echte QuizEngine. *@
+@inject Ui T
+
+<div class="row" style="margin-bottom:.75rem">
+    <label>@T["E-Mail-Erfassung"]
+        <select value="@Quiz.CollectEmail" @onchange="e => { Quiz.CollectEmail = e.Value!.ToString()!; Notify(); }">
+            <option value="none">@T["kein Kontaktschritt"]</option>
+            <option value="optional">@T["optional (nach der letzten Frage)"]</option>
+            <option value="required">@T["Pflicht (nach der letzten Frage)"]</option>
+        </select>
+    </label>
+    <span class="hint">@T["Punkte und Ergebnistexte kennt nur der Server – der Browser sieht nur Fragen und Sprungziele."]</span>
+</div>
+
+@{ var issues = Quiz.PathCheck(Locales); }
+@if (issues.Count == 0)
+{
+    <p class="ok">@T.F("Pfadprüfung: {0} Fragen, alle erreichbar, keine Schleifen, Ergebnisse decken 0–100 % ab.", Quiz.Questions.Count)</p>
+}
+else
+{
+    <ul class="issues">
+        @foreach (var i in issues) { <li>@i</li> }
+    </ul>
+}
+
+<h2>@T["Fragen"]</h2>
+@foreach (var (q, qi) in Quiz.Questions.Select((q, i) => (q, i)))
+{
+    var qIndex = qi;
+    var question = q;
+    <div class="card">
+        <div class="card-head">
+            <input class="id-input" value="@question.Id" title="@T["Fragen-ID (stabil, für Sprünge)"]"
+                   @onchange="e => { question.Id = e.Value?.ToString() ?? string.Empty; Notify(); }" />
+            <span class="spacer"></span>
+            <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => MoveQuestion(qIndex, -1)">▲</button>
+            <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => MoveQuestion(qIndex, 1)">▼</button>
+            <button class="btn btn--icon btn--danger" title="@T["Frage entfernen"]" @onclick="() => { Quiz.Questions.RemoveAt(qIndex); Notify(); }">✕</button>
+        </div>
+        <LTextInput Model="question.Text" Locales="Locales" Label="@T["Fragetext"]" Changed="Notify" />
+        @if (Quiz.HasFindings)
+        {
+            <LTextInput Model="question.Topic" Locales="Locales" Label="@T["Thema (für den Findings-Warntext, {topic})"]" Changed="Notify" />
+        }
+
+        @foreach (var (opt, oi) in question.Options.Select((o, i) => (o, i)))
+        {
+            var oIndex = oi;
+            var option = opt;
+            <div class="quiz-option">
+                <div class="quiz-option-row">
+                    <input class="id-input id-input--sm" value="@option.Id" title="@T["Options-ID"]"
+                           @onchange="e => { option.Id = e.Value?.ToString() ?? string.Empty; Notify(); }" />
+                    <div class="quiz-option-label"><LTextInput Model="option.Label" Locales="Locales" Changed="Notify" /></div>
+                    <label class="quiz-points">@T["Punkte"]
+                        <input class="small" value="@option.Points" @onchange="e => { option.Points = e.Value?.ToString() ?? string.Empty; Notify(); }" />
+                    </label>
+                    <label>@T["Weiter mit"]
+                        <select value="@option.Next" @onchange="e => { option.Next = e.Value?.ToString() ?? string.Empty; Notify(); }">
+                            <option value="">@(qIndex < Quiz.Questions.Count - 1 ? T["Nächste Frage"] : T["Ende → Bewertung"])</option>
+                            @foreach (var other in Quiz.Questions.Where(x => x.Id != question.Id))
+                            {
+                                <option value="@other.Id" selected="@(option.Next == other.Id)">@T.F("Sprung: {0} ({1})", other.Id, Short(other.Text))</option>
+                            }
+                            @foreach (var r in Quiz.Results)
+                            {
+                                var target = "result:" + r.Id;
+                                <option value="@target" selected="@(option.Next == target)">@T.F("→ Ergebnis: {0}", Short(r.Title))</option>
+                            }
+                        </select>
+                    </label>
+                    <button class="btn btn--icon btn--danger" title="@T["Antwort entfernen"]"
+                            @onclick="() => { question.Options.RemoveAt(oIndex); Notify(); }">✕</button>
+                </div>
+                @if (Quiz.HasFindings)
+                {
+                    <div class="quiz-finding"><LTextInput Model="option.Finding" Locales="Locales" Label="@T["Finding (Auswertungstext, wenn diese Antwort gewählt wurde – optional)"]" Changed="Notify" /></div>
+                }
+            </div>
+        }
+        <button class="btn" @onclick="() => AddOption(question)">@T["Antwort hinzufügen"]</button>
+    </div>
+}
+<button class="btn" @onclick="AddQuestion">@T["Frage hinzufügen"]</button>
+
+<h2>@T["Ergebnisse (nach Prozent des gegangenen Pfads)"]</h2>
+<p class="hint">@T["Springt eine Weiche direkt auf ein Ergebnis, gilt dieses – unabhängig von den Punkten. Die Bereiche müssen 0–100 % lückenlos abdecken."]</p>
+@foreach (var (r, ri) in Quiz.Results.Select((r, i) => (r, i)))
+{
+    var rIndex = ri;
+    var result = r;
+    <div class="card">
+        <div class="card-head">
+            <input class="id-input" value="@result.Id" title="@T["Ergebnis-ID"]"
+                   @onchange="e => { result.Id = e.Value?.ToString() ?? string.Empty; Notify(); }" />
+            @if (JumpTargets.Contains(result.Id)) { <span class="chip chip--busy">@T["Sprungziel einer Weiche"]</span> }
+            <span class="spacer"></span>
+            <label>@T["Von %"] <input class="small" value="@result.MinPct" @onchange="e => { result.MinPct = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
+            <label>@T["Bis %"] <input class="small" value="@result.MaxPct" @onchange="e => { result.MaxPct = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
+            <button class="btn btn--icon btn--danger" title="@T["Ergebnis entfernen"]" @onclick="() => { Quiz.Results.RemoveAt(rIndex); Notify(); }">✕</button>
+        </div>
+        <LTextInput Model="result.Title" Locales="Locales" Label="@T["Titel"]" Changed="Notify" />
+        <LTextInput Model="result.Body" Locales="Locales" Label="@T["Text"]" Multiline="true" Changed="Notify" />
+    </div>
+}
+<button class="btn" @onclick="AddResult">@T["Ergebnis hinzufügen"]</button>
+
+<h2>@T["Findings"]</h2>
+<div class="card">
+    <label class="swlabel"><input type="checkbox" class="sw" checked="@Quiz.HasFindings"
+           @onchange="e => { Quiz.HasFindings = (bool)e.Value!; Notify(); }" /> @T["Individuelle Auswertungstexte anzeigen (bis zu n Findings aus den gewählten Antworten)"]</label>
+    @if (Quiz.HasFindings)
+    {
+        <div class="row">
+            <label>@T["Höchstens"] <input class="small" value="@Quiz.FindingsMax" @onchange="e => { Quiz.FindingsMax = e.Value?.ToString() ?? string.Empty; Notify(); }" /> @T["Findings"]</label>
+            <label>@T["Priorität (Fragen-IDs, kommasepariert)"]
+                <input style="min-width:260px" value="@Quiz.FindingsPriority" placeholder="@T["z. B. 2, 3, 1, 7"]"
+                       @onchange="e => { Quiz.FindingsPriority = e.Value?.ToString() ?? string.Empty; Notify(); }" />
+            </label>
+        </div>
+        <LTextInput Model="Quiz.WarningTemplate" Locales="Locales" Label="@T["Warntext-Vorlage (füllt bei weniger als zwei Findings über die 1-Punkt-Themen auf; {topic} wird ersetzt)"]" Changed="Notify" />
+        <LTextInput Model="Quiz.EmptyText" Locales="Locales" Label="@T["Text, wenn gar nichts auffiel"]" Changed="Notify" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public QuizModel Quiz { get; set; } = default!;
+    [Parameter, EditorRequired] public List<string> Locales { get; set; } = default!;
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private HashSet<string> JumpTargets => Quiz.Questions
+        .SelectMany(q => q.Options)
+        .Where(o => o.Next.StartsWith("result:"))
+        .Select(o => o.Next[7..])
+        .ToHashSet();
+
+    private string Short(LTextModel t)
+    {
+        var s = t.Get(Locales[0]);
+        return s.Length <= 36 ? s : s[..36] + "…";
+    }
+
+    private void MoveQuestion(int index, int delta)
+    {
+        var target = index + delta;
+        if (target < 0 || target >= Quiz.Questions.Count) return;
+        (Quiz.Questions[index], Quiz.Questions[target]) = (Quiz.Questions[target], Quiz.Questions[index]);
+        Notify();
+    }
+
+    private void AddQuestion()
+    {
+        var id = Enumerable.Range(1, 199).Select(i => $"q{i}").First(x => Quiz.Questions.All(q => q.Id != x));
+        var q = new QuizQuestionModel { Id = id };
+        q.Text.Set(Locales[0], "Neue Frage");
+        q.Options.Add(QuizOptionModel.New("a", "Antwort A", 0));
+        q.Options.Add(QuizOptionModel.New("b", "Antwort B", 2));
+        Quiz.Questions.Add(q);
+        Notify();
+    }
+
+    private void AddOption(QuizQuestionModel question)
+    {
+        var id = Enumerable.Range(0, 26).Select(i => ((char)('a' + i)).ToString()).First(x => question.Options.All(o => o.Id != x));
+        question.Options.Add(QuizOptionModel.New(id, "Weitere Antwort", 0));
+        Notify();
+    }
+
+    private void AddResult()
+    {
+        var id = Enumerable.Range(1, 99).Select(i => $"r{i}").First(x => Quiz.Results.All(r => r.Id != x));
+        Quiz.Results.Add(QuizResultModel.New(id, 0, 0, "Neues Ergebnis"));
+        Notify();
+    }
+
+    private void Notify() => Changed.InvokeAsync();
+}

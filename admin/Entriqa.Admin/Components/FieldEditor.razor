@@ -1,0 +1,216 @@
+@* Feld-Eigenschaften: Typ, ID, Texte je Sprache, typabhängige Optionen.
+   Als Karte in Listen – oder mit Panel="true" als Eigenschaften-Spalte des Builders. *@
+@inject Ui T
+
+<div class="@(Panel ? "panel-field" : "card")">
+    <div class="card-head">
+        <select value="@Field.Type" @onchange="e => { Field.Type = e.Value!.ToString()!; Notify(); }">
+            @foreach (var (value, label) in FieldModel.Types)
+            {
+                <option value="@value" selected="@(Field.Type == value)">@T[label]</option>
+            }
+        </select>
+        <input class="id-input" value="@Field.Id" placeholder="@T["z. B. nachricht"]"
+               title="@T["Interner Feldname – taucht in Auswertung und Export auf"]"
+               @onchange="e => { Field.Id = e.Value?.ToString() ?? string.Empty; Notify(); }" />
+        @if (!Panel)
+        {
+            <span class="spacer"></span>
+            <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">▲</button>
+            <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">▼</button>
+            <button class="btn btn--icon btn--danger" title="@T["Entfernen"]" @onclick="() => OnRemove.InvokeAsync()">✕</button>
+        }
+    </div>
+
+    @if (Field.Type != "divider")
+    {
+        <LTextInput Model="Field.Label" Locales="Locales" ActiveLocale="@ActiveLocale" Label="@(Field.Type == "section" ? T["Überschrift"] : T["Beschriftung"])" Changed="Notify" />
+    }
+
+    @if (!Field.IsLayout && Field.Type != "hidden")
+    {
+        <label class="swlabel"><input type="checkbox" class="sw" checked="@Field.Required"
+               @onchange="e => { Field.Required = (bool)e.Value!; Notify(); }" /> @T["Pflichtfeld"]</label>
+    }
+
+    @if (Field.Type is "text" or "email" or "tel" or "textarea" or "number" or "date")
+    {
+        <LTextInput Model="Field.Placeholder" Locales="Locales" ActiveLocale="@ActiveLocale" Label="@T["Platzhalter (optional)"]" Changed="Notify" />
+    }
+    @if (!Field.IsLayout && Field.Type != "hidden")
+    {
+        <LTextInput Model="Field.Help" Locales="Locales" ActiveLocale="@ActiveLocale" Label="@T["Hilfetext (optional)"]" Changed="Notify" />
+    }
+
+    @if (Field.Type == "email")
+    {
+        <label class="swlabel"><input type="checkbox" class="sw" checked="@Field.BusinessOnly"
+               @onchange="e => { Field.BusinessOnly = (bool)e.Value!; Notify(); }" /> @T["Nur geschäftliche Adressen (Freemail ablehnen)"]</label>
+    }
+
+    @if (Field.Type == "consent")
+    {
+        <LTextInput Model="Field.ConsentText" Locales="Locales" ActiveLocale="@ActiveLocale" Label="@T["Einwilligungstext (wird mit der Version archiviert)"]" Multiline="true" Changed="Notify" />
+    }
+
+    @if (Field.HasOptions)
+    {
+        <label class="ltext-label">@T["Optionen"]</label>
+        @foreach (var (opt, i) in Field.Options.Select((o, i) => (o, i)))
+        {
+            var index = i;
+            <div class="option-row">
+                <LTextInput Model="opt" Locales="Locales" ActiveLocale="@ActiveLocale" Changed="Notify" />
+                <button class="btn btn--icon btn--danger" title="@T["Option entfernen"]"
+                        @onclick="() => { Field.Options.RemoveAt(index); Notify(); }">✕</button>
+            </div>
+        }
+        <button class="btn" @onclick="() => { Field.Options.Add(new LTextModel()); Notify(); }">@T["Option hinzufügen"]</button>
+    }
+
+    @if (Field.Type == "number")
+    {
+        <div class="row">
+            <label>Min <input class="small" value="@Field.Min" @onchange="e => { Field.Min = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
+            <label>Max <input class="small" value="@Field.Max" @onchange="e => { Field.Max = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
+        </div>
+    }
+    @if (Field.Type == "file")
+    {
+        <p class="hint">@T["Erlaubt: PDF, Word, Excel, PowerPoint, Text und Bilder (PNG, JPG, GIF, WebP) – höchstens 10 MB. Die Datei liegt privat; der Admin bekommt zeitlich begrenzte Download-Links."]</p>
+    }
+    @if (Field.Type == "rating")
+    {
+        <div class="row">
+            <label>@T["Stufen (2–10)"] <input class="small" value="@(Field.Max is { Length: > 0 } ? Field.Max : "5")"
+                   @onchange="e => { Field.Max = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
+        </div>
+    }
+
+    @* Sichtbarkeit: nur zeigen, wenn ein FRÜHERES Feld einen bestimmten Zustand hat *@
+    @if (!Field.IsLayout && Field.Type != "hidden" && ConditionSources.Count > 0)
+    {
+        <div class="visibleif">
+            <label class="ltext-label">@T["Nur anzeigen, wenn …"]</label>
+            <select value="@Field.VisibleIfField" @onchange="OnVisibleIfChange">
+                <option value="">@T["– immer anzeigen –"]</option>
+                @foreach (var src in ConditionSources)
+                {
+                    <option value="@src.Id" selected="@(Field.VisibleIfField == src.Id)">@SourceLabel(src)</option>
+                }
+            </select>
+            @if (SelectedSource is { } sel)
+            {
+                @if (sel.Type is "checkbox" or "consent")
+                {
+                    <span class="hint">@T["… angehakt ist."]</span>
+                }
+                else if (sel.HasOptions)
+                {
+                    <div class="visibleif-options">
+                        <span class="hint">@T["… eine dieser Antworten hat:"]</span>
+                        @foreach (var (opt, i) in sel.Options.Select((o, i) => (o, i)))
+                        {
+                            var index = i;
+                            <label class="inline"><input type="checkbox" checked="@Field.VisibleIfOptions.Contains(index)"
+                                   @onchange="e => ToggleCondOption(index, (bool)e.Value!)" /> @OptionLabel(opt, index)</label>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <span class="hint">@T["… ausgefüllt ist."]</span>
+                }
+            }
+        </div>
+    }
+    @if (Field.Type is "text" or "textarea")
+    {
+        <div class="row">
+            <label>@T["Maximale Länge"] <input class="small" value="@Field.MaxLength" @onchange="e => { Field.MaxLength = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
+        </div>
+    }
+
+    @if (Field.Type == "hidden")
+    {
+        <div class="row">
+            <label>@T["Quelle"]
+                <select value="@SourceKind" @onchange="OnSourceKindChange">
+                    <option value="utm_source">utm_source</option>
+                    <option value="utm_medium">utm_medium</option>
+                    <option value="utm_campaign">utm_campaign</option>
+                    <option value="referrer">@T["Verweisende Seite"]</option>
+                    <option value="page">@T["Aktuelle Seite"]</option>
+                    <option value="query">@T["URL-Parameter …"]</option>
+                    <option value="fixed">@T["Fester Wert …"]</option>
+                </select>
+            </label>
+            @if (SourceKind is "query" or "fixed")
+            {
+                <input value="@SourceArg" placeholder="@(SourceKind == "query" ? T["Parametername"] : T["Wert"])"
+                       @onchange="e => { SetSource(SourceKind, e.Value?.ToString() ?? string.Empty); Notify(); }" />
+            }
+        </div>
+    }
+
+    @if (Panel)
+    {
+        <div class="panel-remove">
+            <button class="btn" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">@T["▲ Hoch"]</button>
+            <button class="btn" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">@T["▼ Runter"]</button>
+            <span class="spacer"></span>
+            <button class="btn btn--danger" @onclick="() => OnRemove.InvokeAsync()">@T["Entfernen"]</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FieldModel Field { get; set; } = default!;
+    [Parameter, EditorRequired] public List<string> Locales { get; set; } = default!;
+    [Parameter] public bool Panel { get; set; }
+    [Parameter] public string? ActiveLocale { get; set; }
+    [Parameter] public List<FieldModel>? AllFields { get; set; }
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback<int> OnMove { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
+
+    /// <summary>Frühere Felder, auf die eine Sichtbarkeitsbedingung zeigen darf (werttragend, nicht versteckt).</summary>
+    private List<FieldModel> ConditionSources => AllFields is null ? new()
+        : AllFields.TakeWhile(f => !ReferenceEquals(f, Field)).Where(f => !f.IsLayout && f.Type != "hidden").ToList();
+
+    private FieldModel? SelectedSource => ConditionSources.FirstOrDefault(f => f.Id == Field.VisibleIfField);
+
+    private string Loc => ActiveLocale is { Length: > 0 } l ? l : Locales[0];
+    private string SourceLabel(FieldModel f) => f.Label.Get(Loc) is { Length: > 0 } s ? s : f.Id;
+    private string OptionLabel(LTextModel o, int index) => o.Get(Loc) is { Length: > 0 } s ? s : $"#{index + 1}";
+
+    private void OnVisibleIfChange(ChangeEventArgs e)
+    {
+        Field.VisibleIfField = e.Value?.ToString() ?? "";
+        Field.VisibleIfOptions.Clear();
+        Notify();
+    }
+
+    private void ToggleCondOption(int index, bool on)
+    {
+        if (on && !Field.VisibleIfOptions.Contains(index)) Field.VisibleIfOptions.Add(index);
+        if (!on) Field.VisibleIfOptions.Remove(index);
+        Notify();
+    }
+
+    private string SourceKind =>
+        Field.Source.StartsWith("query:") ? "query" : Field.Source.StartsWith("fixed:") ? "fixed" : Field.Source;
+    private string SourceArg =>
+        Field.Source.StartsWith("query:") ? Field.Source[6..] : Field.Source.StartsWith("fixed:") ? Field.Source[6..] : "";
+
+    private void OnSourceKindChange(ChangeEventArgs e)
+    {
+        SetSource(e.Value!.ToString()!, SourceArg);
+        Notify();
+    }
+
+    private void SetSource(string kind, string arg) =>
+        Field.Source = kind switch { "query" => $"query:{arg}", "fixed" => $"fixed:{arg}", _ => kind };
+
+    private void Notify() => Changed.InvokeAsync();
+}

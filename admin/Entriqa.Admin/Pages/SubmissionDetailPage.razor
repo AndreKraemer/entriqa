@@ -1,0 +1,12 @@
+@page "/einsendung/{Id}"
+@inject NavigationManager Nav
+@inject Ui T
+
+<h1>@T["Einsendung"]</h1>
+<SubmissionDetailPanel Id="@Id" OnDeleted="GoBack" />
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private void GoBack() => Nav.NavigateTo("einsendungen");
+}

@@ -1,0 +1,164 @@
+@page "/auswertungen"
+@page "/auswertungen/{Slug}"
+@inject AdminApi Api
+@inject Ui T
+
+<h1>@T["Auswertungen"]</h1>
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_forms is null) { <p>@T["Lade …"]</p> }
+else
+{
+    <div class="filters">
+        <select value="@(Slug ?? "")" @onchange="OnSlugChange">
+            <option value="">@T["Formular wählen …"]</option>
+            @foreach (var f in _forms.Where(f => f.Status == "published"))
+            {
+                <option value="@f.Slug" selected="@(Slug == f.Slug)">@f.Name</option>
+            }
+        </select>
+        @if (_stats is { Versions.Count: > 1 })
+        {
+            <select value="@(_version?.ToString() ?? "")" @onchange="OnVersionChange">
+                <option value="">@T["Alle Versionen"]</option>
+                @foreach (var v in _stats.Versions) { <option value="@v" selected="@(_version == v)">@T.F("Version {0}", v)</option> }
+            </select>
+        }
+        <span class="hint" style="margin-left:auto">@T["Zeitraum Verlauf: letzte 14 Tage"]</span>
+    </div>
+
+    @if (Slug is null) { <p class="hint">@T["Wähle ein veröffentlichtes Formular."]</p> }
+    else if (_stats is null) { <p>@T["Lade …"]</p> }
+    else
+    {
+        <div class="kpis">
+            <div class="kpi"><div class="kpi-v">@_stats.Total</div><div class="kpi-l">@T["Einsendungen"]@(_stats.Quiz is not null ? " · " + T.F("{0} per Weiche beendet", _stats.Quiz.EndedByJump) : "")</div></div>
+            @if (_stats.Quiz is { } qz)
+            {
+                <div class="kpi"><div class="kpi-v">@Pct(_stats.WithEmail, _stats.Total) %</div><div class="kpi-l">@T.F("mit E-Mail-Adresse ({0})", _stats.WithEmail)</div></div>
+                <div class="kpi"><div class="kpi-v">@qz.AvgPct %</div><div class="kpi-l">@T["Ø normierter Punktestand"]</div></div>
+            }
+            else
+            {
+                <div class="kpi"><div class="kpi-v">@Pct(_stats.Confirmed, _stats.Total) %</div><div class="kpi-l">@T.F("DOI bestätigt ({0}) · {1} unbestätigt", _stats.Confirmed, _stats.AwaitingConfirmation)</div></div>
+                <div class="kpi"><div class="kpi-v">@_stats.Failed</div><div class="kpi-l">@T["mit fehlgeschlagenen Schritten"]</div></div>
+            }
+        </div>
+
+        @if (_stats.Funnel is { } fu)
+        {
+            <div class="kpis">
+                <div class="kpi"><div class="kpi-v">@fu.Views</div><div class="kpi-l">@T["Aufrufe (14 Tage)"]</div></div>
+                <div class="kpi"><div class="kpi-v">@fu.Starts</div><div class="kpi-l">@T["davon begonnen"]</div></div>
+                <div class="kpi"><div class="kpi-v">@Pct(_stats.Daily.Sum(), Math.Max(fu.Starts, 1)) %</div><div class="kpi-l">@T["Abschlussquote (Einsendungen / begonnen, 14 Tage)"]</div></div>
+            </div>
+        }
+
+        <div class="card">
+            <h2 style="margin-top:0">@T["Einsendungen pro Tag"]</h2>
+            <div class="day-bars">
+                @foreach (var (d, i) in _stats.Daily.Select((d, i) => (d, i)))
+                {
+                    <div class="day-col">
+                        <span class="hint">@(d > 0 ? d.ToString() : "")</span>
+                        <div class="day-bar @(i >= 7 ? "day-bar--recent" : "")" style="height:@(BarHeight(d))px"></div>
+                    </div>
+                }
+            </div>
+            <div class="day-legend"><span>@T["vor 14 Tagen"]</span><span>@T["heute"]</span></div>
+        </div>
+
+        @if (_stats.Quiz is { } quiz)
+        {
+            <div class="card">
+                <h2 style="margin-top:0">@T["Ergebnis-Verteilung"]</h2>
+                @foreach (var b in quiz.Results) { @Bar(b.Label, b.Count, quiz.Results.Sum(x => x.Count)) }
+            </div>
+            <div class="card">
+                <h2 style="margin-top:0">@T["Antworten je Frage"]</h2>
+                <p class="hint">@T["Anteil derer, die die Frage auf ihrem Pfad gesehen haben."]</p>
+                @foreach (var q in quiz.Questions)
+                {
+                    <div style="margin-bottom:1rem">
+                        <div style="display:flex;justify-content:space-between"><strong>@q.Question</strong><span class="hint">n = @q.Seen</span></div>
+                        @foreach (var o in q.Options) { @Bar(o.Label, o.Count, q.Seen) }
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_stats.Sources.Count > 0)
+        {
+            <div class="card">
+                <h2 style="margin-top:0">@T["Herkunft (utm_source)"]</h2>
+                @foreach (var b in _stats.Sources) { @Bar(b.Label, b.Count, _stats.Total) }
+            </div>
+        }
+
+        @foreach (var f in _stats.SelectFields)
+        {
+            <div class="card">
+                <h2 style="margin-top:0">@f.Label</h2>
+                @foreach (var o in f.Options) { @Bar(o.Label, o.Count, f.Options.Sum(x => x.Count)) }
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+
+    private List<FormListItem>? _forms;
+    private FormStats? _stats;
+    private int? _version;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _version = null;
+        try
+        {
+            _forms ??= await Api.ListFormsAsync();
+            await LoadStats();
+        }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private async Task LoadStats()
+    {
+        _stats = null;
+        if (Slug is null) return;
+        try { _stats = await Api.GetStatsAsync(Slug, _version); _error = null; }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private static int Pct(int part, int total) => total == 0 ? 0 : (int)Math.Round(part * 100.0 / total);
+
+    private int BarHeight(int value)
+    {
+        var max = Math.Max(_stats!.Daily.Max(), 1);
+        return Math.Max(3, (int)Math.Round(value * 70.0 / max));
+    }
+
+    private RenderFragment Bar(string label, int count, int total) => __builder =>
+    {
+        <div class="stat-bar">
+            <span class="stat-bar-label">@label</span>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:@(Pct(count, Math.Max(total, 1)))%"></div></div>
+            <span class="stat-bar-n">@count</span>
+        </div>
+    };
+
+    private async Task OnSlugChange(ChangeEventArgs e)
+    {
+        Slug = e.Value?.ToString() is { Length: > 0 } s ? s : null;
+        _version = null;
+        await LoadStats();
+    }
+
+    private async Task OnVersionChange(ChangeEventArgs e)
+    {
+        _version = int.TryParse(e.Value?.ToString(), out var v) ? v : null;
+        await LoadStats();
+    }
+}
