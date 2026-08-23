@@ -65,6 +65,17 @@ public sealed class Ui
         ["Quiz"] = "Quiz",
         ["Anlegen"] = "Create",
         ["Slug existiert schon."] = "Slug already exists.",
+        ["Suchen (Slug, Name)"] = "Search (slug, name)",
+        ["{0} Formulare"] = "{0} forms",
+        ["Seite {0} von {1}"] = "Page {0} of {1}",
+        ["Aus JSON importieren …"] = "Import from JSON …",
+        ["Formular aus JSON importieren"] = "Import form from JSON",
+        ["Definitions-JSON einfügen (z. B. aus dem Expertenmodus einer anderen Instanz kopiert). Es entsteht ein Entwurf unter dem Slug aus dem JSON – veröffentlicht wird erst nach deiner Prüfung."] =
+            "Paste a definition JSON (e.g. copied from another instance's expert mode). This creates a draft under the slug from the JSON – nothing is published until you review it.",
+        ["Importieren"] = "Import",
+        ["Das JSON hat keinen 'slug'."] = "The JSON has no 'slug'.",
+        ["Slug '{0}' existiert schon – im JSON umbenennen."] = "Slug '{0}' already exists – rename it in the JSON.",
+        ["JSON kopieren"] = "Copy JSON",
         ["Einbetten: {0}"] = "Embed: {0}",
         ["Shortcode in eine Hugo-Seite einfügen oder die eigenständige Adresse teilen. Beides zeigt immer die zuletzt veröffentlichte Version."] =
             "Insert the shortcode into a Hugo page or share the standalone address. Both always show the latest published version.",
