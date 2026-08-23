@@ -83,12 +83,20 @@ liegengebliebene Hintergrund-Schritte nach und setzt die Aufbewahrungsfristen du
 → im Builder anpassen → **Veröffentlichen**. Den angezeigten Shortcode in eine Seite einsetzen –
 fertig.
 
-## Lokal entwickeln (optional, mit .NET SDK + Functions Core Tools)
+## Lokal entwickeln (optional, mit .NET SDK + Functions Core Tools + Go)
+
+Im Klon dieses Repos:
 
 ```bash
-npm install && node dev/start.mjs
+npm install
+node dev/start.mjs --site /pfad/zur/hugo-site
 # Website:  http://localhost:4280   ·   Admin: http://localhost:4281
 ```
+
+Statt `--site` geht auch die Umgebungsvariable `ENTRIQA_SITE_ROOT`. Der Modul-Import der Site
+wird dabei automatisch per `HUGO_MODULE_REPLACEMENTS` auf den lokalen Klon umgebogen –
+Änderungen an `hugo/` wirken sofort, ohne Release. `hugo` darf auch aus den
+devDependencies der Site kommen (z. B. `hugo-bin`); Go wird für Hugo Modules gebraucht.
 
 Ohne Brevo-Key landen alle Mails als klickbare HTML-Dateien in `%TEMP%/entriqa-devmails/` –
 damit ist auch der komplette Double-Opt-in-Ablauf lokal durchspielbar.

@@ -1,0 +1,13 @@
+{
+  "name": "entriqa",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Lokale Dev-Umgebung für Entriqa (Azurite + SWA-CLI); Produktcode liegt in api/, admin/ und hugo/.",
+  "scripts": {
+    "dev": "node dev/start.mjs"
+  },
+  "devDependencies": {
+    "azurite": "^3.36.0",
+    "@azure/static-web-apps-cli": "^2.0.2"
+  }
+}
