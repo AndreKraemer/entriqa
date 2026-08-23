@@ -1,8 +1,8 @@
 {{- /*
   Bettet ein Formular des Formularsystems ein – aufrufbar aus Layouts und vom Shortcode.
-  Aufruf: {{ partial "forms/embed" (dict "slug" "kontakt" "page" .) }}
+  Aufruf: {{ partial "entriqa/embed" (dict "slug" "kontakt" "page" .) }}
   Gerendert wird in dieses div (kein iframe), deshalb gilt das CSS der Seite.
-  Assets werden einmal pro Seite über partials/forms-assets.html eingebunden.
+  Assets werden einmal pro Seite über partials/entriqa-assets.html eingebunden.
 */ -}}
 {{- $slug := .slug -}}
 {{- $page := .page -}}

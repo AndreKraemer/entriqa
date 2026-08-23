@@ -264,7 +264,7 @@ else
         <div class="modal" @onclick:stopPropagation>
             <h2 style="margin-top:0">@T.F("Veröffentlicht als Version {0}", _publishedVersion)</h2>
             <p class="hint">@T["Shortcode in eine Hugo-Seite einfügen oder die eigenständige Adresse teilen. Beides zeigt immer die zuletzt veröffentlichte Version."]</p>
-            <div class="snip"><code>{{&lt; form "@Slug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< form \"{Slug}\" >}}}}"))">@T["Kopieren"]</button></div>
+            <div class="snip"><code>{{&lt; entriqa "@Slug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< entriqa \"{Slug}\" >}}}}"))">@T["Kopieren"]</button></div>
             <div class="snip"><code>/f/@Slug/</code><button class="btn" @onclick="@(() => Copy($"/f/{Slug}/"))">@T["Kopieren"]</button></div>
             <div class="actions"><button class="btn btn--primary" @onclick="() => _snippetDialog = false">@T["Fertig"]</button></div>
         </div>
