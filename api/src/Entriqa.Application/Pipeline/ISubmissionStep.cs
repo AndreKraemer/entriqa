@@ -21,6 +21,8 @@ public interface ISubmissionStep
     IReadOnlyList<StepNeed> Needs => Array.Empty<StepNeed>();
     string? Produces => null;                       // "report", "download"
     string ConfigSchema { get; }                    // JSON Schema für den Builder
+    /// <summary>Variablen, die der Schritt an Brevo-Vorlagen übergibt ({{ params.… }}) – der Admin zeigt sie als Hilfe an.</summary>
+    IReadOnlyList<Entriqa.Domain.UseCases.MailParam> MailParams => Array.Empty<Entriqa.Domain.UseCases.MailParam>();
 
     /// <summary>Prüft die Konfiguration beim Veröffentlichen. Gibt Probleme in Klartext zurück.</summary>
     IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore) => Array.Empty<string>();

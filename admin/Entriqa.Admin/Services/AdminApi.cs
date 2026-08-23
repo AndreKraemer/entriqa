@@ -193,7 +193,9 @@ public sealed record FormListItem(string Slug, string Name, string Type, string 
 public sealed record ContactSummary(string Email, string? Name, string? Company, int Count,
     DateTimeOffset FirstAt, DateTimeOffset LastAt, string? BrevoContactId, List<string> Slugs);
 public sealed record StepDescriptorDto(string Key, string Name, string Description, string Mode, bool SplitsPhase,
-    List<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault);
+    List<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault,
+    List<MailParamDto>? MailParams = null);
+public sealed record MailParamDto(string Name, string Description);
 public sealed record FormDraft(string Slug, string Status, int PublishedVersion, DateTimeOffset UpdatedAt, string UpdatedBy, JsonElement Definition);
 public sealed record CheckResult(List<string> Issues);
 public sealed record PublishResult(int Version, List<string> Issues);

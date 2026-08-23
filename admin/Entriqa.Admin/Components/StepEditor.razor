@@ -137,6 +137,21 @@
                 }
             </div>
         }
+        @if (Descriptor?.MailParams is { Count: > 0 } mailParams)
+        {
+            <details class="hint">
+                <summary>@T["Variablen für die Brevo-Vorlage"]</summary>
+                <p>@T["Dieser Schritt übergibt folgende Werte an Brevo – in der Vorlage einsetzbar als"] <code>{{ params.name }}</code>:</p>
+                <table>
+                    <tbody>
+                    @foreach (var mp in mailParams)
+                    {
+                        <tr><td class="mono">{{ params.@mp.Name }}</td><td>@T[mp.Description]</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </details>
+        }
     }
 </div>
 
