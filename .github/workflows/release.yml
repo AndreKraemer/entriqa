@@ -30,6 +30,10 @@ jobs:
       - name: Admin publizieren
         run: |
           dotnet publish admin/Entriqa.Admin -c Release -o out/admin
+          # Produktion liegt unter /admin/ – base-href ersetzen (siehe docs/QUICKSTART.md)
+          sed -i 's|<base href="/" />|<base href="/admin/" />|' out/admin/wwwroot/index.html
+          grep -q '<base href="/admin/" />' out/admin/wwwroot/index.html
+          rm -f out/admin/wwwroot/index.html.br out/admin/wwwroot/index.html.gz
           cd out/admin/wwwroot && zip -r ../../../entriqa-admin-${GITHUB_REF_NAME}.zip .
 
       - name: Release anlegen
