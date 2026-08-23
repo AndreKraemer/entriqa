@@ -1,7 +1,7 @@
 {{- /*
   Bettet ein Formular des Formularsystems ein.
   Aufruf: {{< form "slug" >}}  oder  {{< form slug="slug" >}}
-  Dünner Wrapper um partials/forms/embed.html (dasselbe für Layouts).
+  Dünner Wrapper um partials/entriqa/embed.html (dasselbe für Layouts).
 */ -}}
 {{- $slug := .Get "slug" | default (.Get 0) -}}
-{{- partial "forms/embed" (dict "slug" $slug "page" .Page) -}}
+{{- partial "entriqa/embed" (dict "slug" $slug "page" .Page) -}}

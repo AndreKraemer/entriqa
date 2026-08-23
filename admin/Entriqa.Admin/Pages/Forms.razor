@@ -68,7 +68,7 @@ else
         <div class="modal" @onclick:stopPropagation>
             <h2 style="margin-top:0">@T.F("Einbetten: {0}", _snippetSlug)</h2>
             <p class="hint">@T["Shortcode in eine Hugo-Seite einfügen oder die eigenständige Adresse teilen. Beides zeigt immer die zuletzt veröffentlichte Version."]</p>
-            <div class="snip"><code>{{&lt; form "@_snippetSlug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< form \"{_snippetSlug}\" >}}}}"))">@T["Kopieren"]</button></div>
+            <div class="snip"><code>{{&lt; entriqa "@_snippetSlug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< entriqa \"{_snippetSlug}\" >}}}}"))">@T["Kopieren"]</button></div>
             <div class="snip"><code>/f/@_snippetSlug/</code><button class="btn" @onclick="@(() => Copy($"/f/{_snippetSlug}/"))">@T["Kopieren"]</button></div>
             <div class="actions"><button class="btn btn--primary" @onclick="() => _snippetSlug = null">@T["Fertig"]</button></div>
         </div>

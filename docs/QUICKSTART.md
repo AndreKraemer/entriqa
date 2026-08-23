@@ -37,7 +37,7 @@ path = "github.com/andrekraemer/entriqa/hugo"
 2. In `layouts/_default/baseof.html` vor `</body>`:
 
 ```
-{{ partial "forms-assets.html" . }}
+{{ partial "entriqa-assets.html" . }}
 ```
 
 3. `staticwebapp.config.json` in die Repo-Wurzel (Vorlage in `docs/`): schützt `/admin/*` und
@@ -46,8 +46,8 @@ path = "github.com/andrekraemer/entriqa/hugo"
 4. Formular einbetten – im Content per Shortcode oder im Layout per Partial:
 
 ```
-{{</* form "kontakt" */>}}
-{{ partial "forms/embed" (dict "slug" "kontakt" "page" .) }}
+{{</* entriqa "kontakt" */>}}
+{{ partial "entriqa/embed" (dict "slug" "kontakt" "page" .) }}
 ```
 
 ## 3. API und Admin deployen (aus den Releases)
