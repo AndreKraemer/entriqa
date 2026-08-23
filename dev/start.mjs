@@ -39,7 +39,10 @@ if (!looksLikeSite) {
 // hugo/azurite/swa aus den node_modules der Site und dieses Repos auffindbar machen
 const binPaths = [join(siteRoot, "node_modules", ".bin"), join(repoRoot, "node_modules", ".bin")]
   .filter(existsSync);
-const env = { ...process.env, PATH: [...binPaths, process.env.PATH].join(delimiter) };
+const env = { ...process.env };
+// Windows nennt die Variable "Path" – den vorhandenen Schlüssel erweitern statt einen zweiten anzulegen
+const pathKey = Object.keys(env).find(k => k.toUpperCase() === "PATH") ?? "PATH";
+env[pathKey] = [...binPaths, env[pathKey]].filter(Boolean).join(delimiter);
 // Modul-Import der Site auf diesen Klon umbiegen (falls nicht explizit anders gesetzt)
 env.HUGO_MODULE_REPLACEMENTS ??= `github.com/andrekraemer/entriqa/hugo -> ${join(repoRoot, "hugo")}`;
 
@@ -58,8 +61,8 @@ function findFunc() {
   return "func";
 }
 
-function preflight(cmd, name, hint) {
-  const probe = spawnSync(cmd, ["--version"], { shell: true, stdio: "ignore", env });
+function preflight(cmd, name, hint, args = ["--version"]) {
+  const probe = spawnSync(cmd, args, { shell: true, stdio: "ignore", env });
   if (probe.status !== 0) {
     console.error(`\nFehlt: ${name} („${cmd} --version" schlug fehl).\n  ${hint}\n`);
     process.exit(1);
@@ -70,8 +73,8 @@ const funcCmd = findFunc();
 preflight("dotnet", ".NET SDK", "Windows: mit Visual Studio · macOS: brew install --cask dotnet-sdk");
 preflight(funcCmd === "func" ? "func" : `"${funcCmd}"`, "Azure Functions Core Tools v4",
   "Windows: mit Visual Studio · macOS: brew tap azure/functions && brew install azure-functions-core-tools@4");
-preflight("hugo", "Hugo (extended)", "z. B. hugo-bin in den devDependencies der Site oder brew install hugo");
-preflight("go", "Go (für Hugo Modules)", "winget install GoLang.Go · brew install go");
+preflight("hugo", "Hugo (extended)", "z. B. hugo-bin in den devDependencies der Site oder brew install hugo", ["version"]);
+preflight("go", "Go (für Hugo Modules)", "winget install GoLang.Go · brew install go", ["version"]);
 
 const colors = { azurite: 90, api: 36, admin: 35, hugo: 32, site: 34, adminui: 33 };
 function run(name, cmd, args, cwd) {
