@@ -34,6 +34,9 @@ Auf deinem Rechner brauchst du **kein .NET** – API und Admin kommen fertig geb
 path = "github.com/andrekraemer/entriqa/hugo"
 ```
 
+> Solange das Repository privat ist: `GOPRIVATE=github.com/andrekraemer/*` setzen,
+> damit `hugo mod get` über deine Git-Anmeldung zieht.
+
 2. In `layouts/_default/baseof.html` vor `</body>`:
 
 ```
