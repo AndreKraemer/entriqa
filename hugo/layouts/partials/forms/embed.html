@@ -1,0 +1,14 @@
+{{- /*
+  Bettet ein Formular des Formularsystems ein – aufrufbar aus Layouts und vom Shortcode.
+  Aufruf: {{ partial "forms/embed" (dict "slug" "kontakt" "page" .) }}
+  Gerendert wird in dieses div (kein iframe), deshalb gilt das CSS der Seite.
+  Assets werden einmal pro Seite über partials/forms-assets.html eingebunden.
+*/ -}}
+{{- $slug := .slug -}}
+{{- $page := .page -}}
+{{- $api := "/api" -}}
+{{- with site.Params.forms }}{{ with .apiBase }}{{ $api = . }}{{ end }}{{ end -}}
+{{- $page.Store.Set "hasQbForm" true -}}
+<div class="eq-form-host" data-form="{{ $slug }}" data-api="{{ $api }}" data-lang="{{ $page.Language.Lang }}">
+  <noscript><p class="eq-message eq-message--error">Dieses Formular braucht JavaScript. Alternativ: <a href="/f/{{ $slug }}/">Formular direkt öffnen</a>.</p></noscript>
+</div>

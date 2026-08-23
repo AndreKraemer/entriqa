@@ -1,0 +1,111 @@
+@* Schematische Besucher-Vorschau (Standard-Styling). Auf der Website gilt das CSS des Themes.
+   Interactive: jedes Element ist anklickbar und meldet die Auswahl an den Builder zurück. *@
+@inject Ui T
+
+<div class="pv">
+    @if (!Interactive && Model.Quiz is { Questions.Count: > 0 } quiz)
+    {
+        var q = quiz.Questions[0];
+        <div style="height:5px;background:#eef1f5;border-radius:3px;margin-bottom:1rem"><div style="height:100%;width:@(100 / (quiz.Questions.Count + 1))%;background:var(--akzent);border-radius:3px"></div></div>
+        <div class="pv-f">
+            <label>@T.F("Frage 1: {0}", q.Text.Get(CurrentLocale))</label>
+            @foreach (var o in q.Options)
+            {
+                <div class="pv-opt"><input type="radio" disabled /> @o.Label.Get(CurrentLocale)</div>
+            }
+        </div>
+        <button class="pv-submit" disabled>@T["Weiter"]</button>
+        <p class="hint" style="margin-top:.75rem">@T["Danach: weitere Fragen, ggf. Kontaktfelder, dann das Ergebnis."]</p>
+    }
+    else
+    {
+        @if (Interactive || Intro is { Length: > 0 })
+        {
+            <div class="@Wrap(null, texts: true)" @onclick="SelectTexts">
+                @if (Intro is { Length: > 0 }) { <p class="pv-intro">@Intro</p> }
+                else { <p class="pv-intro pv-intro--empty">@T["Einleitungstext …"]</p> }
+            </div>
+        }
+        @foreach (var f in Model.Fields)
+        {
+            var field = f;
+            @if (field.Type == "hidden")
+            {
+                @if (Interactive)
+                {
+                    <div class="@Wrap(field)" @onclick="() => Select(field)">
+                        <div class="pv-hidden">@T.F("Verstecktes Feld: {0} ({1})", field.Id is { Length: > 0 } ? field.Id : T["ohne Namen"], field.Source)</div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="@Wrap(field)" @onclick="() => Select(field)">
+                    @if (field.VisibleIfField is { Length: > 0 } && Interactive) { <span class="pv-cond" title="@T["Wird nur unter einer Bedingung angezeigt"]">⤷ @T["bedingt"]</span> }
+                    @if (field.Type == "section") { <div class="pv-sec">@field.Label.Get(CurrentLocale)</div> }
+                    else if (field.Type == "divider") { <hr /> }
+                    else if (field.Type == "page") { <div class="pv-page">— @T["Seite"] —</div> }
+                    else if (field.Type == "file")
+                    {
+                        <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label><input type="file" disabled /></div>
+                    }
+                    else if (field.Type == "rating")
+                    {
+                        <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label>
+                            <div class="pv-scale">
+                                @for (var stufe = 1; stufe <= RatingSteps(field); stufe++) { <span class="pv-scale-opt">@stufe</span> }
+                            </div>
+                        </div>
+                    }
+                    else if (field.Type is "consent" or "checkbox")
+                    {
+                        <div class="pv-f pv-cb"><input type="checkbox" disabled /><span>@((field.Type == "consent" ? field.ConsentText : field.Label).Get(CurrentLocale))@(field.Required ? " *" : "")</span></div>
+                    }
+                    else if (field.Type == "textarea")
+                    {
+                        <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label><textarea rows="3" disabled placeholder="@field.Placeholder.Get(CurrentLocale)"></textarea></div>
+                    }
+                    else if (field.Type is "select" or "multiselect")
+                    {
+                        <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label>
+                            <select disabled><option>@T["Bitte wählen"]</option>@foreach (var o in field.Options) { <option>@o.Get(CurrentLocale)</option> }</select>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label><input disabled placeholder="@field.Placeholder.Get(CurrentLocale)" /></div>
+                    }
+                    @if (field.Help.Get(CurrentLocale) is { Length: > 0 } help) { <div class="pv-help">@help</div> }
+                </div>
+            }
+        }
+        <div class="@Wrap(null, texts: true)" @onclick="SelectTexts">
+            <button class="pv-submit" disabled>@(Model.SubmitLabel.Get(CurrentLocale) is { Length: > 0 } s ? s : T["Absenden"])</button>
+        </div>
+    }
+</div>
+@if (!Interactive)
+{
+    <p class="hint" style="margin-top:.5rem">@T["Schematische Vorschau – Schrift, Farben und Abstände kommen auf der Website vollständig vom Theme."]</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public FormModel Model { get; set; } = default!;
+    [Parameter] public string? Locale { get; set; }
+    [Parameter] public bool Interactive { get; set; }
+    [Parameter] public FieldModel? Selected { get; set; }
+    [Parameter] public bool TextsSelected { get; set; }
+    [Parameter] public EventCallback<FieldModel> OnSelectField { get; set; }
+    [Parameter] public EventCallback OnSelectTexts { get; set; }
+
+    private string CurrentLocale => Locale is { Length: > 0 } l && Model.Locales.Contains(l) ? l : Model.Locales[0];
+    private string Intro => Model.Intro.Get(CurrentLocale);
+
+    private static int RatingSteps(FieldModel f) => int.TryParse(f.Max, out var n) && n is >= 2 and <= 10 ? n : 5;
+
+    private string Wrap(FieldModel? field, bool texts = false) => !Interactive ? "" :
+        "pv-w" + ((texts && TextsSelected) || (field is not null && ReferenceEquals(field, Selected)) ? " pv-w--sel" : "");
+
+    private Task Select(FieldModel field) => Interactive ? OnSelectField.InvokeAsync(field) : Task.CompletedTask;
+    private Task SelectTexts() => Interactive ? OnSelectTexts.InvokeAsync() : Task.CompletedTask;
+}

@@ -1,0 +1,189 @@
+@* Detailansicht einer Einsendung – als Panel in der globalen Liste und als eigene Seite verwendbar. *@
+@inject AdminApi Api
+@inject IJSRuntime Js
+@inject Ui T
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_s is null) { <p>@T["Lade …"]</p> }
+else
+{
+    <p class="meta">
+        <code>@_s.Id</code> · @_s.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · v@(_s.Version) · @(_s.Locale ?? "de")
+        · <span class="@Labels.StateCss(_s.State)">@T[Labels.SubmissionState(_s.State)]</span>
+        @if (_s.ConfirmedAt is { } c) { <span> · @T.F("DOI bestätigt {0}", c.ToLocalTime().ToString("dd.MM.yyyy HH:mm"))</span> }
+        @if (_s.BrevoContactId is { Length: > 0 } bid)
+        {
+            <span> · <a href="https://app.brevo.com/contact/index/@bid" target="_blank" rel="noopener">Brevo-Kontakt #@bid</a></span>
+        }
+    </p>
+    @if (_info is not null) { <p class="ok">@_info</p> }
+    @if (_s.CanResendDoi)
+    {
+        <p><button class="btn" disabled="@_busy" @onclick="ResendDoi">@T["Bestätigungsmail erneut senden"]</button></p>
+    }
+
+    @if (_s.Handling != "none")
+    {
+        <p>
+            @T["Bearbeitung:"]
+            <button class="btn @(_s.Handling == "open" ? "btn--primary" : "")" disabled="@(_s.Handling == "open" || _busy)" @onclick="@(() => SetHandling("open"))">@T["Offen"]</button>
+            <button class="btn @(_s.Handling == "done" ? "btn--primary" : "")" disabled="@(_s.Handling == "done" || _busy)" @onclick="@(() => SetHandling("done"))">@T["Erledigt"]</button>
+        </p>
+    }
+
+    <h2>@T["Werte"]</h2>
+    <table>
+        <tbody>
+        @foreach (var v in _s.Values)
+        {
+            <tr><td class="label">@v.Label</td>
+                <td>
+                    @if (TryUpload(v.Value) is { } up)
+                    {
+                        <span>@up.Name <span class="hint">(@(up.Size / 1024) KB)</span></span>
+                        <button class="btn btn--icon" title="@T["Herunterladen"]" disabled="@_busy" @onclick="() => Download(up.Path)">⬇</button>
+                    }
+                    else { @v.Value }
+                </td></tr>
+        }
+        @if (_s.ConsentText is { Length: > 0 })
+        {
+            <tr><td class="label">@T["Einwilligungstext"]</td><td class="consent">@_s.ConsentText</td></tr>
+        }
+        </tbody>
+    </table>
+
+    @if (_s.Quiz is { } q)
+    {
+        <h2>@T["Quiz"]</h2>
+        <p><strong>@(_s.QuizResultTitle ?? q.ResultId)</strong> – @T.F("{0}/{1} Punkte auf dem Pfad ({2} %)", q.Points, q.MaxPoints, q.Pct)@(q.ReachedByJump ? " · " + T["direkt per Weiche"] : "")</p>
+        @if (_s.QuizAnswers is { Count: > 0 })
+        {
+            <table>
+                <tbody>
+                @foreach (var a in _s.QuizAnswers)
+                {
+                    <tr><td class="label">@a.Question</td><td>@a.Answer <span class="hint">(@a.Points P.)@(a.Jumped ? " ↳" : "")</span></td></tr>
+                }
+                </tbody>
+            </table>
+        }
+        @if (q.Findings is { Count: > 0 })
+        {
+            <ul>
+                @foreach (var f in q.Findings) { <li>@f</li> }
+            </ul>
+        }
+    }
+
+    <h2>@T["Schritte"]</h2>
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>@T["Schritt"]</th><th>@T["Phase"]</th><th>@T["Status"]</th><th>@T["Versuche"]</th><th>@T["Fehler"]</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var r in _s.StepRuns)
+        {
+            <tr>
+                <td><code>@r.StepKey</code></td>
+                <td>@(r.Phase == 0 ? T["Absenden"] : T["Nach Bestätigung"])</td>
+                <td><span class="@Labels.StepCss(r.Status)">@T[Labels.StepStatus(r.Status)]</span></td>
+                <td>@r.Attempts</td>
+                <td class="err-text">@r.Error</td>
+                <td>
+                    @if (r.Status is 3 or 4)
+                    {
+                        <button class="btn" disabled="@_busy" @onclick="@(() => Retry(r.StepId))">@T["Wiederholen"]</button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+
+    <div class="danger-zone">
+        <button class="btn btn--danger" disabled="@_busy" @onclick="Delete">@T["Einsendung löschen"]</button>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public EventCallback OnDeleted { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private SubmissionDetail? _s;
+    private string? _error, _info;
+    private bool _busy;
+    private string? _loadedId;
+
+    private sealed record UploadValue(string Path, string Name, long Size);
+
+    private static UploadValue? TryUpload(string value)
+    {
+        if (!value.StartsWith('{') || !value.Contains("\"upload\"")) return null;
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(value);
+            return new UploadValue(
+                doc.RootElement.GetProperty("upload").GetString() ?? "",
+                doc.RootElement.TryGetProperty("name", out var n) ? n.GetString() ?? "Datei" : "Datei",
+                doc.RootElement.TryGetProperty("size", out var s) ? s.GetInt64() : 0);
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    private async Task Download(string path) => await Guarded(async () =>
+    {
+        var url = await Api.GetUploadLinkAsync(path);
+        await Js.InvokeVoidAsync("open", url, "_blank");
+    });
+
+    private async Task ResendDoi() => await Guarded(async () =>
+    {
+        await Api.ResendDoiAsync(Id);
+        _info = T["Bestätigungsmail erneut verschickt."];
+    });
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == Id) return;
+        _loadedId = Id;
+        _s = null;
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        try { _s = await Api.GetSubmissionAsync(Id); _error = null; }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private async Task Retry(string stepId) => await Guarded(async () =>
+    {
+        await Api.RetryStepAsync(Id, stepId);
+        await Reload();
+        await OnChanged.InvokeAsync();
+    });
+
+    private async Task SetHandling(string handling) => await Guarded(async () =>
+    {
+        await Api.SetHandlingAsync(Id, handling);
+        await Reload();
+        await OnChanged.InvokeAsync();
+    });
+
+    private async Task Delete() => await Guarded(async () =>
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", T["Einsendung endgültig löschen (inkl. erzeugter PDFs)?"])) return;
+        await Api.DeleteSubmissionAsync(Id);
+        await OnDeleted.InvokeAsync();
+    });
+
+    private async Task Guarded(Func<Task> action)
+    {
+        _busy = true; _error = null; _info = null;
+        try { await action(); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+        finally { _busy = false; }
+    }
+}

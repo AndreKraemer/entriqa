@@ -1,0 +1,42 @@
+@* Ein Eingabefeld je Sprache; bei nur einer Sprache ohne Locale-Präfix.
+   Mit ActiveLocale (Sprachumschalter im Builder) nur die aktive Sprache – die anderen bleiben erhalten. *@
+
+<div class="ltext">
+    @if (Label is { Length: > 0 }) { <label class="ltext-label">@Label</label> }
+    @foreach (var loc in Visible)
+    {
+        var l = loc;
+        <div class="ltext-row">
+            @if (Locales.Count > 1) { <span class="ltext-locale">@l</span> }
+            @if (Multiline)
+            {
+                <textarea rows="2" value="@Model.Get(l)" placeholder="@Placeholder"
+                          @onchange="e => Change(l, e.Value?.ToString())"></textarea>
+            }
+            else
+            {
+                <input value="@Model.Get(l)" placeholder="@Placeholder"
+                       @onchange="e => Change(l, e.Value?.ToString())" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LTextModel Model { get; set; } = default!;
+    [Parameter, EditorRequired] public List<string> Locales { get; set; } = default!;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Multiline { get; set; }
+    [Parameter] public string? ActiveLocale { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private IEnumerable<string> Visible =>
+        ActiveLocale is { Length: > 0 } al && Locales.Contains(al) ? new[] { al } : Locales;
+
+    private async Task Change(string locale, string? value)
+    {
+        Model.Set(locale, value);
+        await Changed.InvokeAsync();
+    }
+}

@@ -1,0 +1,93 @@
+@page "/einstellungen"
+@inject AdminApi Api
+@inject Ui T
+
+<h1>@T["Einstellungen"]</h1>
+<p class="hint">@T["Werte kommen aus den App-Settings der Static Web App (Präfix Entriqa__) – hier nur Status und Kontrolle, geändert wird in Azure."]</p>
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_s is null) { <p>@T["Lade …"]</p> }
+else
+{
+    <div class="card">
+        <h2 style="margin-top:0">@T["Website"]</h2>
+        <dl class="kv">
+            <dt>Name</dt><dd>@_s.SiteName</dd>
+            <dt>@T["Basis-Adresse"]</dt><dd><code>@_s.BaseUrl</code></dd>
+        </dl>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">Brevo</h2>
+        @if (!_s.BrevoConfigured)
+        {
+            <p><span class="chip chip--wait">@T["Nicht konfiguriert"]</span> <span class="hint">@T["Ohne Entriqa__Brevo__ApiKey landen Mails lokal im Dev-Mail-Sink (%TEMP%\\entriqa-devmails)."]</span></p>
+        }
+        else if (_s.BrevoOk)
+        {
+            <p><span class="chip chip--ok">@T["Verbunden"]</span> <span class="hint">@T["API-Schlüssel gültig, Listen abrufbar."]</span></p>
+        }
+        else
+        {
+            <p><span class="chip chip--err">@T["Fehler"]</span> <span class="hint">@T["API-Schlüssel gesetzt, aber Brevo nicht erreichbar oder Schlüssel ungültig."]</span></p>
+        }
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">ReportingCloud (PDF)</h2>
+        <p><span class="chip @(_s.ReportingCloudConfigured ? "chip--ok" : "chip--wait")">@(_s.ReportingCloudConfigured ? T["Konfiguriert"] : T["Nicht konfiguriert"])</span>
+           <span class="hint">@T["Nur nötig, wenn Quiz-PDFs erzeugt werden sollen."]</span></p>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">@T["Datenschutz & Aufbewahrung"]</h2>
+        <dl class="kv">
+            <dt>@T["Einsendungen löschen nach"]</dt><dd>@T.F("{0} Tagen (inkl. erzeugter PDFs)", _s.RetentionDays)</dd>
+            <dt>@T["Unbestätigte DOI löschen nach"]</dt><dd>@T.F("{0} Tagen", _s.UnconfirmedRetentionDays)</dd>
+            <dt>@T["Deferred-Sweep nach"]</dt><dd>@T.F("{0} Minuten Schonfrist", _s.SweepAfterMinutes)</dd>
+            <dt>@T["Auto-Retry"]</dt><dd>@T.F("höchstens {0} Versuche, danach bleibt es für den Admin liegen", _s.AutoRetryMax)</dd>
+        </dl>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">@T["Housekeeping"]</h2>
+        @if (_s.HousekeepingLastRunAt is { } at)
+        {
+            <p><span class="chip chip--ok">@T["Läuft"]</span> @T.F("Letzter Lauf: {0} – {1}", at.ToLocalTime().ToString("dd.MM.yyyy HH:mm"), _s.HousekeepingSummary)</p>
+        }
+        else
+        {
+            <p><span class="chip chip--wait">@T["Noch kein Lauf"]</span> <span class="hint">@T["Der DevOps-Schedule ruft alle 15 Minuten POST /api/housekeeping auf (Vorlage: pipelines/azure-pipelines-housekeeping.yml)."]</span></p>
+        }
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">@T["Lizenz"]</h2>
+        @if (_s.License is { Valid: true } lic)
+        {
+            <p><span class="chip chip--ok">@T["Lizenziert"]</span>
+               <span class="hint">@T.F("Plan {0} · gültig bis {1}", lic.Plan, lic.ValidUntil?.ToString("dd.MM.yyyy"))</span></p>
+        }
+        else
+        {
+            <p><span class="chip chip--wait">@T["Unlizenziert – nur für Entwicklung"]</span>
+               <span class="hint">@T["Produktivbetrieb erfordert eine Entriqa-Lizenz (App-Setting Entriqa__LicenseKey). Bezug: andrekraemer.de/entriqa."]</span></p>
+        }
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">@T["Zugriff"]</h2>
+        <p class="hint">@T["Admin-Rollen werden über die Static Web App vergeben: Azure-Portal → Static Web App → Rollenverwaltung → Einladung mit Rolle admin. Lokal übernimmt die SWA-CLI die Auth-Emulation."]</p>
+    </div>
+}
+
+@code {
+    private AdminStatus? _s;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _s = await Api.GetStatusAsync(); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+}

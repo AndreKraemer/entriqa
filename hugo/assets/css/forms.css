@@ -1,0 +1,67 @@
+/*
+ * forms.css – neutrales Basis-Stylesheet für das Formularsystem.
+ * Bewusst zurückhaltend: nur Struktur und Zustände. Farben, Schrift, Radien über die Custom Properties
+ * unten pro Seite setzen (oder die Klassen im Theme direkt überschreiben). Vertrag: SPEC.md → "Markup & Klassen".
+ */
+.eq-form {
+  --eq-accent: #24527a;
+  --eq-accent-ink: #fff;
+  --eq-line: #cbd1c9;
+  --eq-error: #b23a2e;
+  --eq-ok: #2c7a4b;
+  --eq-muted: #667069;
+  --eq-radius: 6px;
+  --eq-gap: 1rem;
+  max-width: 40rem;
+}
+.eq-form__intro { margin: 0 0 var(--eq-gap); }
+.eq-field { margin-bottom: var(--eq-gap); }
+.eq-field__label { display: block; font-weight: 500; margin-bottom: .3rem; }
+.eq-field__required { color: var(--eq-error); }
+.eq-field__control:not([type=checkbox]):not([type=radio]) {
+  width: 100%; box-sizing: border-box; padding: .6rem .7rem; border: 1px solid var(--eq-line); border-radius: var(--eq-radius); font: inherit; background: #fff;
+}
+.eq-field__control:focus-visible { outline: 2px solid var(--eq-accent); outline-offset: 1px; }
+.eq-field--consent .eq-field__label, .eq-field--checkbox .eq-field__label { display: flex; gap: .6rem; align-items: flex-start; font-weight: 400; }
+.eq-field--consent input, .eq-field--checkbox input { margin-top: .3rem; flex: none; }
+.eq-field__options { display: flex; flex-direction: column; gap: .3rem; }
+.eq-field__help { margin: .3rem 0 0; font-size: .875em; color: var(--eq-muted); }
+.eq-field__error { margin: .3rem 0 0; font-size: .875em; color: var(--eq-error); }
+.eq-field--error .eq-field__control { border-color: var(--eq-error); }
+.eq-section { margin: calc(var(--eq-gap) * 1.5) 0 .5rem; font-size: .8em; letter-spacing: .06em; text-transform: uppercase; color: var(--eq-muted); }
+.eq-divider { border: 0; border-top: 1px solid var(--eq-line); margin: var(--eq-gap) 0; }
+.eq-actions { margin-top: var(--eq-gap); }
+.eq-submit { background: var(--eq-accent); color: var(--eq-accent-ink); border: 0; padding: .7rem 1.2rem; border-radius: var(--eq-radius); font: inherit; font-weight: 500; cursor: pointer; }
+.eq-submit:disabled { opacity: .6; cursor: default; }
+.eq-form--busy { opacity: .7; pointer-events: none; }
+.eq-message { margin-top: var(--eq-gap); padding: .8rem 1rem; border-radius: var(--eq-radius); border: 1px solid var(--eq-line); }
+.eq-message--success { border-color: var(--eq-ok); }
+.eq-message--error { border-color: var(--eq-error); color: var(--eq-error); }
+.eq-loading { min-height: 4rem; }
+
+/* Bewertungsskala: 1..n als anklickbare Kacheln (Radio bleibt fokussierbar, nur visuell versteckt) */
+.eq-field__scale { display: flex; gap: .4rem; flex-wrap: wrap; }
+.eq-field__scale-option { display: inline-flex; align-items: center; justify-content: center; min-width: 2.4rem; padding: .55rem .4rem; border: 1px solid var(--eq-line); border-radius: var(--eq-radius); cursor: pointer; }
+.eq-field__scale-option input { position: absolute; opacity: 0; pointer-events: none; }
+.eq-field__scale-option:hover { border-color: var(--eq-accent); }
+.eq-field__scale-option:has(input:checked) { border-color: var(--eq-accent); background: var(--eq-accent); color: var(--eq-accent-ink); }
+.eq-field__scale-option:has(input:focus-visible) { outline: 2px solid var(--eq-accent); outline-offset: 2px; }
+
+/* Mehrseitige Formulare */
+.eq-form__pages { font-size: .8em; color: var(--eq-muted); margin: 0 0 .5rem; font-variant-numeric: tabular-nums; }
+.eq-page__nav { display: flex; justify-content: space-between; gap: .5rem; }
+.eq-page__nav .eq-submit { margin-left: auto; }
+
+/* Quiz */
+.eq-quiz__progress { height: 4px; background: var(--eq-line); border-radius: 2px; margin-bottom: var(--eq-gap); overflow: hidden; }
+.eq-quiz__progress-bar { height: 100%; background: var(--eq-accent); transition: width .2s; }
+.eq-quiz__question { border: 0; padding: 0; margin: 0 0 var(--eq-gap); }
+.eq-quiz__question-text { font-weight: 600; margin-bottom: .6rem; padding: 0; }
+.eq-quiz__option { display: flex; gap: .6rem; align-items: center; padding: .7rem .9rem; border: 1px solid var(--eq-line); border-radius: var(--eq-radius); margin-bottom: .4rem; cursor: pointer; }
+.eq-quiz__option:hover, .eq-quiz__option--selected { border-color: var(--eq-accent); }
+.eq-quiz__nav { display: flex; justify-content: space-between; gap: .5rem; }
+.eq-quiz__back { background: none; border: 1px solid var(--eq-line); border-radius: var(--eq-radius); padding: .7rem 1rem; font: inherit; cursor: pointer; }
+.eq-quiz__nav .eq-submit { margin-left: auto; }
+.eq-quiz__result { margin-top: var(--eq-gap); padding: 1rem 1.2rem; border-left: 4px solid var(--eq-accent); background: rgba(0,0,0,.03); }
+.eq-quiz__result-title { margin: 0 0 .4rem; }
+@media (prefers-reduced-motion: reduce) { .eq-quiz__progress-bar { transition: none; } }

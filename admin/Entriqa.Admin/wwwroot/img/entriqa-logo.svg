@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">entriqa logo</title>
+  <desc id="desc">Lowercase entriqa wordmark with cyan iq and a routing/entry symbol.</desc>
+
+  <defs>
+    <style>
+      .navy { stroke:#0B2F6B; fill:none; }
+      .cyan { stroke:#12B8D4; fill:none; }
+      .word {
+        font-family: Inter, "Segoe UI", Helvetica, Arial, sans-serif;
+        font-size: 154px;
+        font-weight: 500;
+        letter-spacing: -5px;
+      }
+    </style>
+  </defs>
+
+  <!-- Signet -->
+  <g transform="translate(70 63)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- angular entry / portal -->
+    <path class="navy" stroke-width="18"
+          d="M118 22 L50 54 L50 120
+             M118 22 L118 86
+             M118 214 L50 182 L50 116
+             M118 214 L118 150" />
+
+    <!-- incoming cyan line -->
+    <path class="cyan" stroke-width="12" d="M0 118 H98" />
+    <circle cx="0" cy="118" r="16" fill="#12B8D4"/>
+
+    <!-- split / routing -->
+    <path class="navy" stroke-width="10" d="M98 118 C126 118 135 80 160 80 H206" />
+    <path class="cyan" stroke-width="10" d="M98 118 H206" />
+    <path class="navy" stroke-width="10" d="M98 118 C126 118 135 156 160 156 H206" />
+
+    <circle cx="206" cy="80" r="15" fill="#0B2F6B"/>
+    <circle cx="206" cy="118" r="15" fill="#12B8D4"/>
+    <circle cx="206" cy="156" r="15" fill="#0B2F6B"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="355" y="232" class="word" fill="#0B2F6B">entr</text>
+  <text x="641" y="232" class="word" fill="#12B8D4">iq</text>
+  <text x="768" y="232" class="word" fill="#0B2F6B">a</text>
+</svg>

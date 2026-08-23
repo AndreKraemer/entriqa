@@ -1,0 +1,153 @@
+@page "/kontakte"
+@inject AdminApi Api
+@inject IJSRuntime Js
+@inject Ui T
+
+<h1>@T["Kontakte"]</h1>
+<p class="hint">@T["Wer hat je etwas eingesendet – aggregiert aus den Einsendungen. Die Aufbewahrungsfrist begrenzt die Historie; der dauerhafte Kontakt-Zustand lebt in Brevo."]</p>
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_info is not null) { <p class="ok">@_info</p> }
+@if (_contacts is null) { <p>@T["Lade …"]</p> }
+else
+{
+    <div class="filters">
+        <div class="langtoggle">
+            <button class="@(!_byCompany ? "langtoggle--on" : "")" @onclick="() => _byCompany = false">@T["Kontakte"]</button>
+            <button class="@(_byCompany ? "langtoggle--on" : "")" @onclick="() => _byCompany = true">@T["Firmen"]</button>
+        </div>
+        <input placeholder="@T["Suchen (E-Mail, Name, Firma)"]" style="min-width:240px" @bind="_search" @bind:event="oninput" />
+        <span class="hint" style="margin-left:auto">@T.F("{0} Kontakte", _contacts.Count)</span>
+    </div>
+
+    @if (_byCompany)
+    {
+        <div class="table-scroll">
+        <table>
+            <thead><tr><th>@T["Firma"]</th><th>@T["Kontakte"]</th><th>@T["Einsendungen"]</th><th>@T["Zuletzt"]</th></tr></thead>
+            <tbody>
+            @foreach (var g in Companies)
+            {
+                <tr class="rowlink" @onclick="() => { _search = g.Name; _byCompany = false; }">
+                    <td><strong>@g.Name</strong></td>
+                    <td>@g.Contacts</td>
+                    <td>@g.Count</td>
+                    <td>@g.LastAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                </tr>
+            }
+            @if (!Companies.Any()) { <tr><td colspan="4" class="hint" style="text-align:center;padding:1.5rem">@T["Keine Firmenangaben in den Einsendungen."]</td></tr> }
+            </tbody>
+        </table>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+        <table>
+            <thead><tr><th>E-Mail</th><th>Name</th><th>@T["Firma"]</th><th>@T["Einsendungen"]</th><th>@T["Zuletzt"]</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var c in Filtered)
+            {
+                var contact = c;
+                <tr class="rowlink @(contact.Email == _selected?.Email ? "row--sel" : "")" @onclick="() => Select(contact)">
+                    <td>@contact.Email</td>
+                    <td>@contact.Name</td>
+                    <td>@contact.Company</td>
+                    <td>@contact.Count</td>
+                    <td>@contact.LastAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>
+                        @if (contact.BrevoContactId is { Length: > 0 } bid)
+                        {
+                            <a class="btn btn--icon" title="Brevo" href="https://app.brevo.com/contact/index/@bid" target="_blank" rel="noopener" @onclick:stopPropagation>↗</a>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Filtered.Any()) { <tr><td colspan="6" class="hint" style="text-align:center;padding:1.5rem">@T["Nichts in dieser Auswahl."]</td></tr> }
+            </tbody>
+        </table>
+        </div>
+
+        @if (_selected is not null)
+        {
+            <div class="card" style="margin-top:16px">
+                <div class="card-head">
+                    <span class="card-title">@(_selected.Name is { Length: > 0 } n ? $"{n} · " : "")@_selected.Email</span>
+                    @if (_selected.Company is { Length: > 0 }) { <span class="chip">@_selected.Company</span> }
+                    <span class="hint">@T.F("seit {0}", _selected.FirstAt.ToLocalTime().ToString("dd.MM.yyyy"))</span>
+                    <span class="spacer"></span>
+                    <button class="btn btn--danger" disabled="@_busy" @onclick="DeleteSelected">@T["Kontakt komplett löschen"]</button>
+                </div>
+                @if (_subs is null) { <p>@T["Lade …"]</p> }
+                else
+                {
+                    <table>
+                        <thead><tr><th>@T["Eingang"]</th><th>@T["Formular"]</th><th>@T["Status"]</th><th>@T["Quiz"]</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var s in _subs)
+                        {
+                            <tr>
+                                <td>@s.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@s.Slug</td>
+                                <td><span class="@Labels.StateCss(s.State)">@T[Labels.SubmissionState(s.State)]</span></td>
+                                <td>@(s.QuizResultId ?? "–")</td>
+                                <td><a class="btn" href="einsendung/@Uri.EscapeDataString(s.Id)">@T["Öffnen"]</a></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    }
+}
+
+@code {
+    private List<ContactSummary>? _contacts;
+    private List<SubmissionListItem>? _subs;
+    private ContactSummary? _selected;
+    private string? _error, _info;
+    private string _search = "";
+    private bool _byCompany, _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _contacts = await Api.ListContactsAsync(); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private IEnumerable<ContactSummary> Filtered => _contacts!
+        .Where(c => _search.Length == 0
+            || c.Email.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (c.Name?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (c.Company?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    private IEnumerable<(string Name, int Contacts, int Count, DateTimeOffset LastAt)> Companies => _contacts!
+        .Where(c => c.Company is { Length: > 0 })
+        .GroupBy(c => c.Company!.Trim(), StringComparer.OrdinalIgnoreCase)
+        .Select(g => (g.First().Company!.Trim(), g.Count(), g.Sum(c => c.Count), g.Max(c => c.LastAt)))
+        .OrderByDescending(g => g.Item4);
+
+    private async Task Select(ContactSummary contact)
+    {
+        _selected = contact; _subs = null; _info = null;
+        try { _subs = await Api.ListContactSubmissionsAsync(contact.Email); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private async Task DeleteSelected()
+    {
+        if (_selected is null) return;
+        if (!await Js.InvokeAsync<bool>("confirm", T.F("Alle {0} Einsendungen von {1} endgültig löschen (inkl. Dateien)?", _selected.Count, _selected.Email))) return;
+        _busy = true; _error = _info = null;
+        try
+        {
+            var n = await Api.DeleteContactAsync(_selected.Email);
+            _info = T.F("{0} Einsendungen gelöscht.", n);
+            _contacts!.Remove(_selected);
+            _selected = null; _subs = null;
+        }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+        finally { _busy = false; }
+    }
+}

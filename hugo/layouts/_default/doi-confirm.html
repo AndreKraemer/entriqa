@@ -1,0 +1,38 @@
+{{- define "main" -}}
+{{- /*
+  DOI-Landeseite (/bestaetigen/?t=…): Der Link aus der Bestätigungsmail führt HIERHER, nie direkt auf die API.
+  Erst der Klick auf den Button macht den POST auf /api/confirm – Link-Scanner (Outlook SafeLinks & Co.)
+  folgen GETs, klicken aber keine Buttons. Danach Redirect auf die Danke-Seite aus der API-Antwort.
+*/ -}}
+{{- $api := "/api" -}}
+{{- with site.Params.forms }}{{ with .apiBase }}{{ $api = . }}{{ end }}{{ end -}}
+<article class="eq-standalone eq-doi">
+  <h1>{{ .Title }}</h1>
+  <div class="eq-doi__content">{{ .Content }}</div>
+  <div class="eq-actions">
+    <button type="button" id="eq-doi-confirm" class="eq-submit" data-api="{{ $api }}">E-Mail-Adresse bestätigen</button>
+  </div>
+  <div id="eq-doi-message" class="eq-message" hidden role="status" aria-live="polite"></div>
+</article>
+<script>
+  (function () {
+    var btn = document.getElementById('eq-doi-confirm');
+    var msg = document.getElementById('eq-doi-message');
+    var token = new URLSearchParams(window.location.search).get('t');
+    function say(text, kind) { msg.textContent = text; msg.className = 'eq-message eq-message--' + kind; msg.hidden = false; }
+    if (!token) { btn.hidden = true; say('Dieser Link ist unvollständig – bitte den Link aus der E-Mail vollständig öffnen.', 'error'); return; }
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      fetch(btn.getAttribute('data-api') + '/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token })
+      }).then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+        .then(function (r) {
+          if (r.ok && r.data && r.data.redirect) { window.location.href = r.data.redirect; return; }
+          btn.disabled = false;
+          say((r.data && r.data.title) || 'Die Bestätigung hat nicht geklappt – bitte erneut versuchen.', 'error');
+        })
+        .catch(function () { btn.disabled = false; say('Die Bestätigung hat nicht geklappt – bitte erneut versuchen.', 'error'); });
+    });
+  })();
+</script>
+{{- end -}}

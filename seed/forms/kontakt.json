@@ -1,0 +1,31 @@
+{
+  "slug": "kontakt",
+  "name": "Kontaktformular (Beispiel)",
+  "type": "contact",
+  "locales": ["de", "en"],
+  "intro": {
+    "de": "Schreiben Sie uns – wir melden uns zeitnah zurück.",
+    "en": "Drop us a line – we will get back to you shortly."
+  },
+  "submitLabel": { "de": "Nachricht senden", "en": "Send message" },
+  "handling": true,
+  "fields": [
+    { "id": "name", "type": "text", "label": { "de": "Name", "en": "Name" }, "required": true },
+    { "id": "email", "type": "email", "label": { "de": "E-Mail", "en": "Email" }, "required": true },
+    { "id": "message", "type": "textarea", "label": { "de": "Nachricht", "en": "Message" }, "required": true },
+    { "id": "consent", "type": "consent", "required": true,
+      "label": { "de": "Einwilligung", "en": "Consent" },
+      "text": {
+        "de": "Ich bin einverstanden, dass meine Angaben zur Beantwortung meiner Anfrage verarbeitet werden.",
+        "en": "I agree that my details may be processed to answer my request."
+      } }
+  ],
+  "pipeline": [
+    { "id": "s1", "step": "notify.mail", "when": "always",
+      "config": { "to": "info@example.org", "templateId": 1 } }
+  ],
+  "completion": {
+    "mode": "message",
+    "message": { "de": "Danke! Ihre Nachricht ist angekommen.", "en": "Thank you! Your message has been received." }
+  }
+}
