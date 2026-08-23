@@ -23,6 +23,7 @@ public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissio
         new("source", "Quelle/Seite der Einsendung"),
         new("fields", "Liste der Feldwerte: in einer Schleife über params.fields als item.label / item.value"),
         new("replyTo", "E-Mail-Adresse des Einsenders (für Antworten)"),
+        new("adminUrl", "Direktlink zur Einsendung im Admin"),
     };
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
@@ -43,6 +44,7 @@ public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissio
             ["source"] = ctx.Submission.Source,
             ["fields"] = ctx.LabeledValues().Select(kv => new { label = kv.Key, value = kv.Value }).ToList(),
             ["replyTo"] = ctx.Email,
+            ["adminUrl"] = $"{ctx.Options.BaseUrl.TrimEnd('/')}/admin/einsendung/{ctx.Submission.Id}",
         };
         foreach (var to in config.GetString("to")!.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             await mail.SendAsync(to, null, templateId, parameters, null, ct);
