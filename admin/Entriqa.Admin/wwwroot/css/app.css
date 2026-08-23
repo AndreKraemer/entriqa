@@ -207,6 +207,7 @@ th { background: var(--panel-2); font-weight: 700; font-size: 11px; text-transfo
 td.label { font-weight: 600; width: 30%; }
 td.consent { font-size: 13px; color: var(--muted); }
 .rowlink { cursor: pointer; }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .rowlink:hover td { background: var(--panel-2); }
 .row--sel td { background: var(--akzent-soft); }
 
