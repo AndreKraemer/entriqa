@@ -43,7 +43,7 @@ kein Phone-Home.
 | Ordner | Inhalt |
 |---|---|
 | `hugo/` | Hugo-Modul: Shortcode, Embed-Partial, forms.js/css, DOI-Seiten |
-| `api/` | .NET-8-Backend (Azure Functions isolated, Clean Architecture, 54 Tests) |
+| `api/` | .NET-10-Backend (Azure Functions isolated, Clean Architecture, 54 Tests) |
 | `admin/` | Blazor-WASM-Admin (läuft unter `/admin`) |
 | `seed/` | Beispiel-Formulardefinition für den lokalen Start |
 | `dev/` | `node dev/start.mjs` startet die komplette lokale Umgebung |
