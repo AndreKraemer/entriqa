@@ -3,7 +3,7 @@
 # Timer-Trigger, deshalb ruft dieser Cron den HTTP-Endpunkt mit Secret-Header auf.
 #
 # Variablen (als geheime Pipeline-Variablen oder Variable Group):
-#   SiteBaseUrl      z. B. https://qualitybytes.de
+#   SiteBaseUrl      z. B. https://www.deine-domain.tld
 #   HousekeepingKey  identisch mit App-Setting Entriqa__HousekeepingKey der SWA
 
 trigger: none
