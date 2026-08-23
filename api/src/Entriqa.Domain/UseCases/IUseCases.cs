@@ -252,4 +252,8 @@ public interface ICheckFormForPublishUseCase
 
 /// <summary>Beschreibt einen Schritt für den Admin-Katalog; <c>ConfigSchema</c> ist JSON Schema (draft-07), aus dem der Builder das Konfigurationsformular rendert.</summary>
 public sealed record StepDescriptor(string Key, string Name, string Description, string Mode, bool SplitsPhase,
-    IReadOnlyList<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault = true);
+    IReadOnlyList<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault = true,
+    IReadOnlyList<MailParam>? MailParams = null);
+
+/// <summary>Eine Variable, die ein Schritt an Brevo-Vorlagen übergibt – im Template als <c>{{ params.Name }}</c> verfügbar.</summary>
+public sealed record MailParam(string Name, string Description);

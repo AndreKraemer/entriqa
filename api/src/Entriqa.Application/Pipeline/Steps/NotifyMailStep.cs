@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
+using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Application.Pipeline.Steps;
 
@@ -13,6 +14,16 @@ public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissio
     public StepMode Mode => StepMode.Inline;
     public bool CriticalByDefault => false;         // Benachrichtigung: Fehlschlag blockiert die Pipeline nicht
     public string ConfigSchema => """{"type":"object","required":["to","templateId"],"properties":{"to":{"type":"string","title":"E-Mail-Adresse(n), durch Komma getrennt"},"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template"}}}""";
+    public IReadOnlyList<MailParam> MailParams => new MailParam[]
+    {
+        new("form", "Name des Formulars"),
+        new("slug", "Kurzname (Slug) des Formulars"),
+        new("submissionId", "ID der Einsendung"),
+        new("receivedAt", "Eingangszeitpunkt (dd.MM.yyyy HH:mm)"),
+        new("source", "Quelle/Seite der Einsendung"),
+        new("fields", "Liste der Feldwerte: in einer Schleife über params.fields als item.label / item.value"),
+        new("replyTo", "E-Mail-Adresse des Einsenders (für Antworten)"),
+    };
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
     {

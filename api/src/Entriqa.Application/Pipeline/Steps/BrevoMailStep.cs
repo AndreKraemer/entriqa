@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
+using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Application.Pipeline.Steps;
 
@@ -13,6 +14,18 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
     public StepMode Mode => StepMode.Inline;
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField };
     public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template"},"attach":{"type":"string","enum":["none","download","report","reportLink"],"title":"Mitschicken","default":"none"},"linkHours":{"type":"integer","title":"Link gültig (Stunden), nur bei reportLink","default":72}}}""";
+    public IReadOnlyList<MailParam> MailParams => new MailParam[]
+    {
+        new("firstName", "Vorname aus dem Formular (kann leer sein)"),
+        new("form", "Name des Formulars"),
+        new("site", "Name der Website"),
+        new("fields", "alle Feldwerte mit Beschriftung (Objekt)"),
+        new("downloadUrl", "zeitlich begrenzter Download-Link – nur bei Mitschicken: Download-Link/PDF-Link"),
+        new("downloadValidHours", "Gültigkeit des Download-Links in Stunden – nur bei Mitschicken: Download-Link/PDF-Link"),
+        new("resultTitle", "Titel des Quiz-Ergebnisses – nur bei Quiz-Formularen"),
+        new("resultBody", "Text des Quiz-Ergebnisses – nur bei Quiz-Formularen"),
+        new("pct", "erreichte Prozent – nur bei Quiz-Formularen"),
+    };
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
     {
