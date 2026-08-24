@@ -1,5 +1,6 @@
 ---
 title: "Vielen Dank – bestätigt"
+layout: "doi-done"
 sitemap:
   disable: true
 robots: "noindex"

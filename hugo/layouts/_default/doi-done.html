@@ -1,0 +1,11 @@
+{{- define "main" -}}
+{{- /*
+  Danke-Seite nach der DOI-Bestätigung (/bestaetigt/). Eigenes Layout, damit die Seite auch auf
+  Sites ohne generisches list-/section-Template gerendert wird – als reine Section-Seite fiele
+  sie dort sonst still aus dem Build (nur index.xml, kein HTML).
+*/ -}}
+<article class="eq-standalone eq-doi">
+  <h1>{{ .Title }}</h1>
+  <div class="eq-doi__content">{{ .Content }}</div>
+</article>
+{{- end -}}
