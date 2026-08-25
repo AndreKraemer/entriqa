@@ -17,14 +17,14 @@ public sealed class SwaPrincipalReader(IOptions<EntriqaOptions> options)
     {
         if (options.Value.AllowAnonymousAdmin) return;                       // local only, without the SWA CLI
         if (!req.Headers.TryGetValue("x-ms-client-principal", out var header) || string.IsNullOrEmpty(header))
-            throw new ForbiddenException("Nicht angemeldet.");
+            throw new ForbiddenException(ErrorMessages.NotSignedIn);
         try
         {
             using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(header!)));
             var roles = doc.RootElement.TryGetProperty("userRoles", out var r) ? r.EnumerateArray().Select(x => x.GetString()).ToList() : new();
-            if (!roles.Contains(role)) throw new ForbiddenException($"Rolle '{role}' erforderlich.");
+            if (!roles.Contains(role)) throw new ForbiddenException(ErrorMessages.RoleRequired, AppException.Args("role", role));
         }
-        catch (Exception ex) when (ex is FormatException or JsonException) { throw new ForbiddenException("Ungültiger Principal."); }
+        catch (Exception ex) when (ex is FormatException or JsonException) { throw new ForbiddenException(ErrorMessages.PrincipalInvalid); }
     }
 
     /// <summary>Display name of the signed-in admin (userDetails) - for UpdatedBy and PublishedBy.</summary>

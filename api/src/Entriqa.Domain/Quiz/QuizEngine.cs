@@ -19,7 +19,7 @@ public static class QuizEngine
 
         while (index < quiz.Questions.Count)
         {
-            if (++guard > 500) throw new AppException(ErrorCodes.QuizPathLoop, "Quiz-Pfad endet nicht.");
+            if (++guard > 500) throw new AppException(ErrorCodes.QuizPathLoop, ErrorMessages.QuizPathLoop);
             var q = quiz.Questions[index];
             if (!answers.TryGetValue(q.Id, out var optionId))
                 throw new ValidationException(new[] { new FieldError(q.Id, "Diese Frage wurde nicht beantwortet.") });
@@ -35,7 +35,7 @@ public static class QuizEngine
             {
                 var rid = option.Next[StepConditions.ResultPrefix.Length..];
                 jumped = quiz.Results.FirstOrDefault(r => r.Id == rid)
-                    ?? throw new AppException(ErrorCodes.QuizInvalidDefinition, $"Sprungziel-Ergebnis '{rid}' fehlt.");
+                    ?? throw new AppException(ErrorCodes.QuizInvalidDefinition, ErrorMessages.QuizResultMissing, AppException.Args("id", rid));
                 break;
             }
             index = option.Next is not null && byId.TryGetValue(option.Next, out var next) ? next : index + 1;

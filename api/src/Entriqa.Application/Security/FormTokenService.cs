@@ -36,27 +36,27 @@ public sealed class FormTokenService
     public TokenPayload Validate(string? token, string expectedKind, string expectedSubject, TimeSpan minAge, TimeSpan maxAge)
     {
         if (string.IsNullOrWhiteSpace(token) || token.Length > 512)
-            throw new SecurityTokenException(ErrorCodes.TokenInvalid, "Token fehlt.");
+            throw new SecurityTokenException(ErrorCodes.TokenInvalid, ErrorMessages.TokenMissing);
         var dot = token.IndexOf('.');
-        if (dot <= 0) throw new SecurityTokenException(ErrorCodes.TokenInvalid, "Token ungültig.");
+        if (dot <= 0) throw new SecurityTokenException(ErrorCodes.TokenInvalid, ErrorMessages.TokenInvalid);
 
         string payload;
         byte[] sig;
         try { payload = Encoding.UTF8.GetString(UnB64(token[..dot])); sig = UnB64(token[(dot + 1)..]); }
-        catch (FormatException) { throw new SecurityTokenException(ErrorCodes.TokenInvalid, "Token ungültig."); }
+        catch (FormatException) { throw new SecurityTokenException(ErrorCodes.TokenInvalid, ErrorMessages.TokenInvalid); }
 
         if (!CryptographicOperations.FixedTimeEquals(sig, Sign(payload)))
-            throw new SecurityTokenException(ErrorCodes.TokenInvalid, "Token ungültig.");
+            throw new SecurityTokenException(ErrorCodes.TokenInvalid, ErrorMessages.TokenInvalid);
 
         var parts = payload.Split('|');
         if (parts.Length != 4 || parts[0] != expectedKind || parts[1] != expectedSubject
             || !long.TryParse(parts[2], out var issuedUnix))
-            throw new SecurityTokenException(ErrorCodes.TokenInvalid, "Token passt nicht zu dieser Anfrage.");
+            throw new SecurityTokenException(ErrorCodes.TokenInvalid, ErrorMessages.TokenMismatch);
 
         var issued = DateTimeOffset.FromUnixTimeSeconds(issuedUnix);
         var age = _time.GetUtcNow() - issued;
-        if (age < minAge) throw new SecurityTokenException(ErrorCodes.TokenTooEarly, "Zu schnell abgeschickt.");
-        if (age > maxAge) throw new SecurityTokenException(ErrorCodes.TokenExpired, "Das Formular ist abgelaufen – bitte Seite neu laden.");
+        if (age < minAge) throw new SecurityTokenException(ErrorCodes.TokenTooEarly, ErrorMessages.TokenTooEarly);
+        if (age > maxAge) throw new SecurityTokenException(ErrorCodes.TokenExpired, ErrorMessages.TokenExpired);
 
         return new TokenPayload(parts[0], parts[1], issued, parts[3]);
     }

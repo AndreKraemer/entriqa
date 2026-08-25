@@ -49,10 +49,10 @@ internal sealed class UploadLeadMagnetUseCase(IStoreArtifactPort store) : IUploa
 {
     public async Task<LeadMagnetInfo> ExecuteAsync(string fileName, byte[] content, string contentType, CancellationToken ct = default)
     {
-        if (content.Length == 0) throw new AppException(ErrorCodes.Validation, "Leere Datei.");
-        if (content.Length > 25 * 1024 * 1024) throw new AppException(ErrorCodes.Validation, "Datei größer als 25 MB.");
+        if (content.Length == 0) throw new AppException(ErrorCodes.Validation, ErrorMessages.FileEmpty);
+        if (content.Length > 25 * 1024 * 1024) throw new AppException(ErrorCodes.Validation, ErrorMessages.FileTooBigMb, AppException.Args("max", "25"));
         var safe = string.Concat(Path.GetFileName(fileName).Select(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_' ? c : '-'));
-        if (safe.Length == 0) throw new AppException(ErrorCodes.Validation, "Dateiname fehlt.");
+        if (safe.Length == 0) throw new AppException(ErrorCodes.Validation, ErrorMessages.FileNameMissing);
         var path = await store.StoreAsync($"leadmagnets/{safe}", content,
             string.IsNullOrEmpty(contentType) ? "application/octet-stream" : contentType, ct);
         return new LeadMagnetInfo(path, content.Length);
@@ -66,7 +66,7 @@ internal sealed class ExportSubmissionsCsvUseCase(
     public async Task<string> ExecuteAsync(string slug, CancellationToken ct = default)
     {
         var published = await getPublished.ExecuteAsync(slug, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{slug}' ist nicht veröffentlicht.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormNotPublished, AppException.Args("slug", slug));
         var def = published.Definition.Localize(null);
         var fields = def.Fields.Where(f => !FieldTypes.IsLayout(f.Type)).ToList();
         var items = (await list.ExecuteAsync(slug, 5000, ct)).OrderByDescending(s => s.CreatedAt).ToList();
@@ -108,13 +108,13 @@ internal sealed class ResendDoiUseCase(
     public async Task ExecuteAsync(string submissionId, CancellationToken ct = default)
     {
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
-            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
-        if (s.IsConfirmed) throw new AppException(ErrorCodes.Validation, "Schon bestätigt – nichts zu senden.");
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
+        if (s.IsConfirmed) throw new AppException(ErrorCodes.Validation, ErrorMessages.AlreadyConfirmed);
         var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, "Formularversion nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormVersionNotFound);
         var def = v.Definition.Localize(s.Locale);
         var doi = def.Pipeline.FirstOrDefault(st => st.Step == "doi.request")
-            ?? throw new AppException(ErrorCodes.Validation, "Dieses Formular hat kein Double-Opt-In.");
+            ?? throw new AppException(ErrorCodes.Validation, ErrorMessages.FormWithoutDoi);
 
         var ctx = new StepContext { Submission = s, Form = def, FormVersion = v.Version, Options = options.Value };
         await pipeline.Resolve(doi.Step).ExecuteAsync(ctx, doi.Config, ct);   // idempotent: after the confirmation the step does nothing

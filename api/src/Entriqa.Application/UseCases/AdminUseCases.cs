@@ -22,9 +22,9 @@ internal sealed class RetryStepUseCase(
     public async Task ExecuteAsync(string submissionId, string stepId, CancellationToken ct = default)
     {
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
-            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, "Formularversion nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormVersionNotFound);
         await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Retry, stepId, ct);
         await save.ExecuteAsync(s, ct);
     }
