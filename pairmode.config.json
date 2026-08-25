@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "workItems": {
+    "provider": "github"
+  },
+  "sourceControl": {
+    "provider": "github",
+    "defaultBranch": "main",
+    "protectedBranches": ["main"],
+    "branchPattern": "feature/{id}-{slug}"
+  },
+  "timeTracking": {
+    "provider": "none"
+  },
+  "verify": "node scripts/verify.mjs",
+  "verifyFull": "node scripts/verify.mjs --full",
+  "candidateExclude": ["docs/", "README.md", "LICENSE.md"],
+  "forbiddenUrlPatterns": [
+    "api.brevo.com",
+    "*.core.windows.net",
+    "*.webhook.office.com",
+    "*.office.com"
+  ],
+  "skills": {}
+}

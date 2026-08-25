@@ -3,3 +3,7 @@
 **/obj/
 node_modules/
 local.settings.json.bak
+
+# Verify-Gate-Artefakte (scripts/verify.mjs --full) und Release-Publishes
+out/
+.claude/settings.local.json

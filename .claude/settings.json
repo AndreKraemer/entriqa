@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "pairmode": {
+      "source": {
+        "source": "github",
+        "repo": "AndreKraemer/pairmode"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "pairmode@pairmode": true
+  }
+}
