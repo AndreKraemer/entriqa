@@ -13,7 +13,7 @@ internal sealed class GetSubmissionDetailUseCase(
     public async Task<SubmissionDetailView> ExecuteAsync(string submissionId, CancellationToken ct = default)
     {
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
-            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct);
         var def = v?.Definition.Localize(s.Locale);
 
@@ -60,11 +60,11 @@ internal sealed class SetSubmissionHandlingUseCase(
     public async Task ExecuteAsync(string submissionId, string handling, CancellationToken ct = default)
     {
         if (handling is not (HandlingStates.Open or HandlingStates.Done))
-            throw new AppException(ErrorCodes.Validation, "Bearbeitungsstatus muss 'open' oder 'done' sein.");
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingInvalid);
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
-            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         if (s.Handling == HandlingStates.None)
-            throw new AppException(ErrorCodes.Validation, "Dieses Formular führt keinen Bearbeitungsstatus.");
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingUnsupported);
         s.Handling = handling;
         await save.ExecuteAsync(s, ct);
     }
@@ -78,7 +78,7 @@ internal sealed class DeleteSubmissionAdminUseCase(
     public async Task ExecuteAsync(string submissionId, CancellationToken ct = default)
     {
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
-            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         foreach (var path in s.Artifacts.Values.Where(v => !v.Contains("://", StringComparison.Ordinal)))
             await artifacts.DeleteAsync(path, ct);                          // like retention: blobs first
         await delete.ExecuteAsync(s, ct);

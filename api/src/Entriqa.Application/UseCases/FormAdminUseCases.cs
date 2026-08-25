@@ -16,7 +16,7 @@ internal sealed class GetFormDraftUseCase(ITryGetFormDraftQuery getDraft) : IGet
     public async Task<FormDraftView> ExecuteAsync(string slug, CancellationToken ct = default)
     {
         var d = await getDraft.ExecuteAsync(slug, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{slug}' ist unbekannt.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormUnknown, AppException.Args("slug", slug));
         return new FormDraftView(d.Slug, d.Status, d.PublishedVersion, d.UpdatedAt, d.UpdatedBy, d.Definition);
     }
 }
@@ -26,7 +26,7 @@ internal sealed class SaveFormDraftUseCase(ISaveFormDraftCommand save) : ISaveFo
     public Task ExecuteAsync(FormDefinition definition, string savedBy, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(definition.Slug) || definition.Slug.Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-')))
-            throw new AppException(ErrorCodes.Validation, "Slug darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.");
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.SlugInvalid);
         return save.ExecuteAsync(definition, savedBy, ct);
     }
 }
@@ -40,7 +40,7 @@ internal sealed class PublishFormUseCase(
     public async Task<PublishFormResult> ExecuteAsync(string slug, string publishedBy, CancellationToken ct = default)
     {
         var d = await getDraft.ExecuteAsync(slug, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{slug}' ist unbekannt.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormUnknown, AppException.Args("slug", slug));
         var issues = check.Check(d.Definition);
         if (issues.Count > 0) return new PublishFormResult(0, issues);
         var version = await publish.ExecuteAsync(d.Definition, publishedBy, ct);

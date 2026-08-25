@@ -37,7 +37,7 @@ internal sealed class SubmitFormUseCase(
     {
         var o = options.Value;
         var published = await getPublished.ExecuteAsync(request.Slug, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{request.Slug}' ist nicht veröffentlicht.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormNotPublished, AppException.Args("slug", request.Slug));
         var locale = published.Definition.MatchLocale(request.Lang);
         var def = published.Definition.Localize(locale);                    // from here on everything is single-language (validator, steps, quiz)
 
@@ -61,7 +61,7 @@ internal sealed class SubmitFormUseCase(
             var now = time.GetUtcNow();
             var window = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute / o.RateLimitWindowMinutes * o.RateLimitWindowMinutes, 0, TimeSpan.Zero);
             if (await rateLimit.ExecuteAsync(ipHash, window, ct) > o.RateLimitPerWindow)
-                throw new AppException(ErrorCodes.RateLimited, "Zu viele Einsendungen – bitte später erneut versuchen.", 429);
+                throw new AppException(ErrorCodes.RateLimited, ErrorMessages.RateLimited, null, 429);
         }
 
         // 4. Validation against the definition (all errors at once) and quiz scoring (walks the path itself).
@@ -73,7 +73,7 @@ internal sealed class SubmitFormUseCase(
 
         // 5. Consume the nonce (only now - the input is valid) and save before any step runs.
         if (!await consumeNonce.ExecuteAsync(payload.Nonce, payload.IssuedAt.AddHours(o.MaxSubmitHours), ct))
-            throw new SecurityTokenException(ErrorCodes.TokenReplayed, "Dieses Formular wurde bereits abgeschickt – bitte Seite neu laden.");
+            throw new SecurityTokenException(ErrorCodes.TokenReplayed, ErrorMessages.TokenReplayed);
         var nowUtc = time.GetUtcNow();
         var rowKey = $"{DateTimeOffset.MaxValue.Ticks - nowUtc.Ticks:D19}-{Guid.NewGuid():N}"[..28];
         var submission = new Submission

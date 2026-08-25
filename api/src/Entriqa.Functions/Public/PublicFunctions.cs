@@ -44,7 +44,10 @@ public sealed class PublicFunctions(
     public async Task<IActionResult> Submit([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "forms/{slug}/submissions")] HttpRequest req, string slug, CancellationToken ct)
     {
         var body = await JsonSerializer.DeserializeAsync<SubmitBody>(req.Body, Json, ct)
-            ?? throw new AppException(ErrorCodes.Validation, "Leerer Request.");
+            ?? throw new AppException(ErrorCodes.Validation, ErrorMessages.EmptyRequest);
+        // The language of the submission also settles the error title, otherwise the field errors would speak
+        // the form's language and the title the browser's. The middleware cannot read the body itself - it is gone by then.
+        RequestLocale.Remember(req.HttpContext, body.Lang);
         var request = new SubmitFormRequest(slug, body.Token ?? "", body.Values ?? new(), body.Answers, body.Website, SwaPrincipalReader.ClientIp(req), body.Lang);
         return new OkObjectResult(await submit.ExecuteAsync(request, ct));
     }
@@ -55,10 +58,10 @@ public sealed class PublicFunctions(
     public async Task<IActionResult> Upload([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "forms/{slug}/uploads")] HttpRequest req, string slug, CancellationToken ct)
     {
         if (!req.HasFormContentType || req.Form.Files.Count == 0)
-            throw new AppException(ErrorCodes.Validation, "Keine Datei übermittelt.");
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.NoFileSubmitted);
         var file = req.Form.Files[0];
         if (file.Length > Domain.Forms.UploadRules.MaxBytes)
-            throw new AppException(ErrorCodes.Validation, "Datei zu groß.");
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.FileTooBig);
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
         var result = await upload.ExecuteAsync(slug, req.Form["token"].FirstOrDefault() ?? "", file.FileName, ms.ToArray(), ct);

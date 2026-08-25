@@ -23,7 +23,7 @@ public sealed class HousekeepingFunctions(IRunHousekeepingUseCase housekeeping, 
         var provided = req.Headers["x-housekeeping-key"].FirstOrDefault() ?? "";
         if (string.IsNullOrEmpty(expected) || !CryptographicOperations.FixedTimeEquals(
                 Encoding.UTF8.GetBytes(provided), Encoding.UTF8.GetBytes(expected)))
-            throw new ForbiddenException("Housekeeping nicht autorisiert.");
+            throw new ForbiddenException(ErrorMessages.HousekeepingUnauthorized);
 
         return new OkObjectResult(await housekeeping.ExecuteAsync(ct));
     }

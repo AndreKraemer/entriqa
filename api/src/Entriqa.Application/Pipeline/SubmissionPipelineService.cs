@@ -26,7 +26,7 @@ public sealed class SubmissionPipelineService(
     private readonly Dictionary<string, ISubmissionStep> _steps = steps.ToDictionary(s => s.Key);
 
     public ISubmissionStep Resolve(string key) =>
-        _steps.TryGetValue(key, out var s) ? s : throw new AppException(ErrorCodes.StepUnknown, $"Unbekannter Schritt '{key}'.", 500);
+        _steps.TryGetValue(key, out var s) ? s : throw new AppException(ErrorCodes.StepUnknown, ErrorMessages.StepUnknown, AppException.Args("key", key), 500);
 
     /// <summary>For the check rules: an unknown key is an issue there, not a server error.</summary>
     public ISubmissionStep? TryResolve(string key) => _steps.GetValueOrDefault(key);

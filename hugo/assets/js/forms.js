@@ -45,7 +45,7 @@
     self.host.innerHTML = '<div class="eq-loading" aria-busy="true"></div>';
     Promise.all([
       fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '?lang=' + encodeURIComponent(self.lang)),
-      fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '/token', { cache: 'no-store' })
+      fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/token', self.lang), { cache: 'no-store' })
     ]).then(function (r) {
       self.def = r[0];
       self.token = r[1].token;
@@ -104,7 +104,7 @@
     try {
       if (navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) return;
     } catch (e) { /* a blob beacon can fail on CSP - then fetch */ }
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function () { /* Statistik, bewusst leise */ });
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function () { /* statistics, deliberately quiet */ });
   };
 
   /* ---------- Multi-page forms (page break fields split the field list) ---------- */
@@ -391,7 +391,7 @@
     var data = new FormData();
     data.append('token', self.token);
     data.append('file', file);
-    fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '/uploads', { method: 'POST', body: data })
+    fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/uploads', self.lang), { method: 'POST', body: data })
       .then(function (r) {
         wrap.dataset.eqUpload = JSON.stringify(r);
         status.textContent = '✓ ' + r.name + ' (' + Math.round(r.size / 1024) + ' KB)';
@@ -495,15 +495,15 @@
     self.form.classList.add('eq-form--busy');
     Array.prototype.forEach.call(self.form.querySelectorAll('.eq-submit'), function (b) { b.disabled = true; });
 
-    fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '/submissions', {
+    fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/submissions', self.lang), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     }).then(function (result) {
       if (result.runToken) {
         // Background steps (PDF, webhook) - BEFORE onSuccess and with keepalive so that the request survives
         // a completion redirect. Failures are the concern of the admin and housekeeping, not of the visitor.
-        fetchJson(self.api + '/submissions/' + encodeURIComponent(result.submissionId) + '/run', {
+        fetchJson(withLang(self.api + '/submissions/' + encodeURIComponent(result.submissionId) + '/run', self.lang), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: result.runToken }), keepalive: true
-        }).catch(function () { /* bewusst leise */ });
+        }).catch(function () { /* deliberately quiet */ });
       }
       self.onSuccess(result);
     }).catch(function (err) {
@@ -516,7 +516,7 @@
       }
       if (err.problem && (err.problem.errorCode === 'security.token_expired' || err.problem.errorCode === 'security.token_replayed')) {
         self.token = null; // fetch a new token so that the next attempt works
-        fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '/token', { cache: 'no-store' }).then(function (t) { self.token = t.token; });
+        fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/token', self.lang), { cache: 'no-store' }).then(function (t) { self.token = t.token; });
       }
       self.say(messageFor(err, self.t('submitError', 'Das hat leider nicht geklappt. Bitte versuche es erneut.')), 'error');
     });
@@ -573,6 +573,12 @@
     if (l.indexOf('unternehmen') >= 0 || l.indexOf('firma') >= 0) return 'organization';
     if (l.indexOf('telefon') >= 0) return 'tel';
     return null;
+  }
+
+  // The server answers errors in the language it is asked for; without this the visitor would get
+  // the field errors in the form language and the error title in the browser language.
+  function withLang(url, lang) {
+    return url + (url.indexOf('?') < 0 ? '?' : '&') + 'lang=' + encodeURIComponent(lang);
   }
 
   function fetchJson(url, opts) {

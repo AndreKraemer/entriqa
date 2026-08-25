@@ -4,7 +4,6 @@ using Entriqa.Application.Security;
 using Entriqa.Domain.Errors;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.UseCases;
-using Entriqa.Domain.Validation;
 
 namespace Entriqa.Application.UseCases;
 
@@ -24,19 +23,17 @@ internal sealed class UploadFileUseCase(
     public async Task<UploadedFile> ExecuteAsync(string slug, string token, string fileName, byte[] content, CancellationToken ct = default)
     {
         var published = await getPublished.ExecuteAsync(slug, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{slug}' ist nicht veröffentlicht.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormNotPublished, AppException.Args("slug", slug));
         if (!published.Definition.Fields.Any(f => f.Type == FieldTypes.File))
-            throw new AppException(ErrorCodes.Validation, "Dieses Formular nimmt keine Dateien an.");
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.FormTakesNoFiles);
 
         tokens.Validate(token, FormTokenService.KindForm, slug,
             TimeSpan.Zero, TimeSpan.FromHours(options.Value.MaxSubmitHours));
 
-        var locale = published.Definition.DefaultLocale;
         if (content.LongLength is 0 or > UploadRules.MaxBytes)
-            throw new AppException(ErrorCodes.Validation,
-                ValidationMessages.Get(locale, ValidationMessages.UploadTooBig).Replace("{max}", (UploadRules.MaxBytes / 1024 / 1024).ToString()));
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.UploadTooBig, AppException.Args("max", (UploadRules.MaxBytes / 1024 / 1024).ToString()));
         if (!UploadRules.IsAllowed(fileName))
-            throw new AppException(ErrorCodes.Validation, ValidationMessages.Get(locale, ValidationMessages.UploadType));
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.UploadType);
 
         var safe = UploadRules.SafeName(fileName);
         var path = $"uploads/{time.GetUtcNow():yyyyMMdd}/{Guid.NewGuid():N}/{safe}";
