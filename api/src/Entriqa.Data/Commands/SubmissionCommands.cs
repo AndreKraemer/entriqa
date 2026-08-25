@@ -36,7 +36,7 @@ internal sealed class SaveSubmissionCommand(TableStorage storage) : ISaveSubmiss
         }
         catch (RequestFailedException ex) when (ex.Status == 412)
         {
-            throw new AppException(ErrorCodes.Conflict, "Die Einsendung wurde parallel verändert.", 409, ex);
+            throw new AppException(ErrorCodes.Conflict, ErrorMessages.SubmissionConflict, null, 409, ex);
         }
     }
 }

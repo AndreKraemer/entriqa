@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,8 +11,15 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // The API always sits on the origin under /api - no matter whether the app is served from / (dev) or /admin/ (SWA).
+// Accept-Language carries the interface language along, so error texts come back in the language the admin is using.
+// The client is built lazily, after Ui.Init below, and switching the language reloads the app anyway.
 var origin = new Uri(new Uri(builder.HostEnvironment.BaseAddress), "/");
-builder.Services.AddScoped(_ => new HttpClient { BaseAddress = origin });
+builder.Services.AddScoped(sp =>
+{
+    var http = new HttpClient { BaseAddress = origin };
+    http.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(sp.GetRequiredService<Ui>().Lang));
+    return http;
+});
 builder.Services.AddScoped<AdminApi>();
 builder.Services.AddSingleton<Ui>();
 

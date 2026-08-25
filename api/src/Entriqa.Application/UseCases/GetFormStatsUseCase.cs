@@ -27,7 +27,7 @@ internal sealed class GetFormStatsUseCase(
             ? await getVersion.ExecuteAsync(slug, rv, ct)
             : await getPublished.ExecuteAsync(slug, ct);
         var def = defVersion?.Definition.Localize(null)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{slug}' ist nicht veröffentlicht.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormNotPublished, AppException.Args("slug", slug));
 
         var today = time.GetUtcNow().UtcDateTime.Date;
         var daily = new int[14];

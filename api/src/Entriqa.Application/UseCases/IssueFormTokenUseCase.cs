@@ -10,7 +10,7 @@ internal sealed class IssueFormTokenUseCase(ITryGetPublishedFormQuery getPublish
     public async Task<string> ExecuteAsync(string slug, CancellationToken ct = default)
     {
         _ = await getPublished.ExecuteAsync(slug, ct)
-            ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{slug}' ist nicht veröffentlicht.");
+            ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormNotPublished, AppException.Args("slug", slug));
         return tokens.Issue(FormTokenService.KindForm, slug);
     }
 }

@@ -29,7 +29,7 @@ internal sealed class ConfirmSubmissionUseCase(
         tokens.Validate(confirmToken, FormTokenService.KindConfirm, subject, TimeSpan.Zero, TimeSpan.FromDays(options.Value.ConfirmTokenDays));
 
         var s = await getSubmission.ExecuteAsync(subject, ct)
-            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         var redirect = options.Value.BaseUrl.TrimEnd('/') + options.Value.ConfirmedRedirectPath;
         var already = s.IsConfirmed;
 
@@ -49,7 +49,7 @@ internal sealed class ConfirmSubmissionUseCase(
         if (s.StepRuns.Any(r => r.Status is Domain.Submissions.StepRunStatus.Pending or Domain.Submissions.StepRunStatus.Waiting))
         {
             var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct)
-                ?? throw new NotFoundException(ErrorCodes.FormNotFound, "Formularversion nicht gefunden.");
+                ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormVersionNotFound);
             await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, ct);
             try { await save.ExecuteAsync(s, ct); }
             catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* a parallel run is already writing */ }
@@ -65,6 +65,6 @@ internal sealed class ConfirmSubmissionUseCase(
             var payload = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(p.PadRight(p.Length + (4 - p.Length % 4) % 4, '=')));
             return payload.Split('|')[1];
         }
-        catch (Exception) { throw new SecurityTokenException(ErrorCodes.TokenInvalid, "Link ungültig."); }
+        catch (Exception) { throw new SecurityTokenException(ErrorCodes.TokenInvalid, ErrorMessages.LinkInvalid); }
     }
 }
