@@ -3,10 +3,10 @@ using Entriqa.Domain.Validation;
 namespace Entriqa.Domain.Forms;
 
 /// <summary>
-/// Was der Browser bekommt: Felder, Texte, Quiz-Fragen mit Sprungzielen – aber keine Pipeline,
-/// keine Punkte, keine Ergebnis- oder Finding-Texte. Die Bewertung passiert ausschließlich serverseitig.
-/// Immer einsprachig: <see cref="From"/> erwartet eine bereits lokalisierte Definition;
-/// <c>Strings</c> liefert die UI-/Fehlertexte derselben Sprache für forms.js.
+/// What the browser gets: fields, texts, quiz questions with their jump targets - but no pipeline,
+/// no points, no result or finding texts. Scoring happens on the server only.
+/// Always single-language: <see cref="From"/> expects an already localized definition;
+/// <c>Strings</c> supplies the UI and error texts of that same language for forms.js.
 /// </summary>
 public sealed record PublicFormView(
     string Slug,

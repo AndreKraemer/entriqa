@@ -4,7 +4,7 @@ using Entriqa.Domain.Forms;
 
 namespace Entriqa.Application.Pipeline.Steps;
 
-/// <summary>Zeitlich begrenzter Download-Link auf eine privat abgelegte Datei (leadmagnets/…). Artefakt "download".</summary>
+/// <summary>Time-limited download link to a privately stored file (leadmagnets/…). Artifact "download".</summary>
 public sealed class LeadMagnetLinkStep(ICreateDownloadLinkPort links) : ISubmissionStep
 {
     public string Key => "leadmagnet.link";

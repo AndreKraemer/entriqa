@@ -12,10 +12,10 @@ public class FormSubmissionValidatorTests
     };
 
     [Fact]
-    public void Valid_values_pass() => FormSubmissionValidator.ValidateAndThrow(TestData.Contact(), Valid(), null);
+    public void GivenValidValues_WhenValidating_ThenNoExceptionIsThrown() => FormSubmissionValidator.ValidateAndThrow(TestData.Contact(), Valid(), null);
 
     [Fact]
-    public void Collects_all_errors_at_once()
+    public void GivenSeveralInvalidValues_WhenValidating_ThenAllErrorsAreReportedAtOnce()
     {
         var values = Valid();
         values["name"] = ""; values["email"] = "kein-mail"; values["topic"] = "Z"; values["consent"] = "false"; values["msg"] = new string('x', 51);
@@ -26,7 +26,7 @@ public class FormSubmissionValidatorTests
     }
 
     [Fact]
-    public void Optional_select_may_be_empty()
+    public void GivenOptionalSelectIsMissing_WhenValidating_ThenItIsAccepted()
     {
         var values = Valid(); values.Remove("topic");
         FormSubmissionValidator.ValidateAndThrow(TestData.Contact(), values, null);
@@ -36,5 +36,5 @@ public class FormSubmissionValidatorTests
     [InlineData("[\"A\",\"B\"]", new[] { "A", "B" })]
     [InlineData("A, B", new[] { "A", "B" })]
     [InlineData("A", new[] { "A" })]
-    public void SplitMulti_accepts_json_and_list(string input, string[] expected) => Assert.Equal(expected, FormSubmissionValidator.SplitMulti(input));
+    public void GivenJsonArrayOrCommaSeparatedList_WhenSplittingMultiValue_ThenBothFormsAreParsed(string input, string[] expected) => Assert.Equal(expected, FormSubmissionValidator.SplitMulti(input));
 }

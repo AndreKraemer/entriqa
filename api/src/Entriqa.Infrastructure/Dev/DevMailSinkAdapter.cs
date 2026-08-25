@@ -6,10 +6,10 @@ using Entriqa.Application.Ports;
 namespace Entriqa.Infrastructure.Dev;
 
 /// <summary>
-/// Lokale Entwicklung ohne Brevo-Key: statt zu versenden landet jede Mail als HTML-Datei in
-/// <c>%TEMP%\entriqa-devmails\</c> – mit klickbarem confirmUrl-Link, damit der komplette DOI-Flow
-/// lokal durchspielbar ist. Kontakt-Upserts werden nur geloggt (contacts.log), damit die Pipeline
-/// vollständig durchläuft. Aktiv nur, wenn <c>Entriqa__Brevo__ApiKey</c> leer ist.
+/// Local development without a Brevo key: instead of sending, every mail ends up as an HTML file in
+/// <c>%TEMP%\entriqa-devmails\</c> - with a clickable confirmUrl link so that the whole DOI flow
+/// can be played through locally. Contact upserts are only logged (contacts.log) so that the pipeline
+/// runs through completely. Active only while <c>Entriqa__Brevo__ApiKey</c> is empty.
 /// </summary>
 public sealed class DevMailSinkAdapter(ILogger<DevMailSinkAdapter> log) : ISendTransactionalMailPort, IUpsertBrevoContactPort, IUpsertBrevoCompanyPort
 {
@@ -30,8 +30,8 @@ public sealed class DevMailSinkAdapter(ILogger<DevMailSinkAdapter> log) : ISendT
         log.LogInformation("Dev-Sink: Firmen-Upsert {Name} → companies.log", name);
     }
 
-    // NIE ins Function-Ausgabeverzeichnis schreiben: der Host überwacht es und würde bei jeder
-    // Mail den Worker neu laden. Deshalb ein fester Ordner unterhalb von %TEMP%.
+    // NEVER write into the function output directory: the host watches it and would reload the worker
+    // on every mail. Hence a fixed folder underneath %TEMP%.
     private static readonly string Folder = Path.Combine(Path.GetTempPath(), "entriqa-devmails");
 
     public async Task SendAsync(string toEmail, string? toName, int templateId, IReadOnlyDictionary<string, object?> parameters,

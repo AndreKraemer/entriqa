@@ -1,10 +1,10 @@
 namespace Entriqa.Admin.Services;
 
 /// <summary>
-/// Oberflächensprache des Admins. Deutsch ist die Quellsprache und zugleich der Schlüssel:
-/// <c>T["Speichern"]</c> liefert auf Deutsch den Schlüssel selbst, auf Englisch die Übersetzung –
-/// ein fehlender Eintrag fällt sicher auf Deutsch zurück. Die Wahl liegt im localStorage;
-/// der Wechsel lädt die App neu, damit alle Seiten konsistent umschalten.
+/// Interface language of the admin. German is the source language and at the same time the key:
+/// <c>T["Speichern"]</c> returns the key itself in German and the translation in English -
+/// a missing entry safely falls back to German. The choice lives in localStorage;
+/// switching reloads the app so that every page changes over consistently.
 /// </summary>
 public sealed class Ui
 {
@@ -114,13 +114,13 @@ public sealed class Ui
         ["Dieses Formular hat noch kein Quiz."] = "This form has no quiz yet.",
         ["Quiz anlegen"] = "Create quiz",
 
-        // Editor: Verarbeitung
+        // editor: processing
         ["Einsendung geht ein"] = "Submission arrives",
         ["Nach erfolgreicher Prüfung laufen die Schritte von oben nach unten."] = "After validation, the steps run from top to bottom.",
         ["wartet auf Bestätigung"] = "waiting for confirmation",
         ["Schritt hinzufügen …"] = "Add step …",
 
-        // Editor: Rückmeldung
+        // editor: feedback
         ["Nach dem Absenden"] = "After submitting",
         ["Meldung anzeigen"] = "Show a message",
         ["Weiterleiten"] = "Redirect",
@@ -139,7 +139,7 @@ public sealed class Ui
         ["Kein gültiges JSON – bitte erst korrigieren: {0}"] = "Invalid JSON – please fix it first: {0}",
         ["Kein gültiges JSON: {0}"] = "Invalid JSON: {0}",
 
-        // Editor: Prüfen & Veröffentlichen
+        // editor: check and publish
         ["Keine Probleme gefunden – bereit zum Veröffentlichen."] = "No issues found – ready to publish.",
         ["Veröffentlichen …"] = "Publish …",
         ["Entwurf gespeichert."] = "Draft saved.",
@@ -156,7 +156,7 @@ public sealed class Ui
         ["Jetzt veröffentlichen"] = "Publish now",
         ["Veröffentlicht als Version {0}"] = "Published as version {0}",
 
-        // Feld-Editor
+        // field editor
         ["z. B. nachricht"] = "e.g. message",
         ["Interner Feldname – taucht in Auswertung und Export auf"] = "Internal field name – appears in insights and exports",
         ["Beschriftung"] = "Label",
@@ -178,7 +178,7 @@ public sealed class Ui
         ["Parametername"] = "Parameter name",
         ["Wert"] = "Value",
 
-        // Bedingte Sichtbarkeit & neue Feldtypen
+        // conditional visibility and new field types
         ["Nur anzeigen, wenn …"] = "Only show when …",
         ["– immer anzeigen –"] = "– always show –",
         ["… angehakt ist."] = "… is checked.",
@@ -214,7 +214,7 @@ public sealed class Ui
             "Allowed: PDF, Word, Excel, PowerPoint, text, and images (PNG, JPG, GIF, WebP) – at most 10 MB. Files are stored privately; the admin gets time-limited download links.",
         ["Herunterladen"] = "Download",
 
-        // Schritt-Editor
+        // step editor
         ["Hintergrund"] = "Background",
         ["teilt: alles danach erst nach Bestätigung"] = "splits: everything after runs only once confirmed",
         ["Ausführen"] = "Run",
@@ -238,7 +238,7 @@ public sealed class Ui
         ["PDF als Link"] = "PDF as link",
         ["Upload fehlgeschlagen: {0}"] = "Upload failed: {0}",
 
-        // Schritt-Katalog (Servertexte – hier gespiegelt, unbekannte bleiben deutsch)
+        // step catalog (server texts - mirrored here, unknown ones stay German)
         ["Kontakt in Brevo anlegen"] = "Create contact in Brevo",
         ["Legt den Kontakt an oder aktualisiert ihn und trägt ihn in die gewählten Listen ein."] = "Creates or updates the contact and adds it to the selected lists.",
         ["E-Mail an Teilnehmer"] = "Email to participant",
@@ -316,7 +316,7 @@ public sealed class Ui
         ["Text, wenn gar nichts auffiel"] = "Text when nothing stood out",
         ["Finding (Auswertungstext, wenn diese Antwort gewählt wurde – optional)"] = "Finding (shown in the evaluation when this answer was chosen – optional)",
 
-        // Vorschau
+        // preview
         ["Bitte wählen"] = "Please choose",
         ["Absenden"] = "Submit",
         ["Weiter"] = "Next",
@@ -325,7 +325,7 @@ public sealed class Ui
         ["Schematische Vorschau – Schrift, Farben und Abstände kommen auf der Website vollständig vom Theme."] =
             "Schematic preview – fonts, colors, and spacing come entirely from the website theme.",
 
-        // Einsendungen
+        // submissions
         ["Alle Formulare"] = "All forms",
         ["Neu seit letztem Besuch"] = "New since last visit",
         ["Zu bearbeiten"] = "To handle",
@@ -374,7 +374,7 @@ public sealed class Ui
         ["Blockiert"] = "Blocked",
         ["Übersprungen"] = "Skipped",
 
-        // Auswertungen
+        // statistics
         ["Formular wählen …"] = "Choose a form …",
         ["Alle Versionen"] = "All versions",
         ["Version {0}"] = "Version {0}",
@@ -396,7 +396,7 @@ public sealed class Ui
         ["davon begonnen"] = "of which started",
         ["Abschlussquote (Einsendungen / begonnen, 14 Tage)"] = "Completion rate (submissions / started, 14 days)",
 
-        // Einstellungen
+        // settings
         ["Werte kommen aus den App-Settings der Static Web App (Präfix Entriqa__) – hier nur Status und Kontrolle, geändert wird in Azure."] =
             "Values come from the Static Web App's app settings (prefix Entriqa__) – this page shows status only; changes happen in Azure.",
         ["Website"] = "Website",
@@ -454,7 +454,7 @@ public sealed class Ui
             "Production use requires an Entriqa license (app setting Entriqa__LicenseKey). Get one at andrekraemer.de/entriqa.",
         ["Details"] = "Details",
 
-        // Fehlermeldungen
+        // error messages
         ["Nicht angemeldet."] = "Not signed in.",
         ["Bitte zuerst anmelden: /.auth/login/aad öffnen, Benutzername wählen und im Rollen-Feld 'admin' eintragen (lokal simuliert die SWA-CLI den Login)."] =
             "Please sign in first: open /.auth/login/aad, choose a username, and enter 'admin' in the roles field (locally the SWA CLI simulates the login).",

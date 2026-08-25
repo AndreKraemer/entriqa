@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Entriqa.Application.Security;
 
-/// <summary>IP nur gehasht speichern (Rate-Limit, DOI-Nachweis). Datensparsamkeit; Salt aus den Settings.</summary>
+/// <summary>Store the IP hashed only (rate limit, DOI evidence). Data minimization; salt from the settings.</summary>
 public sealed class IpHasher(IOptions<EntriqaOptions> options)
 {
     public string? Hash(string? ip)

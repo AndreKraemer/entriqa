@@ -11,8 +11,8 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Functions.Ops;
 
 /// <summary>
-/// Vom DevOps-Schedule (Cron alle 15 min) aufgerufen – SWA-Managed-Functions können keine Timer-Trigger,
-/// deshalb HTTP + Secret-Header. Ohne konfigurierten Key ist der Endpunkt tot (kein Default-Secret).
+/// Called by the DevOps schedule (cron every 15 min) - SWA managed functions cannot do timer triggers,
+/// hence HTTP plus a secret header. Without a configured key the endpoint is dead (no default secret).
 /// </summary>
 public sealed class HousekeepingFunctions(IRunHousekeepingUseCase housekeeping, IOptions<EntriqaOptions> options)
 {

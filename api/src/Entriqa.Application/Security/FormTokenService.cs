@@ -6,8 +6,8 @@ using Entriqa.Domain.Errors;
 namespace Entriqa.Application.Security;
 
 /// <summary>
-/// HMAC-signierte, zustandslose Token. Das Geheimnis verlässt den Server nie – das ist der Unterschied
-/// zu clientseitig berechneten Hashes, bei denen der Salt im JavaScript steht.
+/// HMAC-signed, stateless tokens. The secret never leaves the server - that is the difference
+/// to hashes computed on the client, where the salt sits in the JavaScript.
 /// Format: base64url(kind|subject|issuedAtUnix|nonce) + "." + base64url(HMAC-SHA256).
 /// </summary>
 public sealed class FormTokenService

@@ -8,7 +8,7 @@ using Entriqa.Functions.Http;
 
 namespace Entriqa.Functions.Admin;
 
-/// <summary>Admin-API (Rolle "admin", Routen unter manage/ – /admin ist die Blazor-UI). Noch offen: CSV-Export, Statistiken, AdminState.</summary>
+/// <summary>Admin API (role "admin", routes under manage/ - /admin is the Blazor UI). Still open: CSV export, statistics, AdminState.</summary>
 public sealed class AdminFunctions(
     SwaPrincipalReader principal,
     IListSubmissionsUseCase list,
@@ -53,7 +53,7 @@ public sealed class AdminFunctions(
         return new OkObjectResult(await contactSubmissions.ExecuteAsync(email, ct));
     }
 
-    /// <summary>DSGVO-Löschung: alle Einsendungen dieser Adresse samt Blobs.</summary>
+    /// <summary>GDPR deletion: every submission of that address including its blobs.</summary>
     [Function("AdminDeleteContact")]
     public async Task<IActionResult> DeleteContact([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "manage/contacts")] HttpRequest req, CancellationToken ct)
     {
@@ -63,7 +63,7 @@ public sealed class AdminFunctions(
         return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, ct) });
     }
 
-    /// <summary>Zeitlich begrenzter Download-Link auf eine Besucher-Upload-Datei (Werte einer Einsendung).</summary>
+    /// <summary>Time-limited download link to a visitor upload (a value of one submission).</summary>
     [Function("AdminUploadLink")]
     public async Task<IActionResult> UploadLink([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/uploads/link")] HttpRequest req, CancellationToken ct)
     {

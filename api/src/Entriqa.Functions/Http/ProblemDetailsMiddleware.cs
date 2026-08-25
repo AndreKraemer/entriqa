@@ -7,7 +7,7 @@ using Entriqa.Domain.Errors;
 
 namespace Entriqa.Functions.Http;
 
-/// <summary>Die Boundary des Fehlermodells (§11.5): AppException → ProblemDetails mit ErrorCode; alles andere → 500 ohne Details.</summary>
+/// <summary>The boundary of the error model (§11.5): AppException -> ProblemDetails with an ErrorCode; everything else -> 500 without details.</summary>
 public sealed class ProblemDetailsMiddleware(ILogger<ProblemDetailsMiddleware> log) : IFunctionsWorkerMiddleware
 {
     public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
@@ -27,7 +27,7 @@ public sealed class ProblemDetailsMiddleware(ILogger<ProblemDetailsMiddleware> l
             if (app is null || app.HttpStatus >= 500) log.LogError(ex, "Unbehandelter Fehler in {Function}", context.FunctionDefinition.Name);
             else log.LogInformation("{ErrorCode}: {Message}", app.ErrorCode, app.Message);
 
-            // ASP.NET-Core-Integration: direkt in die Response schreiben; GetInvocationResult ist hier nicht der dokumentierte Weg.
+            // ASP.NET Core integration: write into the response directly; GetInvocationResult is not the documented way here.
             var http = context.GetHttpContext();
             if (http is not null && !http.Response.HasStarted)
             {

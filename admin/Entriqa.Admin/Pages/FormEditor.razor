@@ -288,13 +288,13 @@ else
     private bool _busy, _publishDialog, _snippetDialog, _expert;
     private string _newStepKey = "";
 
-    // Builder-Zustand: Auswahl (Texte oder ein Feld), aktive Sprache, Drag & Drop der Struktur
+    // Builder state: selection (texts or a field), active language, drag and drop of the structure
     private FieldModel? _selField;
     private bool _selTexts = true;
     private string? _lang;
     private int? _dragIndex, _dragOver;
 
-    /// <summary>Sprachen der Website (Entriqa__Locales) – plus alles, was das Formular bereits deklariert.</summary>
+    /// <summary>Languages of the website (Entriqa__Locales) - plus everything the form declares already.</summary>
     private IEnumerable<string> SiteLocales =>
         (_siteLocales ?? new List<string> { "de", "en" }).Union(_model?.Locales ?? new List<string>());
 
@@ -347,7 +347,7 @@ else
     private void ToggleExpert()
     {
         _expert = !_expert;
-        if (!_expert && _tab is "markup" or "json") SwitchTab("felder");   // sonst bliebe eine unsichtbare Ansicht aktiv
+        if (!_expert && _tab is "markup" or "json") SwitchTab("felder");   // otherwise an invisible view would stay active
     }
 
     private List<string> ProducedBefore(int index) => _model!.Steps.Take(index)
@@ -415,7 +415,7 @@ else
         _json = json;
         _model = FormModel.Parse(json);
         foreach (var s in _model.Steps) AttachSchema(s);
-        SelectTexts();                                     // alte Feld-Referenzen gelten nach dem Parsen nicht mehr
+        SelectTexts();                                     // old field references no longer hold after parsing
     }
 
     private void AttachSchema(StepModel step)
@@ -484,8 +484,8 @@ else
         _info = T["Entwurf gespeichert."];
     });
 
-    // Autosave: erst nachdem der Entwurf einmal bewusst gespeichert wurde (ein nur angeschautes
-    // neues Formular soll nicht heimlich entstehen). Ungültiges JSON im Expertenmodus wird übersprungen.
+    // Autosave: only after the draft has been saved deliberately once (a new form that was merely
+    // looked at should not come into being behind the user's back). Invalid JSON in expert mode is skipped.
     private System.Threading.Timer? _autosaveTimer;
     private string? _savedJson;
     private bool _everSaved;
@@ -508,21 +508,21 @@ else
             _autoSavedAt = DateTimeOffset.UtcNow;
             StateHasChanged();
         }
-        catch { /* nächster Tick versucht es erneut; bewusste Speicherfehler zeigt der Speichern-Button */ }
+        catch { /* the next tick tries again; deliberate save errors are shown by the save button */ }
     }
 
     public void Dispose() => _autosaveTimer?.Dispose();
 
     private async Task OpenPublishDialog() => await Guarded(async () =>
     {
-        _issues = (await Api.CheckAsync(CurrentJson())).Issues;      // Prüfung vor dem Dialog – Probleme direkt sichtbar
+        _issues = (await Api.CheckAsync(CurrentJson())).Issues;      // check before the dialog - problems visible right away
         if (_issues.Count == 0) _publishDialog = true;
         else _error = T["Noch nicht bereit – bitte erst die Probleme beheben."];
     });
 
     private async Task ConfirmPublish() => await Guarded(async () =>
     {
-        await Api.SaveDraftAsync(Slug, CurrentJson());               // erst der aktuelle Stand, dann veröffentlichen
+        await Api.SaveDraftAsync(Slug, CurrentJson());               // the current state first, then publish
         var result = await Api.PublishAsync(Slug);
         _issues = result.Issues;
         _publishDialog = false;
@@ -536,7 +536,7 @@ else
 
     private async Task Copy(string text)
     {
-        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { /* Clipboard braucht sicheren Kontext */ }
+        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { /* the clipboard needs a secure context */ }
     }
 
     private async Task Guarded(Func<Task> action)
@@ -544,7 +544,7 @@ else
         _busy = true; _error = _info = null;
         try
         {
-            using var _ = JsonDocument.Parse(CurrentJson());         // Syntax vorab prüfen, klare Meldung statt 400
+            using var _ = JsonDocument.Parse(CurrentJson());         // check the syntax up front, a clear message instead of a 400
             await action();
         }
         catch (JsonException je) { _error = T.F("Kein gültiges JSON: {0}", je.Message); }

@@ -9,10 +9,10 @@ using Entriqa.Domain.Validation;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// Besucher-Upload VOR dem Absenden: prüft Formular (veröffentlicht, hat ein Datei-Feld), Anti-Spam-Token
-/// (nur Signatur/Alter – die Nonce verbraucht erst das Absenden), Whitelist und Größe, und legt die Datei
-/// privat unter uploads/{Datum}/{Guid}/ ab. Beim Absenden übernimmt die Einsendung die Datei nach
-/// attachments/; verwaiste Uploads räumt das Housekeeping nach zwei Tagen ab.
+/// Visitor upload BEFORE submitting: checks the form (published, has a file field), the anti-spam token
+/// (signature and age only - the nonce is consumed by the submit), the whitelist and the size, and stores
+/// the file privately under uploads/{date}/{guid}/. On submit the submission takes the file over into
+/// attachments/; orphaned uploads are cleared by housekeeping after two days.
 /// </summary>
 internal sealed class UploadFileUseCase(
     ITryGetPublishedFormQuery getPublished,

@@ -11,7 +11,7 @@ namespace Entriqa.Infrastructure;
 
 public static class InfrastructureServiceExtensions
 {
-    /// <summary>HttpClients mit Standard-Resilienz (Retry nur auf transiente Fehler, Timeout, Circuit Breaker – Solution Standard §18.6).</summary>
+    /// <summary>HttpClients with standard resilience (retry on transient errors only, timeout, circuit breaker - Solution Standard §18.6).</summary>
     public static IServiceCollection AddEntriqaInfrastructure(this IServiceCollection services)
     {
         services.AddHttpClient<BrevoAdapter>((sp, c) =>
@@ -23,7 +23,7 @@ public static class InfrastructureServiceExtensions
             c.Timeout = TimeSpan.FromSeconds(20);
         }).AddStandardResilienceHandler();
         services.AddSingleton<Dev.DevMailSinkAdapter>();
-        // Ohne Brevo-Key (lokal) landen Mails als klickbare HTML-Dateien in devmails/ statt bei Brevo.
+        // Without a Brevo key (locally) mails end up as clickable HTML files in devmails/ instead of at Brevo.
         services.AddTransient<ISendTransactionalMailPort>(sp =>
             string.IsNullOrEmpty(sp.GetRequiredService<IOptions<EntriqaOptions>>().Value.Brevo.ApiKey)
                 ? sp.GetRequiredService<Dev.DevMailSinkAdapter>()

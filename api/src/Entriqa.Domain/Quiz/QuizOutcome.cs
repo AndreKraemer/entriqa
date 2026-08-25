@@ -1,11 +1,11 @@
 namespace Entriqa.Domain.Quiz;
 
 public sealed record QuizOutcome(
-    Dictionary<string, string> Answers,                    // nur Fragen auf dem tatsächlich gegangenen Pfad
+    Dictionary<string, string> Answers,                    // only questions on the path actually taken
     IReadOnlyList<string> Path,
     int Points,
-    int MaxPoints,                                         // Maximum auf diesem Pfad
+    int MaxPoints,                                         // maximum reachable on this path
     int Pct,
     string ResultId,
     bool ReachedByJump,
-    IReadOnlyList<string>? Findings = null);               // aufgelöste Auswertungstexte (Sprache der Einsendung)
+    IReadOnlyList<string>? Findings = null);               // resolved evaluation texts (language of the submission)

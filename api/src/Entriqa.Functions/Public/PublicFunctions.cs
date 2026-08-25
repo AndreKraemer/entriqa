@@ -9,7 +9,7 @@ using Entriqa.Functions.Http;
 
 namespace Entriqa.Functions.Public;
 
-/// <summary>Die öffentliche API, die forms.js benutzt. Functions sind dünne Adapter – eine Zeile Use Case pro Endpunkt.</summary>
+/// <summary>The public API that forms.js uses. Functions are thin adapters - one line of use case per endpoint.</summary>
 public sealed class PublicFunctions(
     IGetPublishedFormUseCase getForm,
     IIssueFormTokenUseCase issueToken,
@@ -49,8 +49,8 @@ public sealed class PublicFunctions(
         return new OkObjectResult(await submit.ExecuteAsync(request, ct));
     }
 
-    // Datei-Upload eines Besuchers (multipart, Felder "token" + "file"). Die Antwort ist das Handle,
-    // das forms.js als Feldwert mitschickt; übernommen wird die Datei erst beim Absenden.
+    // File upload by a visitor (multipart, fields "token" and "file"). The response is the handle
+    // that forms.js sends along as the field value; the file is only taken over on submit.
     [Function("UploadFile")]
     public async Task<IActionResult> Upload([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "forms/{slug}/uploads")] HttpRequest req, string slug, CancellationToken ct)
     {
@@ -65,7 +65,7 @@ public sealed class PublicFunctions(
         return new OkObjectResult(new { upload = result.Path, name = result.Name, size = result.Size });
     }
 
-    // Funnel-Zähler (view | start) – bewusst ohne Personenbezug; sendBeacon-tauglich (204, kein Body nötig).
+    // Funnel counters (view | start) - deliberately without personal data; sendBeacon friendly (204, no body needed).
     [Function("CountFormEvent")]
     public async Task<IActionResult> CountEvent([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "forms/{slug}/events")] HttpRequest req, string slug, CancellationToken ct)
     {
@@ -82,8 +82,8 @@ public sealed class PublicFunctions(
         return new AcceptedResult();
     }
 
-    // POST, nie GET: Link-Scanner folgen GET-Links aus Mails und würden das Opt-in bestätigen.
-    // Der GET auf den Mail-Link landet auf der statischen /bestaetigen/-Seite; deren Button ruft dies hier.
+    // POST, never GET: link scanners follow GET links from mails and would confirm the opt-in.
+    // The GET on the mail link lands on the static /bestaetigen/ page; its button calls this one.
     [Function("ConfirmSubmission")]
     public async Task<IActionResult> Confirm([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "confirm")] HttpRequest req, CancellationToken ct)
     {

@@ -15,7 +15,7 @@ public class LicenseServiceTests
     private static readonly DateTimeOffset Now = new(2026, 8, 23, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Gueltiger_Schluessel_wird_akzeptiert()
+    public void GivenKeyWithinItsValidity_WhenValidating_ThenPlanAndExpiryAreReturned()
     {
         var (priv, pub) = NewPair();
         var key = LicenseService.Issue(priv, "L-1001", "site", new DateOnly(2027, 8, 23));
@@ -26,7 +26,7 @@ public class LicenseServiceTests
     }
 
     [Fact]
-    public void Abgelaufener_Schluessel_wird_abgelehnt()
+    public void GivenKeyPastItsExpiry_WhenValidating_ThenStatusIsExpired()
     {
         var (priv, pub) = NewPair();
         var key = LicenseService.Issue(priv, "L-1", "site", new DateOnly(2026, 1, 1));
@@ -34,7 +34,7 @@ public class LicenseServiceTests
     }
 
     [Fact]
-    public void Fremde_Signatur_und_Muell_werden_abgelehnt()
+    public void GivenForeignSignatureOrGarbageOrEmptyKey_WhenValidating_ThenEachIsRejectedWithItsOwnStatus()
     {
         var (priv, _) = NewPair();
         var (_, otherPub) = NewPair();

@@ -8,8 +8,8 @@ using Entriqa.Domain.Forms;
 namespace Entriqa.Functions;
 
 /// <summary>
-/// Nur Entwicklung: veröffentlicht die Beispiel-Definitionen aus seed/forms/*.json, wenn das Formular noch nicht existiert.
-/// In Produktion kommt alles aus dem Admin. (Kein Schema-Setup beim Start in Prod – Solution Standard §14.)
+/// Development only: publishes the example definitions from seed/forms/*.json when the form does not exist yet.
+/// In production everything comes from the admin. (No schema setup at startup in prod - Solution Standard §14.)
 /// </summary>
 public sealed class DevSeedHostedService(
     IHostEnvironment env,
@@ -41,7 +41,7 @@ public sealed class DevSeedHostedService(
 
     public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 
-    /// <summary>Relative Pfade ab dem Ausgabeverzeichnis aufwärts suchen – funktioniert für func start, dotnet run und Tests gleichermaßen.</summary>
+    /// <summary>Search relative paths upwards from the output directory - works for func start, dotnet run and tests alike.</summary>
     private static string? ResolveSeedFolder(string folder)
     {
         if (Path.IsPathRooted(folder)) return Directory.Exists(folder) ? folder : null;

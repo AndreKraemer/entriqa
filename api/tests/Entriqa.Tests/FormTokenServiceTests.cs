@@ -7,7 +7,7 @@ namespace Entriqa.Tests;
 public class FormTokenServiceTests
 {
     [Fact]
-    public void Roundtrip_after_min_age_is_valid()
+    public void GivenTokenOlderThanTheMinimumAge_WhenValidating_ThenThePayloadRoundtrips()
     {
         var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(TestData.Time.GetUtcNow());
         var svc = TestData.Tokens(time);
@@ -21,7 +21,7 @@ public class FormTokenServiceTests
     }
 
     [Fact]
-    public void Too_fast_is_rejected()
+    public void GivenTokenYoungerThanTheMinimumAge_WhenValidating_ThenTokenTooEarlyIsReported()
     {
         var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(TestData.Time.GetUtcNow());
         var svc = TestData.Tokens(time);
@@ -33,7 +33,7 @@ public class FormTokenServiceTests
     }
 
     [Fact]
-    public void Expired_is_rejected()
+    public void GivenTokenPastItsLifetime_WhenValidating_ThenTokenExpiredIsReported()
     {
         var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(TestData.Time.GetUtcNow());
         var svc = TestData.Tokens(time);
@@ -48,14 +48,14 @@ public class FormTokenServiceTests
     [InlineData("")]
     [InlineData("abc")]
     [InlineData("abc.def")]
-    public void Garbage_is_rejected(string token)
+    public void GivenMalformedToken_WhenValidating_ThenItIsRejected(string token)
     {
         var svc = TestData.Tokens();
         Assert.Throws<SecurityTokenException>(() => svc.Validate(token, FormTokenService.KindForm, "kontakt", TimeSpan.Zero, TimeSpan.FromHours(2)));
     }
 
     [Fact]
-    public void Tampered_payload_is_rejected()
+    public void GivenPayloadSwappedBetweenTwoTokens_WhenValidating_ThenTheSignatureCheckRejectsIt()
     {
         var svc = TestData.Tokens();
         var token = svc.Issue(FormTokenService.KindForm, "kontakt");
@@ -66,7 +66,7 @@ public class FormTokenServiceTests
     }
 
     [Fact]
-    public void Kind_and_subject_must_match()
+    public void GivenTokenIssuedForAnotherKindOrSubject_WhenValidating_ThenItIsRejected()
     {
         var svc = TestData.Tokens();
         var token = svc.Issue(FormTokenService.KindRun, "kontakt:123");

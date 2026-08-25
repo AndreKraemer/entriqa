@@ -7,9 +7,9 @@ using Entriqa.Domain.Submissions;
 
 namespace Entriqa.Data.Commands;
 
-// Ein Command = ein atomarer Upsert. Die Submission ist ein Entity, alles Weitere liegt als JSON darin.
-// Updates laufen ETag-geschützt: Confirm, Deferred-Lauf und Admin-Retry können gleichzeitig auf derselben
-// Einsendung arbeiten (Mensch + Mail-Scanner) – der Verlierer bekommt einen Conflict statt Last-Writer-Wins.
+// One command = one atomic upsert. The submission is one entity, everything else lives inside it as JSON.
+// Updates are ETag guarded: confirm, deferred run and admin retry can work on the same submission
+// at the same time (human plus mail scanner) - the loser gets a conflict instead of last writer wins.
 
 internal sealed class StoreSubmissionCommand(TableStorage storage) : IStoreSubmissionCommand
 {
@@ -31,7 +31,7 @@ internal sealed class SaveSubmissionCommand(TableStorage storage) : ISaveSubmiss
         {
             var response = submission.ETag is { } etag
                 ? await table.UpdateEntityAsync(entity, new ETag(etag), TableUpdateMode.Replace, ct)
-                : await table.UpsertEntityAsync(entity, TableUpdateMode.Replace, ct); // nur Tests/Seed ohne vorheriges Laden
+                : await table.UpsertEntityAsync(entity, TableUpdateMode.Replace, ct); // tests and seed only, without loading first
             submission.ETag = response.Headers.ETag?.ToString();
         }
         catch (RequestFailedException ex) when (ex.Status == 412)

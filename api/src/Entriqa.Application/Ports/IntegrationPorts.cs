@@ -12,13 +12,13 @@ public interface ISendTransactionalMailPort
 
 public interface IUpsertBrevoContactPort
 {
-    /// <summary>Legt den Kontakt an oder aktualisiert ihn (updateEnabled). Gibt die Brevo-Kontakt-ID zurück, falls bekannt.</summary>
+    /// <summary>Creates or updates the contact (updateEnabled). Returns the Brevo contact id when known.</summary>
     Task<string?> UpsertAsync(string email, IReadOnlyList<int> listIds, IReadOnlyDictionary<string, object?> attributes, CancellationToken ct = default);
 }
 
 public interface IUpsertBrevoCompanyPort
 {
-    /// <summary>Sucht die Firma per Name (exakt, ohne Groß/Klein), legt sie bei Bedarf an und verknüpft den Kontakt.</summary>
+    /// <summary>Looks the company up by name (exact, case-insensitive), creates it when needed and links the contact.</summary>
     Task UpsertCompanyAsync(string name, string contactEmail, CancellationToken ct = default);
 }
 
@@ -30,16 +30,16 @@ public interface IMergeDocumentPort
 
 public interface IStoreArtifactPort
 {
-    /// <summary>Legt eine Datei privat ab und gibt den Blob-Pfad zurück.</summary>
+    /// <summary>Stores a file privately and returns the blob path.</summary>
     Task<string> StoreAsync(string blobPath, byte[] content, string contentType, CancellationToken ct = default);
     Task<byte[]> ReadAsync(string blobPath, CancellationToken ct = default);
-    /// <summary>Löscht die Datei; fehlende Blobs sind kein Fehler (Retention läuft idempotent).</summary>
+    /// <summary>Deletes the file; a missing blob is not an error (retention runs idempotently).</summary>
     Task DeleteAsync(string blobPath, CancellationToken ct = default);
 }
 
 public interface ICreateDownloadLinkPort
 {
-    /// <summary>Zeitlich begrenzte Lese-URL (SAS) auf einen privaten Blob.</summary>
+    /// <summary>Time-limited read URL (SAS) for a private blob.</summary>
     Task<Uri> CreateAsync(string blobPath, TimeSpan validFor, CancellationToken ct = default);
 }
 

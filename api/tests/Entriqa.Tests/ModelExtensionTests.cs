@@ -17,20 +17,20 @@ public class LTextTests
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public void Deserialisiert_String_und_Objekt()
+    public void GivenPlainStringOrPerLocaleObject_WhenDeserializing_ThenBothResolveAndReportCoverage()
     {
         var single = JsonSerializer.Deserialize<LText>("\"Hallo\"", Json)!;
         var map = JsonSerializer.Deserialize<LText>("""{"de":"Hallo","en":"Hello"}""", Json)!;
-        Assert.Equal("Hallo", single.Resolve("en"));            // einfacher String gilt für alle Sprachen
+        Assert.Equal("Hallo", single.Resolve("en"));            // a plain string applies to every locale
         Assert.Equal("Hello", map.Resolve("en"));
         Assert.Equal("Hallo", map.Resolve("de"));
-        Assert.Equal("Hallo", map.Resolve("fr"));               // Fallback: erster Eintrag
+        Assert.Equal("Hallo", map.Resolve("fr"));               // fallback: first entry
         Assert.True(single.Covers("en"));
         Assert.False(map.Covers("fr"));
     }
 
     [Fact]
-    public void Serialisiert_beide_Formen_rund()
+    public void GivenPlainStringOrPerLocaleObject_WhenSerializing_ThenEachFormIsWrittenBackUnchanged()
     {
         Assert.Equal("\"Hallo\"", JsonSerializer.Serialize<LText>("Hallo", Json));
         var map = JsonSerializer.Deserialize<LText>("""{"de":"A","en":"B"}""", Json)!;
@@ -38,7 +38,7 @@ public class LTextTests
     }
 
     [Fact]
-    public void Localize_loest_Definition_auf()
+    public void GivenDefinitionWithSeveralLocales_WhenLocalizing_ThenUnknownLocalesFallBackToTheDefaultOne()
     {
         var def = TestData.Contact() with
         {
@@ -47,7 +47,7 @@ public class LTextTests
         };
         Assert.Equal("Write to us", def.Localize("en").Intro!.ToString());
         Assert.Equal("Schreib uns", def.Localize("de").Intro!.ToString());
-        Assert.Equal("Schreib uns", def.Localize("fr").Intro!.ToString());  // unbekannt → Standard-Locale (erste)
+        Assert.Equal("Schreib uns", def.Localize("fr").Intro!.ToString());  // unknown -> default locale (the first one)
     }
 }
 
@@ -63,7 +63,7 @@ public class BusinessOnlyTests
     };
 
     [Fact]
-    public void Freemail_wird_abgelehnt_Business_nicht()
+    public void GivenBusinessOnlyEmailField_WhenSubmittingAFreemailAddress_ThenItIsRejectedAndBusinessAddressesPass()
     {
         var ok = new Dictionary<string, string> { ["email"] = "a@beispiel-gmbh.de", ["consent"] = "true" };
         FormSubmissionValidator.ValidateAndThrow(Def(), ok, null);
@@ -74,7 +74,7 @@ public class BusinessOnlyTests
     }
 
     [Fact]
-    public void Meldung_folgt_der_Sprache()
+    public void GivenBusinessOnlyEmailField_WhenSubmittingInEnglish_ThenTheErrorMessageFollowsTheLocale()
     {
         var bad = new Dictionary<string, string> { ["email"] = "a@web.de", ["consent"] = "true" };
         var ex = Assert.Throws<ValidationException>(() => FormSubmissionValidator.ValidateAndThrow(Def(), bad, null, locale: "en"));
@@ -82,7 +82,7 @@ public class BusinessOnlyTests
     }
 
     [Fact]
-    public void Zusatzliste_aus_den_Settings_greift()
+    public void GivenExtraFreemailDomainFromSettings_WhenSubmittingThatDomain_ThenItIsRejectedToo()
     {
         var bad = new Dictionary<string, string> { ["email"] = "a@wegwerf.example", ["consent"] = "true" };
         var extra = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "wegwerf.example" };
@@ -106,7 +106,7 @@ public class QuizFindingsTests
         new() { ["1"] = a1, ["2"] = a2, ["3"] = a3 };
 
     [Fact]
-    public void Prioritaet_und_Maximum_bestimmen_die_Auswahl()
+    public void GivenFindingsWithPriorityAndMaximum_WhenEvaluating_ThenTheHighestPriorityFindingsAreKept()
     {
         var quiz = Quiz(new QuizFindings(Max: 2, Priority: new[] { "3", "1", "2" }));
         var outcome = QuizEngine.Evaluate(quiz, Answers("c", "c", "c"));
@@ -114,15 +114,15 @@ public class QuizFindingsTests
     }
 
     [Fact]
-    public void Warn_Template_fuellt_ueber_1_Punkt_Themen_auf()
+    public void GivenFewerFindingsThanExpected_WhenEvaluating_ThenTheWarningTemplateFillsUpFromOnePointTopics()
     {
         var quiz = Quiz(new QuizFindings(WarningTemplate: "Achte auf {topic}.", EmptyText: "Alles gut."));
-        var outcome = QuizEngine.Evaluate(quiz, Answers("c", "b", "a"));   // 1 Finding + 1-Punkt-Antwort bei "Tests"
+        var outcome = QuizEngine.Evaluate(quiz, Answers("c", "b", "a"));   // 1 finding + a one-point answer on "Tests"
         Assert.Equal(new[] { "Finding 1", "Achte auf Tests." }, outcome.Findings);
     }
 
     [Fact]
-    public void Leertext_wenn_nichts_auffiel()
+    public void GivenNothingStandsOut_WhenEvaluating_ThenTheEmptyTextIsReturned()
     {
         var quiz = Quiz(new QuizFindings(WarningTemplate: "Achte auf {topic}.", EmptyText: "Alles gut."));
         var outcome = QuizEngine.Evaluate(quiz, Answers("a", "a", "a"));
@@ -130,7 +130,7 @@ public class QuizFindingsTests
     }
 
     [Fact]
-    public void Ohne_Findings_Konfiguration_bleibt_null()
+    public void GivenQuizWithoutFindingsConfiguration_WhenEvaluating_ThenFindingsStayNull()
     {
         Assert.Null(QuizEngine.Evaluate(Quiz(null), Answers("c", "c", "c")).Findings);
     }
@@ -148,7 +148,7 @@ public class CriticalFlagTests
     }
 
     [Fact]
-    public async Task Unkritischer_Fehlschlag_blockiert_die_Folgeschritte_nicht()
+    public async Task GivenNonCriticalStepFails_WhenRunningThePipeline_ThenFollowingStepsStillRun()
     {
         var notify = new FakeStep("teams.notify", critical: false, StepResult.Failed("Webhook 500"));
         var contact = new FakeStep("brevo.contact", critical: true, StepResult.Ok);
@@ -159,12 +159,12 @@ public class CriticalFlagTests
         await svc.RunAsync(s, form, 1, RunMode.Inline);
 
         Assert.Equal(StepRunStatus.Failed, s.Run("s1").Status);
-        Assert.Equal(StepRunStatus.Ok, s.Run("s2").Status);     // nicht blockiert
+        Assert.Equal(StepRunStatus.Ok, s.Run("s2").Status);     // not blocked
         Assert.Equal(1, contact.Calls);
     }
 
     [Fact]
-    public async Task Definition_kann_den_Standard_ueberschreiben()
+    public async Task GivenDefinitionMarksTheStepCritical_WhenItFails_ThenFollowingStepsAreBlocked()
     {
         var notify = new FakeStep("teams.notify", critical: false, StepResult.Failed("Webhook 500"));
         var contact = new FakeStep("brevo.contact", critical: true, StepResult.Ok);
@@ -183,7 +183,7 @@ public class CriticalFlagTests
 public class PayloadTemplateTests
 {
     [Fact]
-    public void Ersetzt_Platzhalter_in_verschachteltem_JSON()
+    public void GivenTemplateWithPlaceholders_WhenRendering_ThenNestedValuesAreReplacedAndUnknownOnesRemain()
     {
         var ctx = new StepContext
         {
@@ -203,7 +203,7 @@ public class PayloadTemplateTests
         Assert.Equal("Neu: Kontakt", result["title"]);
         Assert.Equal("Andre", result["who"]);
         Assert.Equal("https://example.org/admin/submissions/kontakt%3A42", result["link"]);
-        Assert.Equal("{{unknown}}", result["keep"]);            // Unbekanntes bleibt sichtbar stehen
+        Assert.Equal("{{unknown}}", result["keep"]);            // unknown placeholders stay visible
         Assert.Equal("kontakt:42", ((Dictionary<string, object?>)result["nested"]!)["id"]);
     }
 }
@@ -211,7 +211,7 @@ public class PayloadTemplateTests
 public class LocaleCompletenessTests
 {
     [Fact]
-    public void Publish_Check_meldet_fehlende_Sprachfassungen()
+    public void GivenTextMissingForOneLocale_WhenCheckingBeforePublish_ThenThatLocaleIsReported()
     {
         var steps = new ISubmissionStep[] { new NotifyMailStep(null!) };
         var pipeline = new SubmissionPipelineService(steps, Options.Create(TestData.Options()), TestData.Time, NullLogger<SubmissionPipelineService>.Instance);
@@ -225,6 +225,6 @@ public class LocaleCompletenessTests
         var issues = check.Check(def);
 
         Assert.Contains(issues, i => i.Contains("Sprache 'en'") && i.Contains("intro"));
-        Assert.DoesNotContain(issues, i => i.Contains("Sprache 'de'"));   // einfache Strings gelten für alle Sprachen
+        Assert.DoesNotContain(issues, i => i.Contains("Sprache 'de'"));   // plain strings apply to every locale
     }
 }

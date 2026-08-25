@@ -6,9 +6,9 @@ using Entriqa.Data.Entities;
 namespace Entriqa.Data.Commands;
 
 /// <summary>
-/// Tageszähler je (Formular, Ereignis) – aggregiert, ohne jeden Personenbezug (DSGVO: kein Cookie,
-/// keine ID, kein Inhalt). Optimistisches Inkrement wie beim Rate-Limit; ein verlorener Zähltreffer
-/// unter Last ist für eine Trend-Statistik verschmerzbar.
+/// Daily counters per (form, event) - aggregated, without any personal reference (GDPR: no cookie,
+/// no id, no content). Optimistic increment as with the rate limit; a counting hit lost
+/// under load is bearable for a trend statistic.
 /// </summary>
 internal sealed class IncrementFunnelCommand(TableStorage storage) : IIncrementFunnelCommand
 {

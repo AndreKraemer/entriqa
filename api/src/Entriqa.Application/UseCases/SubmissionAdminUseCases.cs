@@ -80,7 +80,7 @@ internal sealed class DeleteSubmissionAdminUseCase(
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
             ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, "Einsendung nicht gefunden.");
         foreach (var path in s.Artifacts.Values.Where(v => !v.Contains("://", StringComparison.Ordinal)))
-            await artifacts.DeleteAsync(path, ct);                          // wie Retention: Blobs zuerst
+            await artifacts.DeleteAsync(path, ct);                          // like retention: blobs first
         await delete.ExecuteAsync(s, ct);
     }
 }
