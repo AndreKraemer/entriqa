@@ -3,7 +3,7 @@ using Azure.Data.Tables;
 
 namespace Entriqa.Data.Entities;
 
-// Entities sind internal – sie verlassen die Data-Schicht nie (Solution Standard §10.5).
+// Entities are internal - they never leave the data layer (Solution Standard §10.5).
 
 internal sealed class FormEntity : ITableEntity
 {
@@ -50,7 +50,7 @@ internal sealed class SubmissionEntity : ITableEntity
     public string StepRunsJson { get; set; } = "[]";
     public string ArtifactsJson { get; set; } = "{}";
     public string Handling { get; set; } = "none";
-    public string State { get; set; } = "processing";       // denormalisiert für Filter im Admin
+    public string State { get; set; } = "processing";       // denormalized for filtering in the admin
     public string? QuizResultId { get; set; }
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? ConfirmedIpHash { get; set; }
@@ -64,7 +64,7 @@ internal sealed class AdminStateEntity : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
     public DateTimeOffset LastVisitAt { get; set; }
-    public string? Note { get; set; }                        // Housekeeping-Zeile: Zusammenfassung des letzten Laufs
+    public string? Note { get; set; }                        // housekeeping row: summary of the last run
 }
 
 internal sealed class NonceEntity : ITableEntity

@@ -6,10 +6,10 @@ using Entriqa.Domain.Forms;
 namespace Entriqa.Domain.Validation;
 
 /// <summary>
-/// Die eine Quelle der Feldregeln: leitet sie zur Laufzeit aus der veröffentlichten Definition ab.
-/// forms.js spiegelt dieselben Regeln nur für die UX. Liefert alle Fehler auf einmal.
-/// Erwartet eine bereits über <see cref="FormDefinition.Localize"/> aufgelöste Definition;
-/// <paramref name="locale"/> steuert nur die Sprache der Fehlermeldungen.
+/// The single source of the field rules: derives them at runtime from the published definition.
+/// forms.js mirrors the same rules for UX only. Reports all errors at once.
+/// Expects a definition already resolved via <see cref="FormDefinition.Localize"/>;
+/// <paramref name="locale"/> only controls the language of the error messages.
 /// </summary>
 public static class FormSubmissionValidator
 {
@@ -23,8 +23,8 @@ public static class FormSubmissionValidator
         {
             if (FieldTypes.IsLayout(f.Type)) continue;
 
-            // Bedingt unsichtbare Felder: nicht validieren und den Wert verwerfen (veraltete Eingaben).
-            // Bedingungen zeigen auf frühere Felder (Publish-Check), daher genügt ein Durchlauf in Reihenfolge.
+            // Conditionally invisible fields: skip validation and drop the value (stale input).
+            // Conditions point at earlier fields (publish check), so a single pass in order is enough.
             if (!IsVisible(f, def, values))
             {
                 values.Remove(f.Id);
@@ -99,7 +99,7 @@ public static class FormSubmissionValidator
             }
         }
 
-        // Einwilligung ist optional definiert (z. B. Quiz mit optionaler E-Mail), aber sobald eine Adresse angegeben wird, muss sie vorliegen.
+        // Consent may be defined as optional (a quiz with an optional address, say), but as soon as an address is given it has to be there.
         if (def.ConsentField is { Required: false } consent && def.EmailField is { } emailField
             && values.TryGetValue(emailField.Id, out var mail) && !string.IsNullOrWhiteSpace(mail)
             && !(values.TryGetValue(consent.Id, out var c) && IsTrue(c)))
@@ -111,12 +111,12 @@ public static class FormSubmissionValidator
         if (errors.Count > 0) throw new ValidationException(errors);
     }
 
-    /// <summary>Wertet eine Sichtbarkeitsbedingung gegen die (bereits bereinigten) Werte aus.</summary>
+    /// <summary>Evaluates a visibility condition against the (already sanitized) values.</summary>
     public static bool IsVisible(FieldDefinition f, FormDefinition def, IReadOnlyDictionary<string, string> values)
     {
         if (f.VisibleIf is not { } cond) return true;
         var other = def.Fields.FirstOrDefault(x => x.Id == cond.Field);
-        if (other is null) return true;                                     // kaputte Referenz blockiert nichts – der Publish-Check meldet sie
+        if (other is null) return true;                                     // a broken reference blocks nothing - the publish check reports it
         values.TryGetValue(other.Id, out var raw);
         var value = raw?.Trim() ?? string.Empty;
 
@@ -141,7 +141,7 @@ public static class FormSubmissionValidator
     {
         if (value.StartsWith('['))
         {
-            try { return JsonSerializer.Deserialize<List<string>>(value) ?? new List<string>(); } catch (JsonException) { /* fällt durch */ }
+            try { return JsonSerializer.Deserialize<List<string>>(value) ?? new List<string>(); } catch (JsonException) { /* falls through */ }
         }
         return value.Split(", ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }

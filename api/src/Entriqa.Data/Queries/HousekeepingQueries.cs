@@ -6,8 +6,8 @@ using Entriqa.Domain.Submissions;
 namespace Entriqa.Data.Queries;
 
 /// <summary>
-/// Scan-Queries fürs Housekeeping. Bewusst Filter-Scans über die ganze Tabelle – bei diesem Volumen
-/// (Formulareinsendungen zweier Firmenwebsites) billiger als jede Zweitindex-Konstruktion.
+/// Scan queries for housekeeping. Deliberately filter scans across the whole table - at this volume
+/// (form submissions of two company websites) cheaper than any secondary index construction.
 /// </summary>
 internal sealed class ListHousekeepingSubmissionsQuery(TableStorage storage) : IListHousekeepingSubmissionsQuery
 {

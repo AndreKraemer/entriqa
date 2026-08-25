@@ -6,9 +6,9 @@ using Entriqa.Domain.Submissions;
 namespace Entriqa.Data.Queries;
 
 /// <summary>
-/// Kontakt-Sicht: bewusst ein Scan über die Einsendungstabelle statt einer Index-Tabelle.
-/// Das Volumen ist klein und die Aufbewahrungsfrist (RetentionDays) begrenzt die Menge ohnehin;
-/// ein Index kommt erst, wenn die Zahlen es verlangen.
+/// Contact view: deliberately a scan across the submission table instead of an index table.
+/// The volume is small and the retention period (RetentionDays) caps the amount anyway;
+/// an index can come once the numbers ask for it.
 /// </summary>
 internal sealed class ListContactSubmissionsQuery(TableStorage storage) : IListContactSubmissionsQuery
 {

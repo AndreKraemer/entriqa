@@ -9,7 +9,7 @@ public sealed class ApplicationMarker;
 
 public static class ApplicationServiceExtensions
 {
-    /// <summary>Konventions-Registrierung (Solution Standard §9): Suffixe UseCase / Service / Step, transient, AsImplementedInterfaces.</summary>
+    /// <summary>Registration by convention (Solution Standard §9): suffixes UseCase / Service / Step, transient, AsImplementedInterfaces.</summary>
     public static IServiceCollection AddEntriqaApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<EntriqaOptions>(configuration.GetSection(EntriqaOptions.Section));
@@ -23,7 +23,7 @@ public static class ApplicationServiceExtensions
                 .AsImplementedInterfaces()
                 .WithTransientLifetime()
             .AddClasses(c => c.Where(t => t.Name.EndsWith("Service", StringComparison.Ordinal)
-                                          && t != typeof(FormTokenService)), publicOnly: false)   // oben bewusst Singleton – Suffix-Scan würde ihn transient überdecken
+                                          && t != typeof(FormTokenService)), publicOnly: false)   // deliberately a singleton above - the suffix scan would shadow it as transient
                 .AsSelf()
                 .WithTransientLifetime());
 

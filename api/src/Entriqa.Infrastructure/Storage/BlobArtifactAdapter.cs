@@ -8,7 +8,7 @@ using Entriqa.Domain.Errors;
 
 namespace Entriqa.Infrastructure.Storage;
 
-/// <summary>Privater Container für Lead-Magnete und erzeugte PDFs. Auslieferung ausschließlich über zeitlich begrenzte SAS-URLs.</summary>
+/// <summary>Private container for lead magnets and generated PDFs. Delivery exclusively through time-limited SAS URLs.</summary>
 public sealed class BlobArtifactAdapter : IStoreArtifactPort, ICreateDownloadLinkPort, IListArtifactsPort
 {
     public async Task<IReadOnlyList<ArtifactInfo>> ListAsync(string prefix, CancellationToken ct = default)

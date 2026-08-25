@@ -5,7 +5,7 @@ using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Application.Pipeline.Steps;
 
-/// <summary>Mail an den Teilnehmer über eine Brevo-Vorlage, optional mit PDF-Anhang oder Download-Link aus einem vorherigen Schritt.</summary>
+/// <summary>Mail to the participant through a Brevo template, optionally with a PDF attachment or a download link from an earlier step.</summary>
 public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifactPort store, ICreateDownloadLinkPort links) : ISubmissionStep
 {
     public string Key => "brevo.mail";

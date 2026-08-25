@@ -1,7 +1,7 @@
-// Entriqa-Lizenzwerkzeug – läuft NUR beim Hersteller, nie beim Kunden.
-//   dotnet run -- new                                      → erzeugt ein Schlüsselpaar
-//   dotnet run -- issue <privKey> <id> <plan> <bis>        → stellt einen Lizenzschlüssel aus
-// Der private Schlüssel gehört in den Passwort-Manager, NIE ins Repository.
+// Entriqa license tool - runs at the vendor ONLY, never at a customer.
+//   dotnet run -- new                                      -> creates a key pair
+//   dotnet run -- issue <privKey> <id> <plan> <until>      -> issues a license key
+// The private key belongs in the password manager, NEVER in the repository.
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;

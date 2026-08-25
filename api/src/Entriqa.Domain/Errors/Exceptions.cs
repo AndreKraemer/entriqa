@@ -1,6 +1,6 @@
 namespace Entriqa.Domain.Errors;
 
-/// <summary>Fehlermodell nach Solution Standard §11: typisierte Exceptions mit ErrorCode, am Rand als ProblemDetails.</summary>
+/// <summary>Error model per Solution Standard §11: typed exceptions carrying an ErrorCode, surfaced as ProblemDetails at the edge.</summary>
 public class AppException : Exception
 {
     public string ErrorCode { get; }

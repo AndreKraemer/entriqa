@@ -8,14 +8,14 @@ using Entriqa.Domain.Errors;
 namespace Entriqa.Functions.Http;
 
 /// <summary>
-/// Static Web Apps reicht den angemeldeten Benutzer als Base64-JSON im Header x-ms-client-principal durch.
-/// Der Routenschutz in staticwebapp.config.json reicht für die API nicht – hier wird die Rolle nochmal geprüft.
+/// Static Web Apps passes the signed-in user through as base64 JSON in the x-ms-client-principal header.
+/// The route protection in staticwebapp.config.json is not enough for the API - the role is checked again here.
 /// </summary>
 public sealed class SwaPrincipalReader(IOptions<EntriqaOptions> options)
 {
     public void RequireRole(HttpRequest req, string role)
     {
-        if (options.Value.AllowAnonymousAdmin) return;                       // nur lokal ohne SWA-CLI
+        if (options.Value.AllowAnonymousAdmin) return;                       // local only, without the SWA CLI
         if (!req.Headers.TryGetValue("x-ms-client-principal", out var header) || string.IsNullOrEmpty(header))
             throw new ForbiddenException("Nicht angemeldet.");
         try
@@ -27,7 +27,7 @@ public sealed class SwaPrincipalReader(IOptions<EntriqaOptions> options)
         catch (Exception ex) when (ex is FormatException or JsonException) { throw new ForbiddenException("Ungültiger Principal."); }
     }
 
-    /// <summary>Anzeigename des angemeldeten Admins (userDetails) – für UpdatedBy/PublishedBy.</summary>
+    /// <summary>Display name of the signed-in admin (userDetails) - for UpdatedBy and PublishedBy.</summary>
     public string UserName(HttpRequest req)
     {
         if (!req.Headers.TryGetValue("x-ms-client-principal", out var header) || string.IsNullOrEmpty(header)) return "admin";
@@ -41,8 +41,8 @@ public sealed class SwaPrincipalReader(IOptions<EntriqaOptions> options)
 
     public static string? ClientIp(HttpRequest req)
     {
-        // Azure hängt rechts an: nur der letzte Eintrag ist vertrauenswürdig, alles davor ist Client-Eingabe.
-        // Einträge können "ip:port", "[v6]:port" oder nackte IPs (auch IPv6) sein – deshalb parsen statt splitten.
+        // Azure appends on the right: only the last entry is trustworthy, everything before it is client input.
+        // Entries can be "ip:port", "[v6]:port" or bare IPs (IPv6 included) - hence parsing instead of splitting.
         var xff = req.Headers["x-forwarded-for"].FirstOrDefault();
         if (!string.IsNullOrEmpty(xff))
         {

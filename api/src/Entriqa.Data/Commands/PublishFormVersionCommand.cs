@@ -7,7 +7,7 @@ using Entriqa.Domain.Forms;
 
 namespace Entriqa.Data.Commands;
 
-/// <summary>Schreibt einen neuen Versions-Snapshot und setzt den Zeiger im Forms-Eintrag. Zwei Writes, bewusst in dieser Reihenfolge (Version zuerst – ein verwaister Snapshot ist harmlos).</summary>
+/// <summary>Writes a new version snapshot and moves the pointer in the Forms entry. Two writes, deliberately in this order (version first - an orphaned snapshot is harmless).</summary>
 internal sealed class PublishFormVersionCommand(TableStorage storage, TimeProvider time) : IPublishFormVersionCommand
 {
     public async Task<FormVersion> ExecuteAsync(FormDefinition definition, string publishedBy, CancellationToken ct = default)

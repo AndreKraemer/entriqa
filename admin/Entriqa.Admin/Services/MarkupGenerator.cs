@@ -3,8 +3,8 @@ using System.Text;
 namespace Entriqa.Admin.Services;
 
 /// <summary>
-/// Spiegelt das Markup, das forms.js für dieses Formular erzeugt – als Referenz für den Webentwickler,
-/// der das Theme stylt. Dazu die Klassenreferenz (stabiler Vertrag, Spec Abschnitt 8/v1).
+/// Mirrors the markup that forms.js produces for this form - as a reference for the web developer
+/// who styles the theme. Plus the class reference (a stable contract, spec section 8/v1).
 /// </summary>
 public static class MarkupGenerator
 {

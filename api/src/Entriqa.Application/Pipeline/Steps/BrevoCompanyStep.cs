@@ -6,9 +6,9 @@ using Entriqa.Domain.Submissions;
 namespace Entriqa.Application.Pipeline.Steps;
 
 /// <summary>
-/// Firmenpflege im Brevo-CRM: Company suchen oder anlegen und den Kontakt verknüpfen.
-/// Companies sind die primäre Firmenpflege (statt nur des FIRMA-Kontakt-Attributs);
-/// gehört HINTER brevo.contact, damit der Kontakt existiert.
+/// Company upkeep in the Brevo CRM: find or create the company and link the contact.
+/// Companies are the primary place for company data (rather than just the FIRMA contact attribute);
+/// belongs AFTER brevo.contact so that the contact exists.
 /// </summary>
 public sealed class BrevoCompanyStep(IUpsertBrevoCompanyPort companies) : ISubmissionStep
 {
@@ -36,7 +36,7 @@ public sealed class BrevoCompanyStep(IUpsertBrevoCompanyPort companies) : ISubmi
         var fieldId = config.GetString("field") ?? "";
         ctx.Submission.Values.TryGetValue(fieldId, out var name);
         if (string.IsNullOrWhiteSpace(name) || ctx.Email is null)
-            return new StepResult(StepRunStatus.Skipped);                 // keine Firma angegeben – kein Fehler
+            return new StepResult(StepRunStatus.Skipped);                 // no company given - not an error
 
         await companies.UpsertCompanyAsync(name.Trim(), ctx.Email, ct);
         return StepResult.Ok;

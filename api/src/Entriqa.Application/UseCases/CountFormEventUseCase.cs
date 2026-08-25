@@ -4,10 +4,10 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// Abbruch-Analytics ohne Personenbezug: zählt "view" (Formular gerendert) und "start" (erste Eingabe)
-/// als Tages-Summen. Zusammen mit der Einsendungszahl ergibt das die Abbruchquote – mehr wird bewusst
-/// nicht erhoben (keine IDs, keine Teil-Eingaben, keine Cookies). Unbekannte Slugs/Typen werden still
-/// verworfen, damit der Endpunkt keine Tabelle zumüllen kann.
+/// Drop-off analytics without personal data: counts "view" (form rendered) and "start" (first input)
+/// as daily totals. Together with the submission count that gives the drop-off rate - nothing more is
+/// collected on purpose (no ids, no partial input, no cookies). Unknown slugs and types are dropped
+/// silently so that the endpoint cannot litter a table.
 /// </summary>
 internal sealed class CountFormEventUseCase(
     ITryGetPublishedFormQuery getPublished,

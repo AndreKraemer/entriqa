@@ -5,14 +5,14 @@ using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Application.Pipeline.Steps;
 
-/// <summary>Interne Benachrichtigung: die Einsendung als Brevo-Transaktionsmail an eine oder mehrere Adressen.</summary>
+/// <summary>Internal notification: the submission as a Brevo transactional mail to one or more addresses.</summary>
 public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissionStep
 {
     public string Key => "notify.mail";
     public string Name => "Benachrichtigung an uns";
     public string Description => "Schickt die Einsendung per Brevo-Transaktionsmail an eine interne Adresse.";
     public StepMode Mode => StepMode.Inline;
-    public bool CriticalByDefault => false;         // Benachrichtigung: Fehlschlag blockiert die Pipeline nicht
+    public bool CriticalByDefault => false;         // notification: a failure does not block the pipeline
     public string ConfigSchema => """{"type":"object","required":["to","templateId"],"properties":{"to":{"type":"string","title":"E-Mail-Adresse(n), durch Komma getrennt"},"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template"}}}""";
     public IReadOnlyList<MailParam> MailParams => new MailParam[]
     {

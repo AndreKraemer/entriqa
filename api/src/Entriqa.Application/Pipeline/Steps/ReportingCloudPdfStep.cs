@@ -5,8 +5,8 @@ using Entriqa.Domain.Forms;
 namespace Entriqa.Application.Pipeline.Steps;
 
 /// <summary>
-/// PDF über TX Text Control ReportingCloud. Bei Quizzes eine Vorlage je Ergebnis, sonst eine Vorlage.
-/// Läuft im Hintergrund (Deferred), legt das PDF unter reports/ ab und das Artefakt "report" in den Kontext.
+/// PDF through TX Text Control ReportingCloud. One template per result for quizzes, a single template otherwise.
+/// Runs in the background (deferred), stores the PDF under reports/ and the artifact "report" in the context.
 /// </summary>
 public sealed class ReportingCloudPdfStep(IMergeDocumentPort merge, IStoreArtifactPort store, TimeProvider time) : ISubmissionStep
 {

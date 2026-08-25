@@ -8,9 +8,9 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// DOI-Bestätigung (POST von der /bestaetigen/-Seite – nie per GET, sonst bestätigen Link-Scanner).
-/// Idempotent: ein zweiter Klick startet nichts erneut, holt aber liegengebliebene Waiting-Schritte nach
-/// (Crash-Fenster zwischen Bestätigen und Phase 2). Parallel-Klicks entscheidet das ETag.
+/// DOI confirmation (a POST from the /bestaetigen/ page - never via GET, or link scanners confirm it).
+/// Idempotent: a second click starts nothing again but does pick up waiting steps left behind
+/// (the crash window between confirming and phase 2). Parallel clicks are decided by the ETag.
 /// </summary>
 internal sealed class ConfirmSubmissionUseCase(
     ITryGetSubmissionQuery getSubmission,
@@ -24,7 +24,7 @@ internal sealed class ConfirmSubmissionUseCase(
 {
     public async Task<ConfirmResult> ExecuteAsync(string confirmToken, string? clientIp, CancellationToken ct = default)
     {
-        // Subject steckt im Token; erst entpacken, dann gegen dieses Subject validieren.
+        // The subject sits inside the token; unpack first, then validate against that subject.
         var subject = PeekSubject(confirmToken);
         tokens.Validate(confirmToken, FormTokenService.KindConfirm, subject, TimeSpan.Zero, TimeSpan.FromDays(options.Value.ConfirmTokenDays));
 
@@ -37,10 +37,10 @@ internal sealed class ConfirmSubmissionUseCase(
         {
             s.ConfirmedAt = time.GetUtcNow();
             s.ConfirmedIpHash = ipHasher.Hash(clientIp);
-            try { await save.ExecuteAsync(s, ct); }                         // Bestätigung zuerst festhalten, dann Phase 2
+            try { await save.ExecuteAsync(s, ct); }                         // record the confirmation first, then phase 2
             catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict)
             {
-                var fresh = await getSubmission.ExecuteAsync(subject, ct);  // Parallel-Klick: der Gewinner führt Phase 2 aus
+                var fresh = await getSubmission.ExecuteAsync(subject, ct);  // parallel click: the winner runs phase 2
                 if (fresh is null || !fresh.IsConfirmed) throw;
                 return new ConfirmResult(fresh.Slug, redirect, AlreadyConfirmed: true);
             }
@@ -52,7 +52,7 @@ internal sealed class ConfirmSubmissionUseCase(
                 ?? throw new NotFoundException(ErrorCodes.FormNotFound, "Formularversion nicht gefunden.");
             await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, ct);
             try { await save.ExecuteAsync(s, ct); }
-            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* paralleler Lauf schreibt bereits */ }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* a parallel run is already writing */ }
         }
         return new ConfirmResult(s.Slug, redirect, already);
     }

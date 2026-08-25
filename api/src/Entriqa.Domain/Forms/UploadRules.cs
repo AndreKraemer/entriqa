@@ -3,9 +3,9 @@ using System.Text.Json;
 namespace Entriqa.Domain.Forms;
 
 /// <summary>
-/// Regeln für Besucher-Uploads: bewusst enge Whitelist "sicherer" Dokument- und Bildformate.
-/// Kein SVG (Skripte), kein HTML, keine Archive, nichts Ausführbares. Die Dateien liegen ausschließlich
-/// im privaten Container und werden nie direkt ausgeliefert – der Admin bekommt zeitlich begrenzte SAS-Links.
+/// Rules for visitor uploads: a deliberately narrow whitelist of "safe" document and image formats.
+/// No SVG (scripts), no HTML, no archives, nothing executable. The files live in the private
+/// container only and are never served directly - the admin gets time-limited SAS links.
 /// </summary>
 public static class UploadRules
 {
@@ -17,7 +17,7 @@ public static class UploadRules
     public static bool IsAllowed(string fileName) =>
         AllowedExtensions.Contains(Path.GetExtension(fileName));
 
-    /// <summary>Dateiname für den Blob-Pfad entschärfen (nur Buchstaben/Ziffern/.-_, Erweiterung bleibt).</summary>
+    /// <summary>Defuse the file name for the blob path (letters, digits, .-_ only; the extension stays).</summary>
     public static string SafeName(string fileName)
     {
         var name = Path.GetFileName(fileName);
@@ -27,9 +27,9 @@ public static class UploadRules
 }
 
 /// <summary>
-/// Der Wert eines Datei-Feldes in der Einsendung: ein kleines JSON-Handle, das der Upload-Endpunkt
-/// ausgestellt hat. <c>Path</c> zeigt in den privaten Container (uploads/… vor dem Absenden,
-/// attachments/… danach – die Einsendung übernimmt die Datei beim Speichern).
+/// The value of a file field in a submission: a small JSON handle issued by the upload
+/// endpoint. <c>Path</c> points into the private container (uploads/… before submitting,
+/// attachments/… afterwards - the submission takes the file over when it is saved).
 /// </summary>
 public sealed record UploadHandle(string Path, string Name, long Size)
 {

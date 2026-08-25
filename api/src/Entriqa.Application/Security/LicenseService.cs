@@ -6,16 +6,16 @@ using Microsoft.Extensions.Options;
 namespace Entriqa.Application.Security;
 
 /// <summary>
-/// Offline-Prüfung des Lizenzschlüssels (App-Setting <c>Entriqa__LicenseKey</c>).
+/// Offline check of the license key (app setting <c>Entriqa__LicenseKey</c>).
 /// Format: <c>ENTRIQA-&lt;base64url(payload)&gt;.&lt;base64url(signatur)&gt;</c>,
-/// Payload-JSON <c>{"id","plan","until"}</c>, Signatur ECDSA P-256/SHA-256 über die Payload-Bytes.
-/// Kein Phone-Home, kein Kill-Switch: ohne gültigen Schlüssel läuft alles weiter,
-/// der Admin zeigt dauerhaft den Unlizenziert-Hinweis (Kirby-Modell).
-/// Schlüssel ausstellen: tools/Entriqa.KeyTool (der private Schlüssel bleibt beim Hersteller).
+/// Payload JSON <c>{"id","plan","until"}</c>, signature ECDSA P-256/SHA-256 over the payload bytes.
+/// No phone home, no kill switch: without a valid key everything keeps working,
+/// the admin permanently shows the unlicensed notice (the Kirby model).
+/// Issuing keys: tools/Entriqa.KeyTool (the private key stays with the vendor).
 /// </summary>
 public sealed class LicenseService(IOptions<EntriqaOptions> options, TimeProvider time)
 {
-    /// <summary>SPKI (base64) des Herstellerschlüssels – Gegenstück liegt NICHT im Repository.</summary>
+    /// <summary>SPKI (base64) of the vendor key - its counterpart is NOT in the repository.</summary>
     public const string VendorPublicKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEHk/XOpxIc50g4DM9EePg/ym9to0xYcNd4ML43OtrTWesoPCTQFN9vQ7kl29R8RLlDIEDr54n7HjgessOiCuqPA==";
 
     public LicenseInfo Check() => Validate(options.Value.LicenseKey, VendorPublicKey, time.GetUtcNow());

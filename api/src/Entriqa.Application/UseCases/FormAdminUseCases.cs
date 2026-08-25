@@ -31,7 +31,7 @@ internal sealed class SaveFormDraftUseCase(ISaveFormDraftCommand save) : ISaveFo
     }
 }
 
-/// <summary>Prüfen und veröffentlichen in einem Zug – Issues sperren, wie im Admin live angezeigt.</summary>
+/// <summary>Check and publish in one go - issues block, exactly as the admin shows live.</summary>
 internal sealed class PublishFormUseCase(
     ITryGetFormDraftQuery getDraft,
     IPublishFormVersionCommand publish,
