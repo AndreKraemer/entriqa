@@ -1,11 +1,11 @@
 namespace Entriqa.Domain.Forms;
 
 public sealed record QuizDefinition(
-    string Scoring,                                 // sum (normiert auf den gegangenen Pfad) | category
+    string Scoring,                                 // sum (normalized to the path taken) | category
     string CollectEmail,                            // none | optional | required
     IReadOnlyList<QuizQuestion> Questions,
     IReadOnlyList<QuizResult> Results,
-    QuizFindings? Findings = null)                  // individuelle Auswertungstexte (Selbsttest-Muster)
+    QuizFindings? Findings = null)                  // individual evaluation texts (self-assessment pattern)
 {
     public QuizDefinition Localize(string lang) => this with
     {
@@ -26,16 +26,16 @@ public sealed record QuizDefinition(
 
 public sealed record QuizQuestion(string Id, LText Text, IReadOnlyList<QuizOption> Options, LText? Topic = null);
 
-/// <summary><c>Next</c>: null = nächste Frage in der Reihenfolge, Fragen-ID = Sprung, "result:{id}" = direkt zum Ergebnis.
-/// <c>Finding</c>: individueller Auswertungstext, wenn diese Option gewählt wurde (typisch auf der höchsten Punktzahl).</summary>
+/// <summary><c>Next</c>: null = next question in order, question id = jump, "result:{id}" = straight to the result.
+/// <c>Finding</c>: individual evaluation text shown when this option was chosen (typically on the highest score).</summary>
 public sealed record QuizOption(string Id, LText Label, int Points, string? Next = null, string? Category = null, LText? Finding = null);
 
 public sealed record QuizResult(string Id, int MinPct, int MaxPct, LText Title, LText Body);
 
 /// <summary>
-/// Auswahlregeln für die Findings: bis zu <c>Max</c> Texte der gewählten Optionen, geordnet nach <c>Priority</c>
-/// (Fragen-IDs; nicht gelistete folgen in Pfadreihenfolge). Bei weniger als zwei füllt <c>WarningTemplate</c>
-/// ({topic}-Platzhalter) über die 1-Punkt-Themen auf; ganz ohne Treffer greift <c>EmptyText</c>.
+/// Selection rules for the findings: up to <c>Max</c> texts of the chosen options, ordered by <c>Priority</c>
+/// (question ids; unlisted ones follow in path order). With fewer than two, <c>WarningTemplate</c>
+/// ({topic} placeholder) fills up from the one-point topics; without any hit at all <c>EmptyText</c> applies.
 /// </summary>
 public sealed record QuizFindings(
     int Max = 3,

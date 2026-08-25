@@ -5,9 +5,9 @@ using Entriqa.Domain.Forms;
 namespace Entriqa.Application.Pipeline.Steps;
 
 /// <summary>
-/// POST an eine https-URL – der generische Träger für alles hinter Power Automate (To-Do-Aufgabe, Planner, …).
-/// Ohne <c>payload</c> geht die ganze Einsendung als Standard-JSON raus; mit <c>payload</c> wird das dort
-/// hinterlegte JSON-Template gesendet, Platzhalter in String-Werten werden ersetzt (siehe <see cref="PayloadTemplate"/>).
+/// POST to an https URL - the generic carrier for everything behind Power Automate (to-do task, Planner, …).
+/// Without <c>payload</c> the whole submission goes out as standard JSON; with <c>payload</c> the JSON template
+/// stored there is sent instead and placeholders in string values are replaced (see <see cref="PayloadTemplate"/>).
 /// </summary>
 public sealed class WebhookCallStep(IPostWebhookPort webhook) : ISubmissionStep
 {

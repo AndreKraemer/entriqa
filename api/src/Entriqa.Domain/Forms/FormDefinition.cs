@@ -3,24 +3,24 @@ using System.Text.Json;
 namespace Entriqa.Domain.Forms;
 
 /// <summary>
-/// Die vollständige Definition eines Formulars, so wie sie als JSON in Table Storage liegt
-/// (Entwurf im Forms-Eintrag, veröffentlicht als unveränderlicher Snapshot in FormVersions).
-/// Besucherseitige Texte sind <see cref="LText"/> (String oder {locale: text}); vor Auslieferung
-/// und Verarbeitung wird die Definition über <see cref="Localize"/> auf eine Sprache aufgelöst.
-/// Der öffentliche Endpunkt liefert davon nur eine bereinigte Sicht (<see cref="PublicFormView"/>).
+/// The complete definition of a form, exactly as it is stored as JSON in table storage
+/// (draft in the Forms entry, published as an immutable snapshot in FormVersions).
+/// Visitor-facing texts are <see cref="LText"/> (string or {locale: text}); before delivery
+/// and processing the definition is resolved to a single language via <see cref="Localize"/>.
+/// The public endpoint only serves a sanitized view of it (<see cref="PublicFormView"/>).
 /// </summary>
 public sealed record FormDefinition(
     string Slug,
     string Name,
-    string Type,                                   // contact | leadmagnet | quiz – nur Voreinstellung, keine Logik
+    string Type,                                   // contact | leadmagnet | quiz - a default only, no logic attached
     LText? Intro,
     LText? SubmitLabel,
     IReadOnlyList<FieldDefinition> Fields,
     IReadOnlyList<StepDefinition> Pipeline,
     QuizDefinition? Quiz,
     CompletionDefinition Completion,
-    bool Handling,                                 // Einsendungen bekommen Offen/Erledigt
-    IReadOnlyList<string>? Locales = null)         // unterstützte Sprachen; null/leer = ["de"]
+    bool Handling,                                 // submissions get an open/done state
+    IReadOnlyList<string>? Locales = null)         // supported languages; null/empty = ["de"]
 {
     public FieldDefinition? EmailField => Fields.FirstOrDefault(f => f.Type == FieldTypes.Email);
     public FieldDefinition? ConsentField => Fields.FirstOrDefault(f => f.Type == FieldTypes.Consent);
@@ -28,11 +28,11 @@ public sealed record FormDefinition(
     public IReadOnlyList<string> EffectiveLocales => Locales is { Count: > 0 } ? Locales : new[] { "de" };
     public string DefaultLocale => EffectiveLocales[0];
 
-    /// <summary>Nächstpassende Sprache: exakt, sonst Standard (erste deklarierte).</summary>
+    /// <summary>Closest matching language: exact, otherwise the default (the first one declared).</summary>
     public string MatchLocale(string? lang) =>
         lang is not null && EffectiveLocales.Contains(lang) ? lang : DefaultLocale;
 
-    /// <summary>Auf eine Sprache aufgelöste Kopie – alle Texte verhalten sich danach wie einfache Strings.</summary>
+    /// <summary>Copy resolved to one language - every text behaves like a plain string afterwards.</summary>
     public FormDefinition Localize(string? lang)
     {
         var l = MatchLocale(lang);
@@ -63,16 +63,16 @@ public sealed record FieldDefinition(
     LText? Help = null,
     IReadOnlyList<LText>? Options = null,           // select, multiselect
     LText? Text = null,                             // consent
-    string? Source = null,                          // hidden: utm_source | utm_medium | utm_campaign | referrer | page | query:<name> | fixed:<wert>
+    string? Source = null,                          // hidden: utm_source | utm_medium | utm_campaign | referrer | page | query:<name> | fixed:<value>
     int? MaxLength = null,
     decimal? Min = null,
-    decimal? Max = null,                            // number: Obergrenze · rating: Stufen (Standard 5)
-    bool BusinessOnly = false,                      // email: Freemail-Adressen ablehnen (nur Business-Adressen ins CRM)
-    VisibleIfDefinition? VisibleIf = null);         // Feld nur zeigen/werten, wenn die Bedingung erfüllt ist
+    decimal? Max = null,                            // number: upper bound · rating: number of steps (default 5)
+    bool BusinessOnly = false,                      // email: reject freemail addresses (only business addresses reach the CRM)
+    VisibleIfDefinition? VisibleIf = null);         // only show and evaluate the field while the condition holds
 
 /// <summary>
-/// Sichtbarkeitsbedingung: bezieht sich auf ein FRÜHERES Feld. Bei Auswahlfeldern zählen Options-Indizes
-/// (sprachneutral – die Optionstexte sind je Sprache verschieden), sonst gilt "hat einen Wert" bzw. "ist angehakt".
+/// Visibility condition: refers to an EARLIER field. For choice fields the option indexes count
+/// (language-neutral - the option texts differ per language), otherwise "has a value" resp. "is ticked" applies.
 /// </summary>
 public sealed record VisibleIfDefinition(string Field, IReadOnlyList<int>? Options = null);
 
@@ -86,14 +86,14 @@ public static class FieldTypes
     public static readonly IReadOnlySet<string> All = new HashSet<string>
         { Text, Email, Number, Textarea, Select, Multiselect, Checkbox, Date, Consent, Hidden, Section, Divider, Tel, Rating, Page, File };
 
-    /// <summary>Feldtypen, die keinen Wert tragen.</summary>
+    /// <summary>Field types that carry no value.</summary>
     public static bool IsLayout(string type) => type is Section or Divider or Page;
 }
 
 /// <summary>
-/// Ein Schritt der Nachverarbeitung. <c>When</c>: always | hasEmail | result:{resultId}.
-/// <c>Critical</c>: null = Standard des Schritts (Benachrichtigungen unkritisch, Rest kritisch);
-/// unkritische Fehlschläge blockieren die Folgeschritte nicht.
+/// One post-processing step. <c>When</c>: always | hasEmail | result:{resultId}.
+/// <c>Critical</c>: null = the step's own default (notifications non-critical, everything else critical);
+/// non-critical failures do not block the following steps.
 /// </summary>
 public sealed record StepDefinition(string Id, string Step, string When, JsonElement Config, bool? Critical = null);
 

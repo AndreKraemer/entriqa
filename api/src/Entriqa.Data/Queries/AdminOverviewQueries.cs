@@ -12,15 +12,15 @@ internal sealed class ListRecentSubmissionsQuery(TableStorage storage) : IListRe
     {
         var table = await storage.GetAsync("Submissions");
         var result = new List<SubmissionListItem>();
-        // Je Partition sind die RowKeys bereits neueste-zuerst (invertierte Ticks); über alle Partitionen
-        // wird nach dem Scan sortiert – bei diesem Volumen (Formulare zweier Firmenwebsites) unkritisch.
+        // Within a partition the row keys are newest-first already (inverted ticks); across all partitions
+        // sorting happens after the scan - uncritical at this volume (the forms of two company websites).
         var query = slug is null
             ? table.QueryAsync<SubmissionEntity>(cancellationToken: ct)
             : table.QueryAsync<SubmissionEntity>(e => e.PartitionKey == slug, cancellationToken: ct);
         await foreach (var e in query)
         {
             result.Add(SubmissionMapper.ToListItem(e));
-            if (result.Count >= 5000) break;                     // Notbremse, weit über realem Volumen
+            if (result.Count >= 5000) break;                     // emergency brake, far above the real volume
         }
         return result.OrderByDescending(s => s.CreatedAt).Take(max).ToList();
     }

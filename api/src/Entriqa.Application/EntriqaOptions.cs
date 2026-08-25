@@ -1,29 +1,29 @@
 namespace Entriqa.Application;
 
-/// <summary>Alles, was pro Website anders ist. Kommt aus App-Settings (Entriqa__Brevo__ApiKey usw.), nie aus dem Repo.</summary>
+/// <summary>Everything that differs per website. Comes from app settings (Entriqa__Brevo__ApiKey and friends), never from the repository.</summary>
 public sealed class EntriqaOptions
 {
     public const string Section = "Entriqa";
 
     public string SiteName { get; set; } = "Website";
-    public string BaseUrl { get; set; } = "https://example.org";            // öffentliche Basis-URL der Hugo-Seite (SWA: gleiche Origin wie /api)
-    public string TokenSecret { get; set; } = "";                           // mind. 32 zufällige Zeichen
+    public string BaseUrl { get; set; } = "https://example.org";            // public base URL of the Hugo site (SWA: same origin as /api)
+    public string TokenSecret { get; set; } = "";                           // at least 32 random characters
     public int MinSubmitSeconds { get; set; } = 3;
     public int MaxSubmitHours { get; set; } = 2;
     public int RateLimitPerWindow { get; set; } = 5;
     public int RateLimitWindowMinutes { get; set; } = 10;
     public int ConfirmTokenDays { get; set; } = 14;
     public string HousekeepingKey { get; set; } = "";                       // Secret-Header x-housekeeping-key; leer = Endpunkt deaktiviert
-    public int RetentionDays { get; set; } = 180;                           // Einsendungen (samt Blobs) danach löschen
-    public int UnconfirmedRetentionDays { get; set; } = 14;                 // unbestätigte DOI-Einsendungen danach löschen
-    public int SweepAfterMinutes { get; set; } = 10;                        // liegengebliebene Deferred-Läufe erst nach dieser Schonfrist nachziehen
-    public int AutoRetryMax { get; set; } = 3;                              // fehlgeschlagene Schritte höchstens so oft automatisch wiederholen
-    public string ConfirmPagePath { get; set; } = "/bestaetigen/";          // statische Seite mit POST-Button (nie GET-Bestätigung: Link-Scanner!)
+    public int RetentionDays { get; set; } = 180;                           // delete submissions (blobs included) after this many days
+    public int UnconfirmedRetentionDays { get; set; } = 14;                 // delete unconfirmed DOI submissions after this many days
+    public int SweepAfterMinutes { get; set; } = 10;                        // only pick up stalled deferred runs after this grace period
+    public int AutoRetryMax { get; set; } = 3;                              // retry a failed step automatically at most this many times
+    public string ConfirmPagePath { get; set; } = "/bestaetigen/";          // static page with a POST button (never a GET confirmation: link scanners!)
     public string ConfirmedRedirectPath { get; set; } = "/bestaetigt/";
-    public string IpHashSalt { get; set; } = "";                            // täglich rotierender Salt wäre besser; siehe Spec
-    public string FreemailBlocklist { get; set; } = "";                     // zusätzliche Freemail-Domains (kommasepariert), ergänzt FreemailDomains.Default
-    public string Locales { get; set; } = "de,en";                          // Sprachen der Website (kommasepariert) – der Admin bietet genau diese an
-    public string LicenseKey { get; set; } = "";                            // Entriqa-Produktivlizenz (leer = Entwicklung, Admin zeigt Hinweis)
+    public string IpHashSalt { get; set; } = "";                            // a salt rotating daily would be better; see the spec
+    public string FreemailBlocklist { get; set; } = "";                     // additional freemail domains (comma separated), extends FreemailDomains.Default
+    public string Locales { get; set; } = "de,en";                          // languages of the website (comma separated) - the admin offers exactly these
+    public string LicenseKey { get; set; } = "";                            // Entriqa production license (empty = development, the admin shows a notice)
 
     private IReadOnlyList<string>? _siteLocales;
     public IReadOnlyList<string> SiteLocales =>
@@ -34,7 +34,7 @@ public sealed class EntriqaOptions
     public IReadOnlySet<string> ExtraFreemailDomains =>
         _extraFreemail ??= FreemailBlocklist.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    public bool AllowAnonymousAdmin { get; set; }                           // nur lokal ohne SWA-Auth
+    public bool AllowAnonymousAdmin { get; set; }                           // local only, without SWA auth
     public BrevoOptions Brevo { get; set; } = new();
     public ReportingCloudOptions ReportingCloud { get; set; } = new();
     public StorageOptions Storage { get; set; } = new();
@@ -58,5 +58,5 @@ public sealed class StorageOptions
 {
     public string ConnectionString { get; set; } = "UseDevelopmentStorage=true";
     public string TablePrefix { get; set; } = "forms";                       // formsForms, formsVersions, formsSubmissions, formsNonces, formsRateLimits
-    public string PrivateContainer { get; set; } = "forms-private";          // leadmagnets/… und reports/…
+    public string PrivateContainer { get; set; } = "forms-private";          // leadmagnets/… and reports/…
 }

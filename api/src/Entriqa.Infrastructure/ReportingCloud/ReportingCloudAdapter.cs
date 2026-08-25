@@ -7,7 +7,7 @@ namespace Entriqa.Infrastructure.ReportingCloud;
 
 /// <summary>
 /// TX Text Control ReportingCloud: POST /v1/document/merge?templateName=…&returnFormat=PDF
-/// Antwort ist ein JSON-Array aus Base64-Dokumenten (eines je Merge-Datensatz).
+/// The response is a JSON array of base64 documents (one per merge record).
 /// Dokumentation: https://docs.reporting.cloud/docs/endpoint/document/merge
 /// </summary>
 public sealed class ReportingCloudAdapter(HttpClient http) : IMergeDocumentPort, IListReportTemplatesPort

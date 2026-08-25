@@ -1,8 +1,8 @@
 namespace Entriqa.Domain.Validation;
 
 /// <summary>
-/// Besucherseitige Melde- und UI-Texte je Sprache. Eine Quelle für Server (Validator) und Browser
-/// (forms.js bekommt sie als <c>strings</c> in der PublicFormView). Unbekannte Sprache → Deutsch.
+/// Visitor-facing messages and UI texts per language. One source for the server (validator) and the browser
+/// (forms.js receives them as <c>strings</c> in the PublicFormView). Unknown language -> German.
 /// </summary>
 public static class ValidationMessages
 {
@@ -78,7 +78,7 @@ public static class ValidationMessages
     public static string Get(string? lang, string key) => For(lang).TryGetValue(key, out var v) ? v : key;
 }
 
-/// <summary>Standard-Blocklist für <c>businessOnly</c>-E-Mail-Felder; pro Instanz per App-Setting erweiterbar.</summary>
+/// <summary>Default blocklist for <c>businessOnly</c> email fields; extendable per instance via app setting.</summary>
 public static class FreemailDomains
 {
     public static readonly IReadOnlySet<string> Default = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

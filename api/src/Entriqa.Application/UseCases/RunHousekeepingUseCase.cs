@@ -9,12 +9,12 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// Der garantierte Fallback des Systems (per DevOps-Schedule alle 15 min):
-/// 1. Sweep – liegengebliebene Deferred-Läufe nachziehen (Browser weg, sendBeacon verloren).
-/// 2. Auto-Retry – fehlgeschlagene Schritte erneut versuchen, bis AutoRetryMax; danach gehört es dem Admin.
-/// 3. Retention – Einsendungen nach RetentionDays löschen (samt PDF-Blobs), unbestätigte DOI nach UnconfirmedRetentionDays.
-/// 4. Security-Tabellen – abgelaufene Nonces und alte Rate-Limit-Fenster entsorgen.
-/// Alles idempotent und Konflikt-tolerant: ein paralleler Confirm-/Run-Lauf gewinnt einfach.
+/// The guaranteed fallback of the system (every 15 min via DevOps schedule):
+/// 1. Sweep - pick up stalled deferred runs (browser gone, sendBeacon lost).
+/// 2. Auto retry - try failed steps again up to AutoRetryMax; after that they belong to the admin.
+/// 3. Retention - delete submissions after RetentionDays (PDF blobs included), unconfirmed DOI after UnconfirmedRetentionDays.
+/// 4. Security tables - dispose of expired nonces and old rate-limit windows.
+/// All idempotent and conflict tolerant: a parallel confirm or run simply wins.
 /// </summary>
 internal sealed class RunHousekeepingUseCase(
     IListHousekeepingSubmissionsQuery list,
@@ -36,11 +36,11 @@ internal sealed class RunHousekeepingUseCase(
         var now = time.GetUtcNow();
         int swept = 0, retried = 0, deleted = 0;
 
-        // 1 + 2: Sweep und Auto-Retry
+        // 1 + 2: sweep and auto retry
         foreach (var s in await list.ListUnfinishedAsync(now.AddMinutes(-o.SweepAfterMinutes), 200, ct))
         {
             var failed = s.StepRuns.Where(r => r.Status == StepRunStatus.Failed).ToList();
-            if (failed.Any(r => r.Attempts >= o.AutoRetryMax)) continue;    // ausgereizt – bleibt für den Admin sichtbar liegen
+            if (failed.Any(r => r.Attempts >= o.AutoRetryMax)) continue;    // exhausted - stays visible for the admin
 
             var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct);
             if (v is null) { log.LogWarning("Housekeeping: Version {Version} zu {Id} fehlt", s.Version, s.Id); continue; }
@@ -52,20 +52,20 @@ internal sealed class RunHousekeepingUseCase(
                 await save.ExecuteAsync(s, ct);
                 if (mode == RunMode.Retry) retried++; else swept++;
             }
-            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* paralleler Lauf war schneller */ }
+            catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* a parallel run was faster */ }
         }
 
-        // 3: Retention – erst Blobs, dann der Tabelleneintrag (umgekehrt hinterließe ein Crash verwaiste Blobs ohne Zeiger).
+        // 3: retention - blobs first, then the table entry (the other way round a crash would leave orphaned blobs without a pointer).
         foreach (var s in await list.ListExpiredAsync(now.AddDays(-o.RetentionDays), now.AddDays(-o.UnconfirmedRetentionDays), 500, ct))
         {
             foreach (var path in s.Artifacts.Values.Where(v => !v.Contains("://", StringComparison.Ordinal)))
-                await artifacts.DeleteAsync(path, ct);                      // nur Blob-Pfade; "download" ist eine URL
+                await artifacts.DeleteAsync(path, ct);                      // blob paths only; "download" is a URL
             await delete.ExecuteAsync(s, ct);
             deleted++;
         }
 
-        // 3b: Verwaiste Besucher-Uploads – hochgeladen, aber nie abgeschickt. Übernommene Dateien liegen
-        //     längst unter attachments/ und hängen am Lebenszyklus ihrer Einsendung.
+        // 3b: orphaned visitor uploads - uploaded but never submitted. Files that were taken over have
+        //     long since moved to attachments/ and hang on the life cycle of their submission.
         foreach (var upload in await listArtifacts.ListAsync("uploads/", ct))
         {
             var parts = upload.Path.Split('/');

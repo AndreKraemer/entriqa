@@ -9,7 +9,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Die API liegt immer auf der Origin unter /api – egal ob die App unter / (Dev) oder /admin/ (SWA) ausgeliefert wird.
+// The API always sits on the origin under /api - no matter whether the app is served from / (dev) or /admin/ (SWA).
 var origin = new Uri(new Uri(builder.HostEnvironment.BaseAddress), "/");
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = origin });
 builder.Services.AddScoped<AdminApi>();
@@ -17,9 +17,9 @@ builder.Services.AddSingleton<Ui>();
 
 var host = builder.Build();
 
-// Oberflächensprache vor dem ersten Render aus dem localStorage übernehmen.
+// Take the interface language from localStorage before the first render.
 var ui = host.Services.GetRequiredService<Ui>();
 try { ui.Init(await host.Services.GetRequiredService<IJSRuntime>().InvokeAsync<string?>("localStorage.getItem", Ui.StorageKey)); }
-catch { /* ohne localStorage bleibt Deutsch */ }
+catch { /* without localStorage it stays German */ }
 
 await host.RunAsync();

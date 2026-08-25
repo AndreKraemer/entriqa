@@ -5,7 +5,7 @@ using Entriqa.Domain.Submissions;
 
 namespace Entriqa.Data.Mapping;
 
-/// <summary>Die Zollstation Domäne ↔ Entity. Bewusst von Hand: wenige Felder, JSON-Spalten.</summary>
+/// <summary>The customs post between domain and entity. Hand written on purpose: few fields, JSON columns.</summary>
 internal static class SubmissionMapper
 {
     public static SubmissionEntity ToEntity(Submission s)

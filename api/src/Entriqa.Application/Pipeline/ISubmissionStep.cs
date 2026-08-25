@@ -7,24 +7,24 @@ namespace Entriqa.Application.Pipeline;
 public enum StepMode { Inline, Deferred }
 
 /// <summary>
-/// Ein Schritt der Nachverarbeitung. Registrierung per DI (Suffix "Step"); der Admin liest den Katalog über
+/// One post-processing step. Registered via DI (suffix "Step"); the admin reads the catalog through
 /// <see cref="StepCatalogService"/>. Neue Schritte: Klasse anlegen – fertig.
 /// </summary>
 public interface ISubmissionStep
 {
-    string Key { get; }                             // "brevo.mail" – stabil, steht in der Formulardefinition
+    string Key { get; }                             // "brevo.mail" - stable, appears in the form definition
     string Name { get; }
     string Description { get; }
-    StepMode Mode { get; }                          // Inline: im Request; Deferred: nach der Rückmeldung
-    bool SplitsPhase => false;                      // true nur bei doi.request: alles danach läuft nach Bestätigung
-    bool CriticalByDefault => true;                 // false bei Benachrichtigungen: Fehlschlag blockiert Folgeschritte nicht
+    StepMode Mode { get; }                          // Inline: inside the request; Deferred: after the response
+    bool SplitsPhase => false;                      // true for doi.request only: everything after it runs once confirmed
+    bool CriticalByDefault => true;                 // false for notifications: a failure does not block the following steps
     IReadOnlyList<StepNeed> Needs => Array.Empty<StepNeed>();
     string? Produces => null;                       // "report", "download"
-    string ConfigSchema { get; }                    // JSON Schema für den Builder
-    /// <summary>Variablen, die der Schritt an Brevo-Vorlagen übergibt ({{ params.… }}) – der Admin zeigt sie als Hilfe an.</summary>
+    string ConfigSchema { get; }                    // JSON Schema for the builder
+    /// <summary>Variables the step passes to Brevo templates ({{ params.… }}) - the admin shows them as help.</summary>
     IReadOnlyList<Entriqa.Domain.UseCases.MailParam> MailParams => Array.Empty<Entriqa.Domain.UseCases.MailParam>();
 
-    /// <summary>Prüft die Konfiguration beim Veröffentlichen. Gibt Probleme in Klartext zurück.</summary>
+    /// <summary>Checks the configuration when publishing. Returns problems in plain words.</summary>
     IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore) => Array.Empty<string>();
 
     Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct);
@@ -38,7 +38,7 @@ public sealed record StepResult(StepRunStatus Status, string? Error = null)
     public static StepResult Failed(string error) => new(StepRunStatus.Failed, error);
 }
 
-/// <summary>Was ein Schritt sieht und wo er Ergebnisse ablegt (Artefakte landen in der Submission).</summary>
+/// <summary>What a step sees and where it puts results (artifacts end up in the submission).</summary>
 public sealed class StepContext
 {
     public required Submission Submission { get; init; }
@@ -51,7 +51,7 @@ public sealed class StepContext
     public string? FirstName => Submission.FirstName;
     public QuizResult? QuizResult => Submission.Quiz is null ? null : Form.Quiz?.Results.FirstOrDefault(r => r.Id == Submission.Quiz.ResultId);
 
-    /// <summary>Feldwerte mit Label als Schlüssel – für Mail-Parameter und Merge-Daten.</summary>
+    /// <summary>Field values keyed by label - for mail parameters and merge data.</summary>
     public Dictionary<string, object?> LabeledValues()
     {
         var d = new Dictionary<string, object?>();
@@ -61,7 +61,7 @@ public sealed class StepContext
     }
 }
 
-/// <summary>Kleine Helfer zum Lesen der Schritt-Konfiguration.</summary>
+/// <summary>Small helpers for reading the step configuration.</summary>
 public static class StepConfig
 {
     public static string? GetString(this JsonElement e, string name)

@@ -30,10 +30,10 @@ public class PublishCheckServiceTests
     }
 
     [Fact]
-    public void Valid_contact_form_has_no_issues() => Assert.Empty(Build().Check(TestData.Contact()));
+    public void GivenValidContactForm_WhenCheckingBeforePublish_ThenNoIssuesAreReported() => Assert.Empty(Build().Check(TestData.Contact()));
 
     [Fact]
-    public void Leadmagnet_without_file_and_mail_attaching_missing_artifact_is_flagged()
+    public void GivenLeadMagnetWithoutFileAndMailAttachingAMissingArtifact_WhenCheckingBeforePublish_ThenBothStepsAreFlagged()
     {
         var form = TestData.Contact() with
         {
@@ -52,7 +52,7 @@ public class PublishCheckServiceTests
     }
 
     [Fact]
-    public void Brevo_list_without_doi_is_flagged_and_quiz_pdf_needs_template_per_result()
+    public void GivenBrevoListWithoutDoiAndQuizPdfMissingTemplates_WhenCheckingBeforePublish_ThenEachGapIsReported()
     {
         var form = TestData.Contact() with
         {
@@ -72,7 +72,7 @@ public class PublishCheckServiceTests
     }
 
     [Fact]
-    public void Doi_requires_email_and_consent_fields()
+    public void GivenDoiStepWithoutEmailAndConsentFields_WhenCheckingBeforePublish_ThenBothAreReportedAsMissing()
     {
         var form = TestData.Contact() with
         {

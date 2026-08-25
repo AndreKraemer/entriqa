@@ -3,11 +3,11 @@ using Entriqa.Domain.Submissions;
 
 namespace Entriqa.Domain.UseCases;
 
-// Öffentliche Use Cases (anonym, von forms.js aufgerufen)
+// Public use cases (anonymous, called by forms.js)
 
 public interface IGetPublishedFormUseCase
 {
-    /// <summary>Liefert die aufgelöste, einsprachige Sicht; unbekannte Sprache → Standard-Locale der Definition.</summary>
+    /// <summary>Returns the resolved, single-language view; unknown language -> default locale of the definition.</summary>
     Task<PublicFormView> ExecuteAsync(string slug, string? lang = null, CancellationToken ct = default);
 }
 
@@ -23,19 +23,19 @@ public interface ISubmitFormUseCase
 
 public interface IRunPendingStepsUseCase
 {
-    /// <summary>Führt ausstehende Hintergrund-Schritte aus. Autorisiert über den Run-Token aus der Submit-Antwort.</summary>
+    /// <summary>Runs pending background steps. Authorized through the run token from the submit response.</summary>
     Task ExecuteAsync(string submissionId, string runToken, CancellationToken ct = default);
 }
 
 public interface IConfirmSubmissionUseCase
 {
-    /// <summary>DOI-Bestätigung: prüft den Token aus der Mail, markiert die Einsendung als bestätigt und startet die zweite Phase.</summary>
+    /// <summary>DOI confirmation: checks the token from the mail, marks the submission as confirmed and starts the second phase.</summary>
     Task<ConfirmResult> ExecuteAsync(string confirmToken, string? clientIp, CancellationToken ct = default);
 }
 
 public sealed record ConfirmResult(string Slug, string RedirectUrl, bool AlreadyConfirmed);
 
-/// <summary>Housekeeping (per DevOps-Schedule alle 15 min): Deferred-Sweep, Auto-Retry, Retention, Security-Tabellen aufräumen.</summary>
+/// <summary>Housekeeping (every 15 min via DevOps schedule): deferred sweep, auto retry, retention, cleaning up the security tables.</summary>
 public interface IRunHousekeepingUseCase
 {
     Task<HousekeepingResult> ExecuteAsync(CancellationToken ct = default);
@@ -43,11 +43,11 @@ public interface IRunHousekeepingUseCase
 
 public sealed record HousekeepingResult(int Swept, int Retried, int Deleted, int NoncesPurged, int RateLimitsPurged);
 
-// Admin-Use-Cases (Rolle "admin", vom Blazor-Admin aufgerufen)
+// Admin use cases (role "admin", called by the Blazor admin)
 
 public interface IListRecentSubmissionsUseCase
 {
-    /// <summary>Neueste Einsendungen (optional je Formular) samt letztem Besuch des aufrufenden Admins – für „neu seit"-Markierungen.</summary>
+    /// <summary>Latest submissions (optionally per form) together with the calling admin's last visit - for "new since" markers.</summary>
     Task<RecentSubmissions> ExecuteAsync(string? slug, string user, int max = 500, CancellationToken ct = default);
 }
 
@@ -55,13 +55,13 @@ public sealed record RecentSubmissions(IReadOnlyList<SubmissionListItem> Items, 
 
 public interface IMarkVisitedUseCase
 {
-    /// <summary>Setzt „letzter Besuch" des Admins auf jetzt. Danach zählt nichts mehr als neu.</summary>
+    /// <summary>Sets the admin's "last visit" to now. Afterwards nothing counts as new any more.</summary>
     Task<DateTimeOffset> ExecuteAsync(string user, CancellationToken ct = default);
 }
 
 public interface IGetIntegrationDirectoryUseCase
 {
-    /// <summary>Lookups für den Builder: Brevo-Listen/-Vorlagen, ReportingCloud-Vorlagen, hochgeladene Lead-Magnete. Ohne Keys leer, aber ohne Fehler.</summary>
+    /// <summary>Lookups for the builder: Brevo lists and templates, ReportingCloud templates, uploaded lead magnets. Empty without keys, but without an error.</summary>
     Task<IntegrationDirectory> ExecuteAsync(CancellationToken ct = default);
 }
 
@@ -85,34 +85,34 @@ public interface IExportSubmissionsCsvUseCase
 
 public interface IResendDoiUseCase
 {
-    /// <summary>Verschickt die DOI-Bestätigungsmail erneut (nur solange unbestätigt).</summary>
+    /// <summary>Sends the DOI confirmation mail again (only while it is unconfirmed).</summary>
     Task ExecuteAsync(string submissionId, CancellationToken ct = default);
 }
 
 public interface IGetFormStatsUseCase
 {
-    /// <summary>Auswertung eines Formulars: 14-Tage-Verlauf, Quiz-/Lead-Magnet-/Auswahlfeld-Verteilungen. <paramref name="version"/> null = alle.</summary>
+    /// <summary>Statistics for a form: 14-day history, quiz, lead-magnet and choice-field distributions. <paramref name="version"/> null = all.</summary>
     Task<FormStats> ExecuteAsync(string slug, int? version, CancellationToken ct = default);
 }
 
 public sealed record FormStats(
     int Total,
-    IReadOnlyList<int> Daily,                              // 14 Einträge, [0] = vor 13 Tagen … [13] = heute (UTC)
-    IReadOnlyList<int> Versions,                           // vorhandene Versionen (für den Filter)
+    IReadOnlyList<int> Daily,                              // 14 entries, [0] = 13 days ago … [13] = today (UTC)
+    IReadOnlyList<int> Versions,                           // versions present (for the filter)
     int WithEmail,
-    int Confirmed,                                         // DOI bestätigt
+    int Confirmed,                                         // DOI confirmed
     int AwaitingConfirmation,
     int Failed,
     IReadOnlyList<StatsBar> Sources,                       // utm_source
     QuizStats? Quiz,
     IReadOnlyList<FieldStats> SelectFields,
-    FunnelStats? Funnel = null);                           // aggregierte Aufruf-/Start-Zähler (14 Tage, ohne Personenbezug)
+    FunnelStats? Funnel = null);                           // aggregated view and start counters (14 days, no personal data)
 
 public sealed record FunnelStats(int Views, int Starts);
 
 public interface ICountFormEventUseCase
 {
-    /// <summary>Zählt ein Formular-Ereignis (view | start) als Tageszähler – ohne IDs, ohne Cookies, ohne Inhalte.</summary>
+    /// <summary>Counts a form event (view | start) as a daily counter - without ids, without cookies, without content.</summary>
     Task ExecuteAsync(string slug, string type, CancellationToken ct = default);
 }
 
@@ -130,7 +130,7 @@ public sealed record FormListItem(string Slug, string Name, string Type, string 
 
 public interface IGetFormDraftUseCase
 {
-    /// <summary>Aktueller Entwurf (nach dem Veröffentlichen identisch mit der letzten Version). 404 wenn unbekannt.</summary>
+    /// <summary>Current draft (identical to the latest version right after publishing). 404 when unknown.</summary>
     Task<FormDraftView> ExecuteAsync(string slug, CancellationToken ct = default);
 }
 
@@ -143,7 +143,7 @@ public interface ISaveFormDraftUseCase
 
 public interface IPublishFormUseCase
 {
-    /// <summary>Prüft den Entwurf und veröffentlicht ihn als neue Version. Issues ≠ leer → nicht veröffentlicht (Version 0).</summary>
+    /// <summary>Checks the draft and publishes it as a new version. Issues not empty -> not published (version 0).</summary>
     Task<PublishFormResult> ExecuteAsync(string slug, string publishedBy, CancellationToken ct = default);
 }
 
@@ -154,7 +154,7 @@ public interface IGetSubmissionDetailUseCase
     Task<SubmissionDetailView> ExecuteAsync(string submissionId, CancellationToken ct = default);
 }
 
-/// <summary>Detailansicht ohne IP-Hashes – die sind Nachweis, kein UI-Material.</summary>
+/// <summary>Detail view without IP hashes - those are evidence, not UI material.</summary>
 public sealed record SubmissionDetailView(
     string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale, string? Email, string? FirstName,
     string? Source, IReadOnlyList<SubmissionValueView> Values, Quiz.QuizOutcome? Quiz, string? QuizResultTitle,
@@ -165,13 +165,13 @@ public sealed record QuizAnswerView(string Question, string Answer, int Points, 
 
 public interface IGetFormsActivityUseCase
 {
-    /// <summary>Je Formular: Gesamtzahl und Einsendungen der letzten 14 Tage – für die Formularliste.</summary>
+    /// <summary>Per form: total count and submissions of the last 14 days - for the form list.</summary>
     Task<IReadOnlyDictionary<string, FormActivity>> ExecuteAsync(CancellationToken ct = default);
 }
 
 public sealed record FormActivity(int Total, IReadOnlyList<int> Daily);
 
-// Kontakt-Sicht: wer hat je eingesendet, was kam je Kontakt/Firma – begrenzt durch die Aufbewahrungsfrist.
+// Contact view: who has ever submitted and what came in per contact or company - limited by the retention period.
 
 public interface IListContactsUseCase
 {
@@ -188,13 +188,13 @@ public interface IListContactSubmissionsUseCase
 
 public interface IDeleteContactUseCase
 {
-    /// <summary>DSGVO-Löschung: entfernt alle Einsendungen der Adresse (samt Blobs). Gibt die Anzahl zurück.</summary>
+    /// <summary>GDPR deletion: removes every submission of that address (blobs included). Returns the count.</summary>
     Task<int> ExecuteAsync(string email, CancellationToken ct = default);
 }
 
 public interface IUploadFileUseCase
 {
-    /// <summary>Nimmt eine Besucher-Datei entgegen (Whitelist, Größenlimit) und legt sie privat unter uploads/ ab.</summary>
+    /// <summary>Takes a visitor file (whitelist, size limit) and stores it privately under uploads/.</summary>
     Task<UploadedFile> ExecuteAsync(string slug, string token, string fileName, byte[] content, CancellationToken ct = default);
 }
 
@@ -214,7 +214,7 @@ public sealed record AdminStatus(
     IReadOnlyList<string> Locales,
     LicenseView License);
 
-/// <summary>Status der Produktivlizenz: valid | expired | invalid | missing.</summary>
+/// <summary>Status of the production license: valid | expired | invalid | missing.</summary>
 public sealed record LicenseView(bool Valid, string Status, string? Plan, DateOnly? ValidUntil);
 
 public sealed record SubmissionValueView(string FieldId, string Label, string Value);
@@ -226,7 +226,7 @@ public interface ISetSubmissionHandlingUseCase
 
 public interface IDeleteSubmissionAdminUseCase
 {
-    /// <summary>Löscht die Einsendung samt Report-Blobs (DSGVO-Löschwunsch, Testdaten).</summary>
+    /// <summary>Deletes the submission including its report blobs (GDPR request, test data).</summary>
     Task ExecuteAsync(string submissionId, CancellationToken ct = default);
 }
 
@@ -250,10 +250,10 @@ public interface ICheckFormForPublishUseCase
     Task<IReadOnlyList<string>> ExecuteAsync(FormDefinition definition, CancellationToken ct = default);
 }
 
-/// <summary>Beschreibt einen Schritt für den Admin-Katalog; <c>ConfigSchema</c> ist JSON Schema (draft-07), aus dem der Builder das Konfigurationsformular rendert.</summary>
+/// <summary>Describes a step for the admin catalog; <c>ConfigSchema</c> is JSON Schema (draft-07) from which the builder renders the configuration form.</summary>
 public sealed record StepDescriptor(string Key, string Name, string Description, string Mode, bool SplitsPhase,
     IReadOnlyList<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault = true,
     IReadOnlyList<MailParam>? MailParams = null);
 
-/// <summary>Eine Variable, die ein Schritt an Brevo-Vorlagen übergibt – im Template als <c>{{ params.Name }}</c> verfügbar.</summary>
+/// <summary>A variable that a step passes to Brevo templates - available in the template as <c>{{ params.Name }}</c>.</summary>
 public sealed record MailParam(string Name, string Description);

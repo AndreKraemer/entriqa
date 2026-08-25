@@ -1,19 +1,19 @@
 /*
- * forms.js – Renderer für das eigene Formularsystem.
+ * forms.js - renderer for the in-house form system.
  *
- * Einbindung: <div data-form="slug" data-api="/api"></div> (siehe layouts/shortcodes/form.html).
- * Holt die veröffentlichte Definition und ein Anti-Spam-Token vom Backend, rendert semantisches HTML
- * mit stabilen eq-*-Klassen (kein Inline-Styling, kein iframe – das Theme der Seite gilt), validiert
- * nach denselben Regeln wie der Server (nur für die UX; der Server prüft nochmal) und schickt ab.
- * Quizzes laufen Frage für Frage inkl. Weichen; Punkte und Ergebnis kennt nur der Server.
+ * Embedding: <div data-form="slug" data-api="/api"></div> (see layouts/shortcodes/form.html).
+ * Fetches the published definition and an anti-spam token from the backend, renders semantic HTML
+ * with stable eq-* classes (no inline styling, no iframe - the theme of the page applies), validates
+ * by the same rules as the server (for UX only; the server checks again) and submits.
+ * Quizzes run question by question including branches; points and result are known to the server only.
  *
- * Keine Abhängigkeiten, ES2018, ~12 KB. Markup-Vertrag: siehe SPEC.md → "Markup & Klassen".
+ * No dependencies, ES2018, ~12 KB. Markup contract: see SPEC.md -> "Markup & Klassen".
  */
 (function () {
   'use strict';
 
   var HONEYPOT = 'website';
-  // Whitelist "sicherer" Formate – muss zur Server-Liste (UploadRules) passen.
+  // whitelist of "safe" formats - has to match the server list (UploadRules).
   var FILE_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.gif,.webp';
   var FILE_MAX = 10 * 1024 * 1024;
 
@@ -35,7 +35,7 @@
     this.quiz = null; // { index, answers: {}, history: [] }
   }
 
-  // UI-/Fehlertexte kommen vom Server (PublicFormView.strings, Sprache der Definition); Deutsch ist der Fallback.
+  // UI and error texts come from the server (PublicFormView.strings, language of the definition); German is the fallback.
   FormWidget.prototype.t = function (key, fallback) {
     return (this.def && this.def.strings && this.def.strings[key]) || fallback;
   };
@@ -90,7 +90,7 @@
     this.host.appendChild(form);
     this.watchVisibility();
 
-    // Abbruch-Statistik ohne Personenbezug: einmal "view" beim Rendern, einmal "start" bei der ersten Eingabe.
+    // Drop-off statistics without personal data: "view" once when rendering, "start" once on the first input.
     this.track('view');
     var self = this;
     var started = function () { form.removeEventListener('input', started); form.removeEventListener('change', started); self.track('start'); };
@@ -103,11 +103,11 @@
     var body = JSON.stringify({ type: type });
     try {
       if (navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) return;
-    } catch (e) { /* Blob-Beacon kann an CSP scheitern – dann fetch */ }
+    } catch (e) { /* a blob beacon can fail on CSP - then fetch */ }
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function () { /* Statistik, bewusst leise */ });
   };
 
-  /* ---------- Mehrseitige Formulare (Seitenumbruch-Felder teilen die Feldliste) ---------- */
+  /* ---------- Multi-page forms (page break fields split the field list) ---------- */
 
   FormWidget.prototype.renderPages = function (form, pages, d) {
     var self = this;
@@ -175,9 +175,9 @@
     return pages.filter(function (p, i) { return p.fields.length || i === 0; });
   }
 
-  /* ---------- Bedingte Sichtbarkeit (visibleIf zeigt auf ein früheres Feld) ---------- */
+  /* ---------- Conditional visibility (visibleIf points at an earlier field) ---------- */
 
-  // Wie der Server: Werte in Feldreihenfolge auswerten, unsichtbare Werte verwerfen – Ketten funktionieren so mit.
+  // Like the server: evaluate values in field order, drop invisible values - that way chains work too.
   FormWidget.prototype.hiddenByCondition = function (values) {
     var hidden = {};
     var byId = {};
@@ -226,7 +226,7 @@
   };
 
   FormWidget.prototype.honeypot = function () {
-    // Per hidden-Attribut unsichtbar, kein CSS nötig. Bots füllen es trotzdem.
+    // Invisible through the hidden attribute, no CSS needed. Bots fill it in anyway.
     return el('input', { type: 'text', name: HONEYPOT, tabindex: '-1', autocomplete: 'off', hidden: 'hidden', 'aria-hidden': 'true' });
   };
 
@@ -234,7 +234,7 @@
     var id = 'eq-' + this.slug + '-' + f.id;
     if (f.type === 'section') return el('h3', { 'class': 'eq-section' }, f.label);
     if (f.type === 'divider') return el('hr', { 'class': 'eq-divider' });
-    if (f.type === 'page') return null;               // Seitenumbrüche strukturieren nur; im Quiz-Kontaktschritt ohne Wirkung
+    if (f.type === 'page') return null;               // page breaks only add structure; no effect in the quiz contact step
     if (f.type === 'hidden') return el('input', { type: 'hidden', name: f.id, value: hiddenValue(f) });
 
     var wrap = el('div', { 'class': 'eq-field eq-field--' + f.type + (f.required ? ' eq-field--required' : ''), 'data-field': f.id });
@@ -247,8 +247,8 @@
       wrap.appendChild(lab);
     } else {
       var isMulti = f.type === 'multiselect' || f.type === 'rating';
-      // Multiselect/Skala rendern eine Gruppe statt eines Controls: das Label bekommt eine eigene ID (aria-labelledby),
-      // ein "for" auf eine nicht vergebene ID wäre falsch.
+      // Multi-select and rating render a group instead of a control: the label gets an id of its own (aria-labelledby),
+      // a "for" pointing at an id that is never assigned would be wrong.
       wrap.appendChild(el('label', isMulti ? { 'class': 'eq-field__label', id: id + '-label' } : { 'class': 'eq-field__label', 'for': id }, [f.label].concat(req)));
       var ctl;
       if (f.type === 'textarea') ctl = el('textarea', { 'class': 'eq-field__control', id: id, name: f.id, placeholder: f.placeholder, required: f.required, maxlength: f.maxLength || 4000 });
@@ -275,7 +275,7 @@
         wrap.appendChild(el('p', { 'class': 'eq-field__error', hidden: 'hidden' }));
         return wrap;
       } else if (f.type === 'rating') {
-        // 1..n als Radiogruppe – das Theme stylt die Optionen zu Buttons/Sternen.
+        // 1..n as a radio group - the theme styles the options into buttons or stars.
         var steps = Math.min(Math.max(parseInt(f.max, 10) || 5, 2), 10);
         ctl = el('div', { 'class': 'eq-field__scale', role: 'radiogroup', 'aria-labelledby': id + '-label' });
         for (var s = 1; s <= steps; s++) {
@@ -364,7 +364,7 @@
     prog.appendChild(el('div', { 'class': 'eq-quiz__progress-bar', style: 'width:100%' }));
     this.quizContainer.appendChild(prog);
     if (this.def.quiz.collectEmail === 'none' || !this.def.fields.length) {
-      this.skipContact = true;                                  // Kontaktschritt existiert nicht: nichts einsammeln, nichts validieren
+      this.skipContact = true;                                  // no contact step: collect nothing, validate nothing
       this.submit();
       return;
     }
@@ -373,7 +373,7 @@
     if (first) first.focus();
   };
 
-  /* ---------- Datei-Upload (sofort beim Auswählen; der Wert ist das Server-Handle) ---------- */
+  /* ---------- File upload (right when picking; the value is the server handle) ---------- */
 
   FormWidget.prototype.uploadFile = function (f, ctl, wrap, status) {
     var self = this;
@@ -400,13 +400,13 @@
       .then(function () { self.uploading--; });
   };
 
-  /* ---------- Validierung & Absenden ---------- */
+  /* ---------- Validation and submitting ---------- */
 
   FormWidget.prototype.collectRaw = function () {
     var values = {};
     this.def.fields.forEach(function (f) {
       if (f.type === 'section' || f.type === 'divider' || f.type === 'page') return;
-      if (this.skipContact && f.type !== 'hidden') return;      // Quiz ohne Kontaktschritt: nur hidden-Felder (UTM & Co.)
+      if (this.skipContact && f.type !== 'hidden') return;      // quiz without a contact step: hidden fields only (UTM and friends)
       if (f.type === 'multiselect') {
         var picked = Array.prototype.map.call(this.form.querySelectorAll('[name="' + f.id + '"]:checked'), function (x) { return x.value; });
         if (picked.length) values[f.id] = JSON.stringify(picked);
@@ -431,7 +431,7 @@
   };
 
   FormWidget.prototype.collect = function () {
-    // Bedingt unsichtbare Felder werden nicht mitgeschickt (der Server verwirft sie ohnehin).
+    // Conditionally invisible fields are not sent along (the server drops them anyway).
     var values = this.collectRaw();
     var hidden = this.hiddenByCondition(values);
     Object.keys(hidden).forEach(function (id) { delete values[id]; });
@@ -440,12 +440,12 @@
 
   FormWidget.prototype.validate = function (values, onlyIds) {
     var errors = {};
-    if (this.skipContact) return errors;                        // Felder wurden nie angezeigt – der Server prüft trotzdem
+    if (this.skipContact) return errors;                        // the fields were never shown - the server checks all the same
     var hidden = this.hiddenByCondition(values);
     this.def.fields.forEach(function (f) {
       if (f.type === 'section' || f.type === 'divider' || f.type === 'page' || f.type === 'hidden') return;
       if (hidden[f.id]) return;
-      if (onlyIds && !onlyIds[f.id]) return;                    // Seitenwechsel prüft nur die aktuelle Seite
+      if (onlyIds && !onlyIds[f.id]) return;                    // a page change only checks the current page
       var v = (values[f.id] || '').trim();
       var required = f.required || (f.type === 'email' && this.def.quiz && this.def.quiz.collectEmail === 'required');
       if (!v) { if (required) errors[f.id] = f.type === 'consent' ? this.t('consentRequired', 'Bitte bestätige die Einwilligung.') : this.t('required', 'Pflichtfeld.'); return; }
@@ -469,7 +469,7 @@
       else { wrap.classList.remove('eq-field--error'); err.hidden = true; }
     });
     if (first && this.pageEls) {
-      // Fehler kann auf einer anderen Seite liegen (Server prüft alles) – dorthin blättern.
+      // The error may sit on another page (the server checks everything) - page there.
       var page = first.closest('.eq-page');
       if (page && page.hidden) this.showPage(this.pageEls.indexOf(page));
     }
@@ -499,8 +499,8 @@
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     }).then(function (result) {
       if (result.runToken) {
-        // Hintergrund-Schritte (PDF, Webhook) – VOR onSuccess und mit keepalive, damit der Request einen
-        // completion-Redirect überlebt. Fehler sind Sache des Admins/Housekeepings, nicht des Besuchers.
+        // Background steps (PDF, webhook) - BEFORE onSuccess and with keepalive so that the request survives
+        // a completion redirect. Failures are the concern of the admin and housekeeping, not of the visitor.
         fetchJson(self.api + '/submissions/' + encodeURIComponent(result.submissionId) + '/run', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: result.runToken }), keepalive: true
         }).catch(function () { /* bewusst leise */ });
@@ -515,7 +515,7 @@
         self.showErrors(errs);
       }
       if (err.problem && (err.problem.errorCode === 'security.token_expired' || err.problem.errorCode === 'security.token_replayed')) {
-        self.token = null; // neues Token holen, damit der nächste Versuch klappt
+        self.token = null; // fetch a new token so that the next attempt works
         fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '/token', { cache: 'no-store' }).then(function (t) { self.token = t.token; });
       }
       self.say(messageFor(err, self.t('submitError', 'Das hat leider nicht geklappt. Bitte versuche es erneut.')), 'error');
@@ -559,7 +559,7 @@
     if (s === 'referrer') return document.referrer.slice(0, 200);
     if (s === 'page') return (window.location.origin + window.location.pathname).slice(0, 200);
     if (s.indexOf('query:') === 0) s = s.slice(6);
-    // UTM & Co. immer frisch aus der aktuellen URL – bewusst kein sessionStorage (banner-frei, § 25 TDDDG).
+    // UTM and friends always fresh from the current URL - deliberately no sessionStorage (banner free, § 25 TDDDG).
     try { return (new URLSearchParams(window.location.search).get(s) || '').slice(0, 200); } catch (e) { return ''; }
   }
 
@@ -580,7 +580,7 @@
       if (res.status === 202 || res.status === 204) return {};
       return res.text().then(function (text) {
         var data = null;
-        try { data = text ? JSON.parse(text) : null; } catch (e) { /* kein JSON */ }
+        try { data = text ? JSON.parse(text) : null; } catch (e) { /* no JSON */ }
         if (!res.ok) { var err = new Error('HTTP ' + res.status); err.status = res.status; err.problem = data; throw err; }
         return data;
       });

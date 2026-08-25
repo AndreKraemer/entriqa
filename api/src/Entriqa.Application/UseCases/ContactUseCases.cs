@@ -6,9 +6,9 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// Kontakt-Sicht: aggregiert die vorhandenen Einsendungen je E-Mail-Adresse. Brevo kennt den
-/// Kontakt-ZUSTAND, das Formsystem die Vorgangshistorie – begrenzt durch die Aufbewahrungsfrist
-/// (Standard 180 Tage), also bewusst "die letzten Monate", kein Ewigkeits-CRM.
+/// Contact view: aggregates the submissions on hand per email address. Brevo knows the contact
+/// STATE, the form system knows the history of dealings - bounded by the retention period
+/// (180 days by default), so deliberately "the last few months", not a CRM for eternity.
 /// </summary>
 internal sealed class ListContactsUseCase(
     IListContactSubmissionsQuery query,
@@ -52,7 +52,7 @@ internal sealed class ListContactsUseCase(
             .ToList();
     }
 
-    /// <summary>Firmenfeld per Label-Heuristik – wie die Vornamen-Erkennung beim Absenden.</summary>
+    /// <summary>Company field by label heuristic - like the first-name detection on submit.</summary>
     private static string? CompanyOf(FormDefinition def, IReadOnlyDictionary<string, string> values)
     {
         var f = def.Fields.FirstOrDefault(x => x.Type == FieldTypes.Text

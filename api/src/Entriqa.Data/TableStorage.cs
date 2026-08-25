@@ -6,7 +6,7 @@ using Entriqa.Application;
 
 namespace Entriqa.Data;
 
-/// <summary>Zugang zu den Tabellen. Clients sind thread-sicher und werden einmal angelegt; CreateIfNotExists beim ersten Zugriff.</summary>
+/// <summary>Access to the tables. Clients are thread-safe and created once; CreateIfNotExists on first access.</summary>
 public sealed class TableStorage
 {
     private readonly TableServiceClient _service;

@@ -7,8 +7,8 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// Auswertung in einem Rutsch aus den Einsendungen des Formulars. Fragen-/Optionstexte kommen aus der
-/// jeweiligen Version (Standard-Locale); „n gesehen" je Frage = Antworten auf dem tatsächlich gegangenen Pfad.
+/// Statistics computed in one pass from the submissions of the form. Question and option texts come from
+/// the respective version (default locale); "n seen" per question = answers on the path actually taken.
 /// </summary>
 internal sealed class GetFormStatsUseCase(
     IListSubmissionsForStatsQuery list,
@@ -75,7 +75,7 @@ internal sealed class GetFormStatsUseCase(
             .Where(f => f.Options.Any(o => o.Count > 0))
             .ToList();
 
-        // Funnel: aggregierte view/start-Zähler derselben 14 Tage (versionsunabhängig – die Zähler kennen keine Version)
+        // Funnel: aggregated view and start counters of the same 14 days (version-independent - the counters know no version)
         var totals = await funnel.ExecuteAsync(slug, DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime).AddDays(-13), ct);
         var funnelStats = totals.Count == 0 ? null : new FunnelStats(totals.GetValueOrDefault("view"), totals.GetValueOrDefault("start"));
 

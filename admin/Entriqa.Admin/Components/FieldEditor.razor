@@ -1,5 +1,5 @@
-@* Feld-Eigenschaften: Typ, ID, Texte je Sprache, typabhängige Optionen.
-   Als Karte in Listen – oder mit Panel="true" als Eigenschaften-Spalte des Builders. *@
+@* Field properties: type, id, texts per language, type-dependent options.
+   As a card in lists - or with Panel="true" as the property column of the builder. *@
 @inject Ui T
 
 <div class="@(Panel ? "panel-field" : "card")">
@@ -87,7 +87,7 @@
         </div>
     }
 
-    @* Sichtbarkeit: nur zeigen, wenn ein FRÜHERES Feld einen bestimmten Zustand hat *@
+    @* Visibility: only show the field while an EARLIER field is in a given state *@
     @if (!Field.IsLayout && Field.Type != "hidden" && ConditionSources.Count > 0)
     {
         <div class="visibleif">
@@ -176,7 +176,7 @@
     /// component re-renders and the preview stays stale (guarded by EditorChangedBindingTests).</summary>
     [Parameter] public EventCallback Changed { get; set; }
 
-    /// <summary>Frühere Felder, auf die eine Sichtbarkeitsbedingung zeigen darf (werttragend, nicht versteckt).</summary>
+    /// <summary>Earlier fields a visibility condition may point at (value carrying, not hidden).</summary>
     private List<FieldModel> ConditionSources => AllFields is null ? new()
         : AllFields.TakeWhile(f => !ReferenceEquals(f, Field)).Where(f => !f.IsLayout && f.Type != "hidden").ToList();
 

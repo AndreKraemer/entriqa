@@ -55,7 +55,7 @@ public class HousekeepingUseCaseTests
     };
 
     [Fact]
-    public async Task Sweep_zieht_liegengebliebene_Deferred_Schritte_nach()
+    public async Task GivenPendingDeferredStep_WhenHousekeepingRuns_ThenTheStepIsSweptAndTheSubmissionSaved()
     {
         var (uc, pdf, list, save, _, _) = Build();
         var s = Unfinished("kontakt:1", StepRunStatus.Pending);
@@ -73,7 +73,7 @@ public class HousekeepingUseCaseTests
     }
 
     [Fact]
-    public async Task AutoRetry_respektiert_die_Versuchsgrenze()
+    public async Task GivenFailedStepsBelowAndAtTheAttemptLimit_WhenHousekeepingRuns_ThenOnlyTheOneBelowIsRetried()
     {
         var (uc, pdf, list, save, _, _) = Build();
         var fresh = Unfinished("kontakt:1", StepRunStatus.Failed, attempts: 1);
@@ -86,12 +86,12 @@ public class HousekeepingUseCaseTests
 
         Assert.Equal(1, result.Retried);
         Assert.Equal(StepRunStatus.Ok, fresh.Run("s1").Status);
-        Assert.Equal(StepRunStatus.Failed, exhausted.Run("s1").Status);               // bleibt für den Admin liegen
+        Assert.Equal(StepRunStatus.Failed, exhausted.Run("s1").Status);               // left behind for the admin to handle
         await save.DidNotReceive().ExecuteAsync(exhausted, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Retention_loescht_Einsendung_und_Blob_Artefakte_aber_keine_URLs()
+    public async Task GivenExpiredSubmissionWithBlobAndUrlArtifacts_WhenRetentionRuns_ThenOnlyBlobArtifactsAreDeletedWithIt()
     {
         var (uc, _, list, _, delete, artifacts) = Build();
         var s = Unfinished("kontakt:old", StepRunStatus.Ok);

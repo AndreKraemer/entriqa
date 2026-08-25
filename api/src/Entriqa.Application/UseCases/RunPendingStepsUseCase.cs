@@ -18,8 +18,8 @@ internal sealed class RunPendingStepsUseCase(
     {
         var payload = tokens.Validate(runToken, FormTokenService.KindRun, submissionId, TimeSpan.Zero, TimeSpan.FromHours(1));
 
-        // Run-Token sind Einweg: forms.js feuert vor Redirects zusätzlich per sendBeacon – Doppelankünfte
-        // und Replays laufen hier still ins Leere; das Housekeeping ist der garantierte Fallback.
+        // Run tokens are one-shot: forms.js additionally fires via sendBeacon before redirects - duplicate arrivals
+        // and replays quietly come to nothing here; housekeeping is the guaranteed fallback.
         if (!await consumeNonce.ExecuteAsync(payload.Nonce, payload.IssuedAt.AddHours(1), ct)) return;
 
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
@@ -28,6 +28,6 @@ internal sealed class RunPendingStepsUseCase(
             ?? throw new NotFoundException(ErrorCodes.FormNotFound, "Formularversion nicht gefunden.");
         await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, ct);
         try { await save.ExecuteAsync(s, ct); }
-        catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* Confirm/Retry war schneller – dessen Lauf deckt die Schritte ab */ }
+        catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* confirm or retry was faster - its run covers those steps */ }
     }
 }

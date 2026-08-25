@@ -117,6 +117,6 @@ internal sealed class ResendDoiUseCase(
             ?? throw new AppException(ErrorCodes.Validation, "Dieses Formular hat kein Double-Opt-In.");
 
         var ctx = new StepContext { Submission = s, Form = def, FormVersion = v.Version, Options = options.Value };
-        await pipeline.Resolve(doi.Step).ExecuteAsync(ctx, doi.Config, ct);   // idempotent: nach Bestätigung tut der Schritt nichts
+        await pipeline.Resolve(doi.Step).ExecuteAsync(ctx, doi.Config, ct);   // idempotent: after the confirmation the step does nothing
     }
 }

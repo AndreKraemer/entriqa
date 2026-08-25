@@ -3,7 +3,7 @@ using Entriqa.Domain.Submissions;
 
 namespace Entriqa.Application.Ports;
 
-// Lese-/Schreib-Ports der Data-Schicht. Keine Repositories: ein Port = eine Absicht (Solution Standard §13/§14).
+// Read and write ports of the data layer. No repositories: one port = one intent (Solution Standard §13/§14).
 
 public interface ITryGetPublishedFormQuery
 {
@@ -17,13 +17,13 @@ public interface ITryGetFormVersionQuery
 
 public interface IStoreSubmissionCommand
 {
-    /// <summary>Legt die Einsendung an. Atomar: ein Upsert, ein Entity.</summary>
+    /// <summary>Creates the submission. Atomic: one upsert, one entity.</summary>
     Task ExecuteAsync(Submission submission, CancellationToken ct = default);
 }
 
 public interface ISaveSubmissionCommand
 {
-    /// <summary>Schreibt Schrittstatus, Artefakte, Bestätigung zurück. Atomar wie oben.</summary>
+    /// <summary>Writes step status, artifacts and confirmation back. Atomic as above.</summary>
     Task ExecuteAsync(Submission submission, CancellationToken ct = default);
 }
 
@@ -39,17 +39,17 @@ public interface IListSubmissionsQuery
 
 public interface ITryConsumeNonceCommand
 {
-    /// <summary>true beim ersten Mal, false wenn die Nonce schon verbraucht war (Replay).</summary>
+    /// <summary>true the first time, false when the nonce was already used (replay).</summary>
     Task<bool> ExecuteAsync(string nonce, DateTimeOffset expiresAt, CancellationToken ct = default);
 }
 
 public interface IRegisterRateLimitHitCommand
 {
-    /// <summary>Zählt einen Treffer für (ipHash, Zeitfenster) und gibt die neue Anzahl zurück.</summary>
+    /// <summary>Counts a hit for (ipHash, time window) and returns the new count.</summary>
     Task<int> ExecuteAsync(string ipHash, DateTimeOffset windowStart, CancellationToken ct = default);
 }
 
-// Funnel-Zähler (Abbruch-Analytics ohne Personenbezug: nur Tages-Summen je Formular)
+// Funnel counters (drop-off analytics without personal data: daily totals per form only)
 
 public interface IIncrementFunnelCommand
 {
@@ -58,31 +58,31 @@ public interface IIncrementFunnelCommand
 
 public interface IGetFunnelTotalsQuery
 {
-    /// <summary>Summen je Ereignistyp ab <paramref name="from"/> (einschließlich).</summary>
+    /// <summary>Totals per event type from <paramref name="from"/> onwards (inclusive).</summary>
     Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, CancellationToken ct = default);
 }
 
-// Kontakt-Sicht (Scan über die Einsendungen – Volumen klein und durch die Aufbewahrungsfrist begrenzt)
+// Contact view (a scan across the submissions - small volume, bounded by the retention period)
 
 public interface IListContactSubmissionsQuery
 {
-    /// <summary>Alle Einsendungen MIT E-Mail-Adresse (vollständig, für die Aggregation je Kontakt/Firma).</summary>
+    /// <summary>Every submission WITH an email address (complete, for aggregating per contact and company).</summary>
     Task<IReadOnlyList<Submission>> ListWithEmailAsync(int max, CancellationToken ct = default);
-    /// <summary>Alle Einsendungen einer Adresse (ohne Groß/Klein), neueste zuerst.</summary>
+    /// <summary>Every submission of one address (case-insensitive), newest first.</summary>
     Task<IReadOnlyList<SubmissionListItem>> ListByEmailAsync(string email, CancellationToken ct = default);
 }
 
-// Admin-Übersicht
+// Admin overview
 
 public interface IListRecentSubmissionsQuery
 {
-    /// <summary>Neueste Einsendungen, optional auf ein Formular begrenzt; sortiert nach Eingang absteigend.</summary>
+    /// <summary>Latest submissions, optionally limited to one form; sorted by arrival, descending.</summary>
     Task<IReadOnlyList<SubmissionListItem>> ExecuteAsync(string? slug, int max, CancellationToken ct = default);
 }
 
 public interface IListSubmissionsForStatsQuery
 {
-    /// <summary>Alle Einsendungen eines Formulars als Domänenobjekte – für Auswertungen und CSV-Export.</summary>
+    /// <summary>Every submission of a form as domain objects - for statistics and CSV export.</summary>
     Task<IReadOnlyList<Submission>> ExecuteAsync(string slug, int max, CancellationToken ct = default);
 }
 
@@ -115,10 +115,10 @@ public interface IGetHousekeepingRunQuery
 
 public interface IListHousekeepingSubmissionsQuery
 {
-    /// <summary>Unfertige Einsendungen (processing/failed), älter als die Schonfrist – für Sweep und Auto-Retry.</summary>
+    /// <summary>Unfinished submissions (processing/failed) older than the grace period - for sweep and auto retry.</summary>
     Task<IReadOnlyList<Submission>> ListUnfinishedAsync(DateTimeOffset olderThan, int max, CancellationToken ct = default);
 
-    /// <summary>Abgelaufene Einsendungen: generell älter als <paramref name="generalCutoff"/>, unbestätigte DOI älter als <paramref name="unconfirmedCutoff"/>.</summary>
+    /// <summary>Expired submissions: generally older than <paramref name="generalCutoff"/>, unconfirmed DOI older than <paramref name="unconfirmedCutoff"/>.</summary>
     Task<IReadOnlyList<Submission>> ListExpiredAsync(DateTimeOffset generalCutoff, DateTimeOffset unconfirmedCutoff, int max, CancellationToken ct = default);
 }
 
@@ -129,11 +129,11 @@ public interface IDeleteSubmissionCommand
 
 public interface IPurgeSecurityEntriesCommand
 {
-    /// <summary>Löscht abgelaufene Nonces und alte Rate-Limit-Fenster. Liefert die Anzahl je Tabelle.</summary>
+    /// <summary>Deletes expired nonces and old rate-limit windows. Returns the count per table.</summary>
     Task<(int Nonces, int RateLimits)> ExecuteAsync(DateTimeOffset now, CancellationToken ct = default);
 }
 
-// Admin-Ports (Entwurf/Version) – für den Blazor-Admin.
+// Admin ports (draft and version) - for the Blazor admin.
 
 public interface IPublishFormVersionCommand
 {
@@ -154,6 +154,6 @@ public interface ITryGetFormDraftQuery
 
 public interface ISaveFormDraftCommand
 {
-    /// <summary>Legt den Forms-Eintrag an oder aktualisiert den Entwurf; der Status bleibt unberührt (neu = draft).</summary>
+    /// <summary>Creates the Forms entry or updates the draft; the status stays untouched (new = draft).</summary>
     Task ExecuteAsync(FormDefinition definition, string savedBy, CancellationToken ct = default);
 }

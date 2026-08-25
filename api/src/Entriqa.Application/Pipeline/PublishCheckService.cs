@@ -3,7 +3,7 @@ using Entriqa.Domain.Quiz;
 
 namespace Entriqa.Application.Pipeline;
 
-/// <summary>Die Prüfregeln beim Veröffentlichen – Felder, Quiz-Pfad, Pipeline-Konsistenz. Sperrt bei Problemen.</summary>
+/// <summary>The check rules applied when publishing - fields, quiz path, pipeline consistency. Blocks on problems.</summary>
 public sealed class PublishCheckService(SubmissionPipelineService pipeline)
 {
     public IReadOnlyList<string> Check(FormDefinition form)
@@ -74,7 +74,7 @@ public sealed class PublishCheckService(SubmissionPipelineService pipeline)
         return issues.Distinct().ToList();
     }
 
-    /// <summary>Alle mehrsprachigen Texte, die für die deklarierte Sprache keine Fassung haben (einfacher String gilt für alle).</summary>
+    /// <summary>Every multi-language text that has no version for the declared language (a plain string covers all).</summary>
     private static IEnumerable<string> MissingTexts(FormDefinition form, string lang)
     {
         IEnumerable<(string Name, LText? T)> All()

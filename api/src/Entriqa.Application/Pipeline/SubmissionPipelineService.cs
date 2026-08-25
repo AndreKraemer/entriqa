@@ -8,14 +8,14 @@ namespace Entriqa.Application.Pipeline;
 
 public enum RunMode
 {
-    Inline,     // im Submit-Request: nur Inline-Schritte, Deferred bleiben Pending
-    Deferred,   // Hintergrundlauf bzw. nach Bestätigung: alles, was ausführbar ist
-    Retry       // wie Deferred, setzt vorher Failed/Blocked zurück
+    Inline,     // in the submit request: inline steps only, deferred ones stay pending
+    Deferred,   // background run resp. after confirmation: everything that can run
+    Retry       // like Deferred, but resets failed and blocked steps first
 }
 
 /// <summary>
-/// Der Runner: streng sequenziell, ein Fehler blockiert die Folgeschritte, jeder Schritt hat seinen eigenen Status.
-/// Kein Use Case (keine Benutzeroperation), sondern Domain Service nach Solution Standard §13.5.
+/// The runner: strictly sequential, one failure blocks the following steps, every step keeps its own status.
+/// Not a use case (no user operation) but a domain service per Solution Standard §13.5.
 /// </summary>
 public sealed class SubmissionPipelineService(
     IEnumerable<ISubmissionStep> steps,
@@ -28,10 +28,10 @@ public sealed class SubmissionPipelineService(
     public ISubmissionStep Resolve(string key) =>
         _steps.TryGetValue(key, out var s) ? s : throw new AppException(ErrorCodes.StepUnknown, $"Unbekannter Schritt '{key}'.", 500);
 
-    /// <summary>Für Prüfregeln: unbekannte Schlüssel sind dort ein Issue, kein Serverfehler.</summary>
+    /// <summary>For the check rules: an unknown key is an issue there, not a server error.</summary>
     public ISubmissionStep? TryResolve(string key) => _steps.GetValueOrDefault(key);
 
-    /// <summary>Legt die Schrittläufe beim Anlegen der Einsendung an (Phase aus der Position relativ zum teilenden Schritt).</summary>
+    /// <summary>Creates the step runs when the submission is created (phase from the position relative to the splitting step).</summary>
     public List<StepRun> CreateRuns(FormDefinition form)
     {
         var phase = StepPhase.OnSubmit;
@@ -44,7 +44,7 @@ public sealed class SubmissionPipelineService(
         return runs;
     }
 
-    /// <summary>Gibt true zurück, wenn danach noch Deferred-Schritte ausstehen (→ Run-Token an den Client).</summary>
+    /// <summary>Returns true when deferred steps are still pending afterwards (-> run token for the client).</summary>
     public async Task<bool> RunAsync(Submission submission, FormDefinition form, int version, RunMode mode, string? onlyStepId = null, CancellationToken ct = default)
     {
         if (mode == RunMode.Retry)
@@ -69,9 +69,9 @@ public sealed class SubmissionPipelineService(
             if (run.Phase == StepPhase.OnConfirm && !submission.IsConfirmed) { run.Status = StepRunStatus.Waiting; continue; }
             if (mode == RunMode.Inline && step.Mode == StepMode.Deferred)
             {
-                // Ein Deferred-Schritt teilt den Lauf (wie doi.request die Phasen teilt): alles ab hier läuft
-                // erst im Deferred-Lauf. Sonst würde ein Inline-Konsument vor seinem Deferred-Produzenten laufen
-                // und dessen Artefakt nie sehen (z. B. brevo.mail mit attach:report nach reportingcloud.pdf).
+                // A deferred step splits the run (the way doi.request splits the phases): everything from here on runs
+                // in the deferred run only. Otherwise an inline consumer would run before its deferred producer
+                // and never see its artifact (brevo.mail with attach:report after reportingcloud.pdf, say).
                 run.Status = StepRunStatus.Pending;
                 deferredLeft = true;
                 break;

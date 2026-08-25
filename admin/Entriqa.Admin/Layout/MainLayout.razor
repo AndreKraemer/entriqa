@@ -5,7 +5,7 @@
 
 <header class="topbar">
     <a class="brand" href="">
-        @* Signet: Navy-Anteile laufen über currentColor und werden auf der dunklen Leiste weiß; Cyan bleibt. *@
+        @* Logo: the navy parts run through currentColor and turn white on the dark bar; the cyan stays. *@
         <svg class="brand-mark" viewBox="-22.5 -7 250 250" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path stroke="currentColor" stroke-width="18" d="M118 22 L50 54 L50 120 M118 22 L118 86 M118 214 L50 182 L50 116 M118 214 L118 150" />
             <path stroke="#12B8D4" stroke-width="12" d="M0 118 H98" />
@@ -68,7 +68,7 @@
             _newCount = r.Items.Count(s => r.LastVisitAt is null || s.CreatedAt > r.LastVisitAt);
             _unlicensed = (await Api.GetStatusAsync()).License is not { Valid: true };
         }
-        catch { /* Badge/Banner sind Komfort – Fehler zeigt die jeweilige Seite */ }
+        catch { /* badge and banner are a convenience - errors are shown by the page itself */ }
     }
 
     private static string Initials(string? name)
@@ -85,6 +85,6 @@
     {
         if (lang == T.Lang) return;
         await Js.InvokeVoidAsync("localStorage.setItem", Ui.StorageKey, lang);
-        await Js.InvokeVoidAsync("location.reload");    // Neustart der App – alle Seiten schalten konsistent um
+        await Js.InvokeVoidAsync("location.reload");    // restart of the app - every page switches over consistently
     }
 }
