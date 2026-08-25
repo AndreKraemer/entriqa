@@ -11,7 +11,7 @@ internal sealed class DeleteSubmissionCommand(TableStorage storage) : IDeleteSub
     {
         var sep = submission.Id.IndexOf(':');
         var table = await storage.GetAsync("Submissions");
-        await table.DeleteEntityAsync(submission.Id[..sep], submission.Id[(sep + 1)..], ETag.All, ct);   // 404 wirft nicht – idempotent
+        await table.DeleteEntityAsync(submission.Id[..sep], submission.Id[(sep + 1)..], ETag.All, ct);   // 404 does not throw - idempotent
     }
 }
 
@@ -28,7 +28,7 @@ internal sealed class PurgeSecurityEntriesCommand(TableStorage storage) : IPurge
         }
 
         var limits = await storage.GetAsync("RateLimits");
-        var cutoff = now.AddDays(-1);                                        // Fenster sind 10 min – nach einem Tag sicher irrelevant
+        var cutoff = now.AddDays(-1);                                        // windows are 10 min - after a day they are certainly irrelevant
         var purgedLimits = 0;
         await foreach (var e in limits.QueryAsync<RateLimitEntity>(e => e.Timestamp < cutoff, cancellationToken: ct))
         {

@@ -5,9 +5,9 @@ using Entriqa.Domain.Forms;
 namespace Entriqa.Application.Pipeline.Steps;
 
 /// <summary>
-/// Teams-Nachricht je Einsendung: Adaptive Card an einen Power-Automate-Workflows-Webhook des Kanals
-/// (Teams: „Workflows" → „Bei Webhook-Anforderung in einem Kanal posten"). Die klassischen
-/// Office-365-Incoming-Webhooks sind ausgemustert und werden bewusst nicht unterstützt.
+/// Teams message per submission: an adaptive card to a Power Automate Workflows webhook of the channel
+/// (Teams: "Workflows" -> "Post to a channel when a webhook request is received"). The classic
+/// Office 365 incoming webhooks are retired and deliberately not supported.
 /// </summary>
 public sealed class TeamsNotifyStep(IPostWebhookPort webhook) : ISubmissionStep
 {

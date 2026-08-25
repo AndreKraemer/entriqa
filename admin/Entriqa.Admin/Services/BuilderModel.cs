@@ -4,10 +4,10 @@ using System.Text.Json.Nodes;
 namespace Entriqa.Admin.Services;
 
 /// <summary>
-/// Bearbeitbares Modell des visuellen Builders. Lädt aus dem Definitions-JSON und schreibt es zurück;
-/// mehrsprachige Texte (String oder {locale: text}) werden je Locale editiert und beim Schreiben
-/// wieder eingedampft (alle gleich → einfacher String). Das Quiz wird unverändert durchgereicht
-/// und im JSON-Tab bearbeitet.
+/// Editable model of the visual builder. Loads from the definition JSON and writes it back;
+/// multi-language texts (string or {locale: text}) are edited per locale and reduced again on write
+/// (all equal -> a plain string). The quiz is passed through unchanged
+/// and edited in the JSON tab.
 /// </summary>
 public sealed class FormModel
 {
@@ -75,7 +75,7 @@ public sealed class FormModel
     }
 }
 
-/// <summary>Mehrsprachiger Text: ein Eingabefeld je Locale; beim Schreiben String (alle gleich) oder Objekt.</summary>
+/// <summary>Multi-language text: one input per locale; on write a string (all equal) or an object.</summary>
 public sealed class LTextModel
 {
     private readonly Dictionary<string, string> _values = new();
@@ -91,7 +91,7 @@ public sealed class LTextModel
     {
         _values.Clear();
         if (node is JsonValue v && v.TryGetValue<string>(out var single))
-            foreach (var l in locales) _values[l] = single;      // einfacher String gilt für alle Sprachen
+            foreach (var l in locales) _values[l] = single;      // a plain string applies to every language
         else if (node is JsonObject o)
             foreach (var (k, val) in o) if (val is not null) _values[k] = val.GetValue<string>();
     }
@@ -100,9 +100,9 @@ public sealed class LTextModel
     {
         var filled = _values.Where(kv => !string.IsNullOrWhiteSpace(kv.Value)).ToList();
         if (filled.Count == 0) return null;
-        // Einfacher String bedeutet "gilt für ALLE Sprachen" – nur eindampfen, wenn wirklich jede
-        // konfigurierte Sprache denselben Text hat. Sonst bleibt das Objekt, damit der Publish-Check
-        // fehlende Sprachfassungen melden kann.
+        // A plain string means "applies to EVERY language" - so only reduce when every configured
+        // language really carries the same text. Otherwise the object stays, so that the publish check
+        // can report missing language versions.
         if (locales.All(l => filled.Any(kv => kv.Key == l)) && filled.Select(kv => kv.Value).Distinct().Count() == 1)
             return filled[0].Value;
         return new JsonObject(filled.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value)));
@@ -201,9 +201,9 @@ public sealed class StepModel
     public string Id { get; set; } = "";
     public string Key { get; set; } = "";
     public string When { get; set; } = "always";
-    public bool? Critical { get; set; }                          // null = Standard des Schritts
+    public bool? Critical { get; set; }                          // null = the step's own default
     public Dictionary<string, string> ConfigText { get; } = new();  // Schema-Property → Rohtext
-    public JsonObject? ConfigRaw { get; set; }                   // Original – Basis fürs Zurückschreiben
+    public JsonObject? ConfigRaw { get; set; }                   // the original - the basis for writing back
 
     public static StepModel Parse(JsonObject o)
     {
@@ -218,7 +218,7 @@ public sealed class StepModel
         return s;
     }
 
-    /// <summary>Konfig-Rohtexte aus dem Original + Schema befüllen (einmalig beim Anzeigen).</summary>
+    /// <summary>Fill the raw configuration texts from the original plus the schema (once, when it is shown).</summary>
     public void LoadConfigText(StepSchema schema)
     {
         ConfigText.Clear();
@@ -245,7 +245,7 @@ public sealed class StepModel
 
     private JsonObject BuildConfig()
     {
-        // Basis ist das Original (unbekannte Properties bleiben erhalten), Schema-Properties aus den Rohtexten.
+        // The original is the basis (unknown properties are kept), schema properties come from the raw texts.
         var config = ConfigRaw?.DeepClone().AsObject() ?? new JsonObject();
         foreach (var (name, text) in ConfigText)
         {
@@ -272,8 +272,8 @@ public sealed class StepModel
 }
 
 /// <summary>
-/// Bearbeitbares Quiz: Fragen mit Weichen, Findings und Ergebnisse. Die Live-Pfadprüfung nutzt die echte
-/// <c>QuizEngine.Check</c> aus Entriqa.Domain – dieselben Regeln wie beim Veröffentlichen.
+/// Editable quiz: questions with branches, findings and results. The live path check uses the real
+/// <c>QuizEngine.Check</c> from Entriqa.Domain - the same rules as when publishing.
 /// </summary>
 public sealed class QuizModel
 {
@@ -330,7 +330,7 @@ public sealed class QuizModel
         return o;
     }
 
-    /// <summary>Dieselbe Prüfung wie beim Veröffentlichen, live im Builder (Sprungziele, Schleifen, Erreichbarkeit, Lückenlosigkeit, Priorität).</summary>
+    /// <summary>The same check as when publishing, live in the builder (jump targets, loops, reachability, gaps, priority).</summary>
     public IReadOnlyList<string> PathCheck(IReadOnlyList<string> locales)
     {
         try
@@ -387,8 +387,8 @@ public sealed class QuizOptionModel
     public string Id { get; set; } = "";
     public LTextModel Label { get; } = new();
     public string Points { get; set; } = "0";
-    public string Next { get; set; } = "";                       // "" = nächste Frage | Fragen-ID | result:<id>
-    public string? Category { get; set; }                        // durchgereicht (Scoring-Modus category, später)
+    public string Next { get; set; } = "";                       // "" = next question | question id | result:<id>
+    public string? Category { get; set; }                        // passed through (scoring mode category, later)
     public LTextModel Finding { get; } = new();
 
     public static QuizOptionModel New(string id, string label, int points)
@@ -466,7 +466,7 @@ public sealed class QuizResultModel
     }
 }
 
-/// <summary>Vereinfachtes JSON-Schema eines Schritts (flache Objekte – mehr brauchen die Schritte nicht).</summary>
+/// <summary>Simplified JSON Schema of a step (flat objects - the steps need no more than that).</summary>
 public sealed record StepSchema(List<StepSchemaProperty> Properties, List<string> Required)
 {
     public static StepSchema Parse(string configSchema)
@@ -488,7 +488,7 @@ public sealed record StepSchema(List<StepSchemaProperty> Properties, List<string
                     o["enum"]?.AsArray().Select(x => x!.GetValue<string>()).ToList()));
             }
         }
-        catch (JsonException) { /* leeres Schema */ }
+        catch (JsonException) { /* empty schema */ }
         return new StepSchema(props, required);
     }
 }

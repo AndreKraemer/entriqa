@@ -12,7 +12,7 @@ internal sealed class TryConsumeNonceCommand(TableStorage storage) : ITryConsume
         var table = await storage.GetAsync("Nonces");
         try
         {
-            await table.AddEntityAsync(new NonceEntity { RowKey = nonce, ExpiresAt = expiresAt }, ct);   // Add schlägt bei Duplikat fehl → atomarer Erstgebrauch
+            await table.AddEntityAsync(new NonceEntity { RowKey = nonce, ExpiresAt = expiresAt }, ct);   // Add fails on a duplicate -> atomic first use
             return true;
         }
         catch (RequestFailedException ex) when (ex.Status == 409) { return false; }
@@ -37,7 +37,7 @@ internal sealed class RegisterRateLimitHitCommand(TableStorage storage) : IRegis
                 }
                 var e = existing.Value!;
                 e.Count++;
-                await table.UpdateEntityAsync(e, e.ETag, TableUpdateMode.Replace, ct);   // optimistisch: ETag-Konflikt → erneut
+                await table.UpdateEntityAsync(e, e.ETag, TableUpdateMode.Replace, ct);   // optimistic: an ETag conflict -> try again
                 return e.Count;
             }
             catch (RequestFailedException ex) when (ex.Status is 409 or 412) { /* Wettlauf, nochmal */ }

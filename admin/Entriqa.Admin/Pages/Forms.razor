@@ -178,6 +178,6 @@ else
 
     private async Task Copy(string text)
     {
-        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { /* Clipboard braucht HTTPS/Fokus */ }
+        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { /* the clipboard needs HTTPS and focus */ }
     }
 }

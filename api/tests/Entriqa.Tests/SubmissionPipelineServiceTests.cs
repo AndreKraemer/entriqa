@@ -40,7 +40,7 @@ public class SubmissionPipelineServiceTests
     };
 
     [Fact]
-    public async Task Steps_after_doi_wait_until_confirmed_then_run()
+    public async Task GivenStepsAfterADoiRequest_WhenTheSubmissionIsConfirmed_ThenTheWaitingStepsRunOnce()
     {
         var (svc, doi, link, mail, _) = Build();
         var form = Form(("s1", "doi.request", "always"), ("s2", "leadmagnet.link", "always"), ("s3", "brevo.mail", "always"));
@@ -59,12 +59,12 @@ public class SubmissionPipelineServiceTests
         await svc.RunAsync(s, form, 1, RunMode.Deferred);
 
         Assert.All(s.StepRuns, r => Assert.Equal(StepRunStatus.Ok, r.Status));
-        Assert.Single(doi.Calls);                       // nicht erneut verschickt
+        Assert.Single(doi.Calls);                       // not sent a second time
         Assert.Single(mail.Calls);
     }
 
     [Fact]
-    public async Task Deferred_step_splits_the_run_and_holds_back_everything_after_it()
+    public async Task GivenDeferredStepFollowedByAnother_WhenRunningInline_ThenBothAreHeldBackUntilTheDeferredRun()
     {
         var (svc, _, _, mail, pdf) = Build();
         var form = Form(("s1", "reportingcloud.pdf", "always"), ("s2", "brevo.mail", "always"));
@@ -74,7 +74,7 @@ public class SubmissionPipelineServiceTests
 
         Assert.True(deferred);
         Assert.Equal(StepRunStatus.Pending, s.Run("s1").Status);
-        Assert.Equal(StepRunStatus.Pending, s.Run("s2").Status);  // läuft NICHT inline: sonst fehlte ihr das report-Artefakt des Deferred-Produzenten
+        Assert.Equal(StepRunStatus.Pending, s.Run("s2").Status);  // does NOT run inline: it would be missing the report artifact of the deferred producer
         Assert.Empty(pdf.Calls);
         Assert.Empty(mail.Calls);
 
@@ -86,7 +86,7 @@ public class SubmissionPipelineServiceTests
     }
 
     [Fact]
-    public async Task Inline_steps_before_a_deferred_step_still_run_inline()
+    public async Task GivenInlineStepBeforeADeferredOne_WhenRunningInline_ThenOnlyTheInlineStepRuns()
     {
         var (svc, _, link, mail, _) = Build();
         var form = Form(("s1", "leadmagnet.link", "always"), ("s2", "reportingcloud.pdf", "always"), ("s3", "brevo.mail", "always"));
@@ -103,7 +103,7 @@ public class SubmissionPipelineServiceTests
     }
 
     [Fact]
-    public async Task Failure_blocks_followers_and_retry_resumes()
+    public async Task GivenFailedStep_WhenRetryingThatStep_ThenBlockedFollowersResumeAndTheAttemptIsCounted()
     {
         var fail = true;
         var (svc, _, _, _, _) = Build(_ => fail ? StepResult.Failed("Brevo 429") : StepResult.Ok);
@@ -123,7 +123,7 @@ public class SubmissionPipelineServiceTests
     }
 
     [Fact]
-    public async Task HasEmail_condition_skips_without_email()
+    public async Task GivenHasEmailConditionAndSubmissionWithoutEmail_WhenRunning_ThenTheStepIsSkipped()
     {
         var (svc, _, _, mail, _) = Build();
         var form = Form(("s1", "brevo.mail", "hasEmail"));
@@ -137,7 +137,7 @@ public class SubmissionPipelineServiceTests
     }
 
     [Fact]
-    public async Task Exception_in_step_becomes_failed_run()
+    public async Task GivenStepThrowing_WhenRunning_ThenTheRunIsRecordedAsFailedWithTheMessage()
     {
         var (svc, _, _, _, _) = Build(_ => throw new HttpRequestException("boom"));
         var form = Form(("s1", "brevo.mail", "always"));

@@ -4,8 +4,8 @@ using Xunit;
 namespace Entriqa.Tests;
 
 /// <summary>
-/// Schichtenregeln des Solution Standards als Test (§ ArchTests): Abhängigkeiten zeigen nur nach innen.
-/// Functions ist hier bewusst nicht geladen (Worker-SDK im Testhost) – seine Regeln sichert der Build über Projektreferenzen.
+/// The Solution Standard's layering rules as a test (§ ArchTests): dependencies only ever point inwards.
+/// Functions is deliberately not loaded here (worker SDK in the test host) - its rules are enforced by the build via project references.
 /// </summary>
 public class ArchitectureTests
 {
@@ -14,7 +14,7 @@ public class ArchitectureTests
     private static readonly System.Reflection.Assembly Data = typeof(Data.DataServiceExtensions).Assembly;
 
     [Fact]
-    public void Domain_haengt_von_nichts_ab()
+    public void GivenDomainAssembly_WhenInspectingDependencies_ThenItDependsOnNoOtherLayer()
     {
         var result = Types.InAssembly(Domain)
             .ShouldNot().HaveDependencyOnAny("Entriqa.Application", "Entriqa.Data", "Entriqa.Infrastructure", "Entriqa.Functions")
@@ -23,7 +23,7 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void Application_kennt_weder_Data_noch_Infrastructure()
+    public void GivenApplicationAssembly_WhenInspectingDependencies_ThenNeitherDataNorInfrastructureIsReferenced()
     {
         var result = Types.InAssembly(Application)
             .ShouldNot().HaveDependencyOnAny("Entriqa.Data", "Entriqa.Infrastructure", "Entriqa.Functions")
@@ -32,7 +32,7 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void Data_kennt_Infrastructure_nicht()
+    public void GivenDataAssembly_WhenInspectingDependencies_ThenInfrastructureIsNotReferenced()
     {
         var result = Types.InAssembly(Data)
             .ShouldNot().HaveDependencyOnAny("Entriqa.Infrastructure", "Entriqa.Functions")
@@ -41,7 +41,7 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void Entities_verlassen_die_Data_Schicht_nicht()
+    public void GivenEntityTypes_WhenCheckingTheirVisibility_ThenTheyStayInsideTheDataLayer()
     {
         var result = Types.InAssembly(Data)
             .That().ResideInNamespace("Entriqa.Data.Entities")

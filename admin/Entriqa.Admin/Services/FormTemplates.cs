@@ -1,6 +1,6 @@
 namespace Entriqa.Admin.Services;
 
-/// <summary>Startvorlagen für neue Formulare, je Typ mit sinnvoller Pipeline.</summary>
+/// <summary>Starter templates for new forms, one per type with a sensible pipeline.</summary>
 public static class FormTemplates
 {
     public static string For(string type, string slug) => type switch
@@ -10,7 +10,7 @@ public static class FormTemplates
         _ => NewContact(slug),
     };
 
-    /// <summary>Slug aus dem Namen ableiten (Umlaute, Sonderzeichen).</summary>
+    /// <summary>Derive the slug from the name (umlauts, special characters).</summary>
     public static string Slugify(string name)
     {
         var s = name.ToLowerInvariant()

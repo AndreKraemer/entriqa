@@ -8,14 +8,14 @@ using Entriqa.Domain.Errors;
 namespace Entriqa.Infrastructure.Brevo;
 
 /// <summary>
-/// Brevo REST API v3. Zwei Aufrufe genügen: Transaktionsmail mit Template + Parametern (+ Anhang) und Kontakt-Upsert.
+/// Brevo REST API v3. Two calls are enough: transactional mail with template and parameters (plus attachment) and contact upsert.
 /// Dokumentation: https://developers.brevo.com/reference/sendtransacemail, https://developers.brevo.com/reference/createcontact
 /// </summary>
 public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> options) : ISendTransactionalMailPort, IUpsertBrevoContactPort, IUpsertBrevoCompanyPort, IBrevoDirectoryPort
 {
     /// <summary>
-    /// Firmenpflege im Brevo-CRM: Company per Namensfilter suchen, sonst anlegen, dann den Kontakt verknüpfen.
-    /// Verknüpfen ist idempotent – ein bereits verknüpfter Kontakt bleibt einfach verknüpft.
+    /// Company upkeep in the Brevo CRM: look the company up by name filter, create it otherwise, then link the contact.
+    /// Linking is idempotent - a contact that is already linked simply stays linked.
     /// Dokumentation: https://developers.brevo.com/reference/get_companies
     /// </summary>
     public async Task UpsertCompanyAsync(string name, string contactEmail, CancellationToken ct = default)
@@ -29,8 +29,8 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
             companyId = doc.RootElement.GetProperty("id").GetString();
         }
 
-        // Verknüpfen braucht die numerische Kontakt-ID – per E-Mail nachschlagen (der Kontakt existiert
-        // durch den brevo.contact-Schritt davor).
+        // Linking needs the numeric contact id - look it up by email (the contact exists
+        // thanks to the brevo.contact step before it).
         using var contactDoc = await GetJson($"contacts/{Uri.EscapeDataString(contactEmail)}", ct);
         var contactId = contactDoc.RootElement.GetProperty("id").GetInt64();
 
@@ -104,7 +104,7 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
                 using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
                 if (doc.RootElement.TryGetProperty("id", out var id)) return id.ToString();
             }
-            catch (JsonException) { /* 204 ohne Body bei Update – kein Fehler */ }
+            catch (JsonException) { /* 204 without a body on update - not an error */ }
         }
         return null;
     }

@@ -1,20 +1,20 @@
-// Startet die komplette lokale Entriqa-Dev-Umgebung: npm install && node dev/start.mjs --site <hugo-site>
+// Starts the complete local Entriqa dev environment: npm install && node dev/start.mjs --site <hugo-site>
 //
-//   http://localhost:4280        Website (Hugo) mit funktionierenden Formularen
-//   http://localhost:4281        Formular-Admin (erst unter /.auth/login/aad mit Rolle "admin" einloggen)
+//   http://localhost:4280        website (Hugo) with working forms
+//   http://localhost:4281        form admin (sign in under /.auth/login/aad with the role "admin" first)
 //
 // Prozesse: Azurite (Storage-Emulator) · Functions-API · Blazor-Admin · Hugo · 2× SWA-CLI-Proxy.
-// Ohne Brevo-Key landen Mails als klickbare HTML-Dateien in <TEMP>/entriqa-devmails/.
+// Without a Brevo key, mails end up as clickable HTML files in <TEMP>/entriqa-devmails/.
 //
-// Die Hugo-Site kommt per --site <pfad> oder Umgebungsvariable ENTRIQA_SITE_ROOT
-// (Fallback: aktuelles Verzeichnis). Ihr Hugo-Modul-Import auf
-// github.com/andrekraemer/entriqa/hugo wird automatisch per HUGO_MODULE_REPLACEMENTS
-// auf diesen Klon umgebogen – lokale Änderungen an Layouts/Assets wirken sofort.
+// The Hugo site comes from --site <path> or the environment variable ENTRIQA_SITE_ROOT
+// (fallback: the current directory). Its Hugo module import of
+// github.com/andrekraemer/entriqa/hugo is redirected automatically via HUGO_MODULE_REPLACEMENTS
+// to this clone - local changes to layouts and assets take effect right away.
 //
-// Voraussetzungen außerhalb von npm: .NET-SDK (8+), Azure Functions Core Tools v4 und Go
-// (für Hugo Modules). hugo/azurite/swa werden auch in den node_modules der Site bzw.
-// dieses Repos gesucht.
-//   Windows: Core Tools kommen mit Visual Studio mit (werden automatisch gefunden).
+// Prerequisites outside npm: .NET SDK (8+), Azure Functions Core Tools v4 and Go
+// (for Hugo modules). hugo, azurite and swa are also looked for in the node_modules of the site
+// and of this repository.
+//   Windows: the Core Tools ship with Visual Studio (they are found automatically).
 //   macOS:   brew install --cask dotnet-sdk
 //            brew tap azure/functions && brew install azure-functions-core-tools@4
 import { spawn, spawnSync } from "node:child_process";
@@ -36,18 +36,18 @@ if (!looksLikeSite) {
   process.exit(1);
 }
 
-// hugo/azurite/swa aus den node_modules der Site und dieses Repos auffindbar machen
+// make hugo, azurite and swa findable from the node_modules of the site and of this repository
 const binPaths = [join(siteRoot, "node_modules", ".bin"), join(repoRoot, "node_modules", ".bin")]
   .filter(existsSync);
 const env = { ...process.env };
-// Windows nennt die Variable "Path" – den vorhandenen Schlüssel erweitern statt einen zweiten anzulegen
+// Windows calls the variable "Path" - extend the existing key instead of adding a second one
 const pathKey = Object.keys(env).find(k => k.toUpperCase() === "PATH") ?? "PATH";
 env[pathKey] = [...binPaths, env[pathKey]].filter(Boolean).join(delimiter);
-// Modul-Import der Site auf diesen Klon umbiegen (falls nicht explizit anders gesetzt)
+// redirect the module import of the site to this clone (unless set explicitly otherwise)
 env.HUGO_MODULE_REPLACEMENTS ??= `github.com/andrekraemer/entriqa/hugo -> ${join(repoRoot, "hugo")}`;
 
 function findFunc() {
-  // Azure Functions Core Tools: PATH oder (Windows) die Visual-Studio-Installation
+  // Azure Functions Core Tools: PATH or (on Windows) the Visual Studio installation
   if (process.platform === "win32" && process.env.LOCALAPPDATA) {
     const vs = join(process.env.LOCALAPPDATA, "AzureFunctionsTools", "Releases");
     if (existsSync(vs)) {
@@ -98,13 +98,13 @@ mkdirSync(azuriteDir, { recursive: true });
 
 console.log(`Entriqa-Dev-Umgebung startet …\n  Produkt: ${repoRoot}\n  Site:    ${siteRoot}\n`);
 run("azurite", "azurite", ["--silent", "--location", `"${azuriteDir}"`]);
-await waitFor("http://127.0.0.1:10002/devstoreaccount1", "Azurite");   // sonst scheitert der Dev-Seed der API
+await waitFor("http://127.0.0.1:10002/devstoreaccount1", "Azurite");   // otherwise the dev seed of the API fails
 run("api", funcCmd === "func" ? "func" : `"${funcCmd}"`, ["start", "--port", "7071"], join(repoRoot, "api", "src", "Entriqa.Functions"));
 run("admin", "dotnet", ["run", "--urls", "http://localhost:5100"], join(repoRoot, "admin", "Entriqa.Admin"));
-// baseURL = Proxy-Origin, sonst zeigen absolute URLs (Icon-Fonts, Masken-SVGs) auf :1313 und scheitern am CORS.
+// baseURL = proxy origin, otherwise absolute URLs (icon fonts, mask SVGs) point at :1313 and fail CORS.
 run("hugo", "hugo", ["serve", "--port", "1313", "--baseURL", "http://localhost:4280/", "--appendPort=false"], siteRoot);
 
-// Die SWA-Proxys warten selbst, bis App und API erreichbar sind.
+// The SWA proxies wait by themselves until app and API are reachable.
 setTimeout(() => {
   run("site", "swa", ["start", "http://localhost:1313", "--api-devserver-url", "http://localhost:7071", "--port", "4280"], siteRoot);
   run("adminui", "swa", ["start", "http://localhost:5100", "--api-devserver-url", "http://localhost:7071", "--port", "4281"], siteRoot);

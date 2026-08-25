@@ -7,7 +7,7 @@ using Entriqa.Functions;
 using Entriqa.Functions.Http;
 using Entriqa.Infrastructure;
 
-// Composition Root (Solution Standard §9.4): kurz, benannte Extension-Aufrufe, sonst nichts.
+// Composition root (Solution Standard §9.4): short, named extension calls, nothing else.
 var host = new HostBuilder()
     .ConfigureFunctionsWebApplication(app => app.UseMiddleware<ProblemDetailsMiddleware>())
     .ConfigureServices((context, services) =>

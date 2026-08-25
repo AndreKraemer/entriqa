@@ -6,8 +6,8 @@ using System.Text.Json;
 namespace Entriqa.Admin.Services;
 
 /// <summary>
-/// Dünner Client für /api/manage/*. Die Formulardefinition bleibt bewusst rohes JSON (JsonElement/string) –
-/// der Editor der ersten Ausbaustufe arbeitet direkt auf dem Dokument, der visuelle Builder kommt später.
+/// Thin client for /api/manage/*. The form definition deliberately stays raw JSON (JsonElement/string) -
+/// the editor of the first stage works on the document directly, the visual builder comes later.
 /// </summary>
 public sealed class AdminApi(HttpClient http)
 {
@@ -52,7 +52,7 @@ public sealed class AdminApi(HttpClient http)
 
     public Task<AdminStatus> GetStatusAsync() => GetAsync<AdminStatus>("api/manage/status");
 
-    /// <summary>Wer ist eingeloggt? SWA liefert das Prinzipal unter /.auth/me (lokal emuliert die CLI).</summary>
+    /// <summary>Who is signed in? SWA serves the principal under /.auth/me (locally emulated by the CLI).</summary>
     public async Task<AuthInfo?> GetMeAsync()
     {
         try
@@ -68,7 +68,7 @@ public sealed class AdminApi(HttpClient http)
                 p.TryGetProperty("identityProvider", out var ip) ? ip.GetString() : null,
                 roles);
         }
-        catch { return null; }                       // kein Auth-Endpunkt (z. B. dotnet run ohne SWA) → anonym
+        catch { return null; }                       // no auth endpoint (dotnet run without SWA, say) -> anonymous
     }
 
     public async Task<LeadMagnetInfo> UploadLeadMagnetAsync(Microsoft.AspNetCore.Components.Forms.IBrowserFile file)
@@ -158,7 +158,7 @@ public sealed class AdminApi(HttpClient http)
     {
         if (res.IsSuccessStatusCode)
         {
-            // Ohne Login leitet die SWA auf die Login-Seite um → 200 mit HTML statt JSON.
+            // Without a login the SWA redirects to the login page -> 200 with HTML instead of JSON.
             var mediaType = res.Content.Headers.ContentType?.MediaType;
             if (mediaType is not null && !mediaType.Contains("json")) throw new ApiException("Nicht angemeldet.", 401);
             return;
@@ -169,7 +169,7 @@ public sealed class AdminApi(HttpClient http)
             using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
             if (doc.RootElement.TryGetProperty("title", out var t) && t.GetString() is { Length: > 0 } text) title = text;
         }
-        catch (JsonException) { /* keine ProblemDetails */ }
+        catch (JsonException) { /* no ProblemDetails */ }
         throw new ApiException(title, (int)res.StatusCode);
     }
 }
@@ -183,7 +183,7 @@ public sealed record AuthInfo(string? UserDetails, string? IdentityProvider, Lis
 
 public static class Errors
 {
-    /// <summary>401/403 heißt fast immer: noch nicht eingeloggt – dann eine Anleitung statt des rohen Fehlers.</summary>
+    /// <summary>401/403 almost always means: not signed in yet - then show instructions instead of the raw error.</summary>
     public static string Friendly(Exception ex, Ui t) => ex is ApiException { Status: 401 or 403 }
         ? t["Bitte zuerst anmelden: /.auth/login/aad öffnen, Benutzername wählen und im Rollen-Feld 'admin' eintragen (lokal simuliert die SWA-CLI den Login)."]
         : t[ex.Message];
@@ -238,7 +238,7 @@ public sealed record QuizInfo(Dictionary<string, string> Answers, List<string> P
 }
 public sealed record StepRunInfo(string StepId, string StepKey, int Phase, int Status, string? Error, int Attempts, DateTimeOffset? FinishedAt);
 
-/// <summary>Enum-Zahlen der API lesbar machen (Reihenfolge = Serverdefinition).</summary>
+/// <summary>Make the enum numbers of the API readable (order = server definition).</summary>
 public static class Labels
 {
     private static readonly string[] SubmissionStates = { "In Arbeit", "Wartet auf Bestätigung", "Fehler", "Fertig" };

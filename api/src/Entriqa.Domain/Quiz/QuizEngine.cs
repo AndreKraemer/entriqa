@@ -4,8 +4,8 @@ using Entriqa.Domain.Forms;
 namespace Entriqa.Domain.Quiz;
 
 /// <summary>
-/// Läuft den Pfad durch die Weichen nach, zählt Punkte, normiert auf das Pfad-Maximum und bestimmt das Ergebnis.
-/// Reine Domänenlogik ohne Abhängigkeiten – identisch für Auswertung (Server) und Prüfung (Veröffentlichen).
+/// Walks the path through the branches, counts points, normalizes against the path maximum and picks the result.
+/// Pure domain logic without dependencies - identical for scoring (server) and checking (publishing).
 /// </summary>
 public static class QuizEngine
 {
@@ -50,9 +50,9 @@ public static class QuizEngine
     }
 
     /// <summary>
-    /// Findings nach dem Selbsttest-Muster: Texte der gewählten Optionen, priorisiert, max. n Stück;
-    /// bei weniger als zwei mit dem Warn-Template über die 1-Punkt-Themen aufgefüllt, ganz ohne Treffer der Leertext.
-    /// Erwartet eine bereits lokalisierte Definition (Texte lösen als einfacher String auf).
+    /// Findings following the self-assessment pattern: texts of the chosen options, prioritized, at most n of them;
+    /// with fewer than two filled up from the one-point topics via the warning template, without any hit the empty text.
+    /// Expects an already localized definition (texts resolve as plain strings).
     /// </summary>
     private static IReadOnlyList<string>? ComputeFindings(QuizDefinition quiz, IReadOnlyList<string> path, IReadOnlyDictionary<string, string> taken)
     {
@@ -87,7 +87,7 @@ public static class QuizEngine
         return findings;
     }
 
-    /// <summary>Prüfung beim Veröffentlichen: Sprungziele existieren, keine Schleifen, alles erreichbar, Ergebnisse lückenlos.</summary>
+    /// <summary>Check when publishing: jump targets exist, no loops, everything reachable, results without gaps.</summary>
     public static IReadOnlyList<string> Check(QuizDefinition quiz)
     {
         var issues = new List<string>();

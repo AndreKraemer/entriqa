@@ -7,10 +7,10 @@ using Entriqa.Domain.UseCases;
 namespace Entriqa.Application.Pipeline.Steps;
 
 /// <summary>
-/// Double-Opt-In, selbst gebaut: verschickt die Bestätigungsmail über Brevo, der Link zeigt auf die statische
-/// Bestätigungsseite (/bestaetigen/?t=…), deren Button per POST /api/confirm bestätigt.
-/// Alle Schritte danach laufen erst nach der Bestätigung (SplitsPhase). Der Nachweis (Zeitpunkt, IP-Hash,
-/// Einwilligungstext in der Formularversion) liegt bei uns.
+/// Double opt-in, built in house: sends the confirmation mail through Brevo, the link points at the static
+/// confirmation page (/bestaetigen/?t=…) whose button confirms via POST /api/confirm.
+/// Every step after it runs only once confirmed (SplitsPhase). The evidence (timestamp, IP hash,
+/// consent text inside the form version) stays with us.
 /// </summary>
 public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenService tokens) : ISubmissionStep
 {
@@ -37,10 +37,10 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {
-        if (ctx.Submission.IsConfirmed) return StepResult.Ok;              // erneuter Lauf nach Bestätigung: nichts zu tun
+        if (ctx.Submission.IsConfirmed) return StepResult.Ok;              // another run after confirmation: nothing to do
         var token = tokens.Issue(FormTokenService.KindConfirm, ctx.Submission.Id);
-        // Link zeigt auf die statische Bestätigungsseite; erst deren Button macht den POST auf /api/confirm.
-        // Nie direkt auf einen GET-Endpunkt – Link-Scanner (Outlook SafeLinks & Co.) würden das Opt-in bestätigen.
+        // The link points at the static confirmation page; only its button posts to /api/confirm.
+        // Never straight at a GET endpoint - link scanners (Outlook SafeLinks and friends) would confirm the opt-in.
         var confirmUrl = $"{ctx.Options.BaseUrl.TrimEnd('/')}{ctx.Options.ConfirmPagePath}?t={Uri.EscapeDataString(token)}";
 
         var parameters = new Dictionary<string, object?>

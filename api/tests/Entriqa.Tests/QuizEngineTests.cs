@@ -8,9 +8,9 @@ namespace Entriqa.Tests;
 public class QuizEngineTests
 {
     [Fact]
-    public void Follows_branch_and_normalizes_on_path_maximum()
+    public void GivenAnsweredBranch_WhenEvaluating_ThenPointsAreNormalizedAgainstThePathMaximum()
     {
-        // q1=a (0) → q1b=c (2) → q2=b (2): 4 von max 2+2+2 = 6 → 67 % → Mitte
+        // q1=a (0) -> q1b=c (2) -> q2=b (2): 4 out of max 2+2+2 = 6 -> 67 % -> "Mitte"
         var outcome = QuizEngine.Evaluate(TestData.Quiz(), new Dictionary<string, string> { ["q1"] = "a", ["q1b"] = "c", ["q2"] = "b", ["ignored"] = "x" });
 
         Assert.Equal(new[] { "q1", "q1b", "q2" }, outcome.Path);
@@ -23,9 +23,9 @@ public class QuizEngineTests
     }
 
     [Fact]
-    public void Skipped_question_does_not_count_towards_maximum()
+    public void GivenBranchSkipsAQuestion_WhenEvaluating_ThenTheSkippedQuestionDoesNotCountTowardsTheMaximum()
     {
-        // q1=c (2) → q2=b (2): 4 von 4 = 100 % → Modern (q1b nie gesehen)
+        // q1=c (2) -> q2=b (2): 4 out of 4 = 100 % -> "Modern" (q1b never seen)
         var outcome = QuizEngine.Evaluate(TestData.Quiz(), new Dictionary<string, string> { ["q1"] = "c", ["q2"] = "b", ["q1b"] = "c" });
 
         Assert.Equal(100, outcome.Pct);
@@ -34,7 +34,7 @@ public class QuizEngineTests
     }
 
     [Fact]
-    public void Jump_to_result_wins_over_points()
+    public void GivenAnswerJumpingStraightToAResult_WhenEvaluating_ThenTheJumpWinsOverThePointScore()
     {
         var outcome = QuizEngine.Evaluate(TestData.Quiz(), new Dictionary<string, string> { ["q1"] = "a", ["q1b"] = "a" });
 
@@ -44,14 +44,14 @@ public class QuizEngineTests
     }
 
     [Fact]
-    public void Missing_answer_on_path_is_validation_error()
+    public void GivenAnswerMissingOnThePath_WhenEvaluating_ThenAValidationErrorNamesThatQuestion()
     {
         var ex = Assert.Throws<ValidationException>(() => QuizEngine.Evaluate(TestData.Quiz(), new Dictionary<string, string> { ["q1"] = "a" }));
         Assert.Equal("q1b", ex.Errors[0].Field);
     }
 
     [Fact]
-    public void Check_detects_loops_unreachable_and_gaps()
+    public void GivenQuizWithLoopUnreachableQuestionAndScoreGap_WhenChecking_ThenAllThreeAreReported()
     {
         var quiz = TestData.Quiz() with
         {
@@ -72,5 +72,5 @@ public class QuizEngineTests
     }
 
     [Fact]
-    public void Check_passes_for_valid_quiz() => Assert.Empty(QuizEngine.Check(TestData.Quiz()));
+    public void GivenValidQuiz_WhenChecking_ThenNoIssuesAreReported() => Assert.Empty(QuizEngine.Check(TestData.Quiz()));
 }

@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace Entriqa.Domain.Forms;
 
 /// <summary>
-/// Ein besucherseitiger Text: entweder ein einfacher String (gilt für alle Sprachen) oder ein Objekt
-/// je Locale ({"de": "…", "en": "…"}). Im JSON der Definition sind beide Formen gültig; die Auslieferung
-/// (PublicFormView) und die Verarbeitung (Validator, Steps, QuizEngine) arbeiten immer auf der über
-/// <see cref="FormDefinition.Localize"/> aufgelösten, einsprachigen Fassung.
+/// A visitor-facing text: either a plain string (applies to every language) or an object
+/// per locale ({"de": "…", "en": "…"}). Both forms are valid in the definition JSON; delivery
+/// (PublicFormView) and processing (validator, steps, QuizEngine) always work on the single-language
+/// form resolved via <see cref="FormDefinition.Localize"/>.
 /// </summary>
 [JsonConverter(typeof(LTextConverter))]
 public sealed class LText
@@ -20,17 +20,17 @@ public sealed class LText
 
     public bool IsEmpty => _single is null && (_map is null || _map.Count == 0);
 
-    /// <summary>Text für die Sprache; Fallback: erster vorhandener Eintrag.</summary>
+    /// <summary>Text for that language; fallback: the first entry present.</summary>
     public string Resolve(string? lang) =>
         _single
         ?? (lang is not null && _map is not null && _map.TryGetValue(lang, out var v) ? v : null)
         ?? _map?.Values.FirstOrDefault()
         ?? string.Empty;
 
-    /// <summary>Hat der Text eine Fassung für diese Sprache (einfacher String gilt für alle)?</summary>
+    /// <summary>Does the text have a version for this language (a plain string covers all)?</summary>
     public bool Covers(string lang) => _single is not null || (_map?.ContainsKey(lang) ?? false);
 
-    /// <summary>Auf eine Sprache eingedampfte Kopie – danach verhält sich der Text wie ein einfacher String.</summary>
+    /// <summary>Copy reduced to one language - afterwards the text behaves like a plain string.</summary>
     public LText Localized(string? lang) => _single is not null ? this : new LText(Resolve(lang));
 
     public static implicit operator LText(string s) => new(s);

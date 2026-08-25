@@ -13,8 +13,8 @@ using Entriqa.Domain.Validation;
 namespace Entriqa.Application.UseCases;
 
 /// <summary>
-/// Der Kernablauf: Definition laden → Spam-Prüfung → Validierung → Quiz auswerten → speichern → Inline-Schritte → Antwort.
-/// Linear und sichtbar, keine Basisklasse (Solution Standard §13.2).
+/// The core flow: load the definition -> spam check -> validation -> quiz scoring -> save -> inline steps -> response.
+/// Linear and visible, no base class (Solution Standard §13.2).
 /// </summary>
 internal sealed class SubmitFormUseCase(
     ITryGetPublishedFormQuery getPublished,
@@ -30,7 +30,7 @@ internal sealed class SubmitFormUseCase(
     TimeProvider time,
     ILogger<SubmitFormUseCase> log) : ISubmitFormUseCase
 {
-    // Table-Storage-Property-Grenze ist 64 KB (32K UTF-16-Zeichen); Puffer für JSON-Overhead und Escaping.
+    // The table storage property limit is 64 KB (32K UTF-16 characters); buffer for JSON overhead and escaping.
     private const int MaxValuesChars = 28_000;
 
     public async Task<SubmitFormResult> ExecuteAsync(SubmitFormRequest request, CancellationToken ct = default)
@@ -39,22 +39,22 @@ internal sealed class SubmitFormUseCase(
         var published = await getPublished.ExecuteAsync(request.Slug, ct)
             ?? throw new NotFoundException(ErrorCodes.FormNotFound, $"Formular '{request.Slug}' ist nicht veröffentlicht.");
         var locale = published.Definition.MatchLocale(request.Lang);
-        var def = published.Definition.Localize(locale);                    // ab hier ist alles einsprachig (Validator, Steps, Quiz)
+        var def = published.Definition.Localize(locale);                    // from here on everything is single-language (validator, steps, quiz)
 
-        // 1. Spam: Honeypot → stillschweigend "Erfolg", damit der Bot nichts lernt.
+        // 1. Spam: honeypot -> silent "success" so that the bot learns nothing.
         if (!string.IsNullOrEmpty(request.Honeypot))
         {
             log.LogInformation("Honeypot ausgelöst für {Slug}", request.Slug);
             return new SubmitFormResult("ignored", CompletionOf(def), null, null);
         }
 
-        // 2. Token: signiert, zum Formular passend, mindestens MinSubmitSeconds alt, höchstens MaxSubmitHours.
-        //    Die Nonce wird erst NACH der Validierung verbraucht (Schritt 5) – ein Validierungsfehler
-        //    darf den Token nicht verbrennen, sonst scheitert der korrigierte zweite Versuch mit "replayed".
+        // 2. Token: signed, matching the form, at least MinSubmitSeconds old, at most MaxSubmitHours.
+        //    The nonce is only consumed AFTER the validation (step 5) - a validation error
+        //    must not burn the token, or the corrected second attempt fails with "replayed".
         var payload = tokens.Validate(request.Token, FormTokenService.KindForm, request.Slug,
             TimeSpan.FromSeconds(o.MinSubmitSeconds), TimeSpan.FromHours(o.MaxSubmitHours));
 
-        // 3. Rate-Limit je IP-Hash und Zeitfenster.
+        // 3. Rate limit per IP hash and time window.
         var ipHash = ipHasher.Hash(request.ClientIp);
         if (ipHash is not null)
         {
@@ -64,14 +64,14 @@ internal sealed class SubmitFormUseCase(
                 throw new AppException(ErrorCodes.RateLimited, "Zu viele Einsendungen – bitte später erneut versuchen.", 429);
         }
 
-        // 4. Validierung gegen die Definition (alle Fehler auf einmal) und Quiz-Auswertung (läuft den Pfad selbst nach).
+        // 4. Validation against the definition (all errors at once) and quiz scoring (walks the path itself).
         var values = CollectValues(def, request.Values);
         if (values.Sum(kv => kv.Key.Length + kv.Value.Length + 8) > MaxValuesChars)
             throw new ValidationException(new[] { new FieldError("", ValidationMessages.Get(locale, ValidationMessages.TooBig)) });
         FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains);
         var quiz = def.Quiz is null ? null : QuizEngine.Evaluate(def.Quiz, request.Answers!);
 
-        // 5. Nonce verbrauchen (jetzt erst – die Eingaben sind gültig) und speichern, bevor irgendein Schritt läuft.
+        // 5. Consume the nonce (only now - the input is valid) and save before any step runs.
         if (!await consumeNonce.ExecuteAsync(payload.Nonce, payload.IssuedAt.AddHours(o.MaxSubmitHours), ct))
             throw new SecurityTokenException(ErrorCodes.TokenReplayed, "Dieses Formular wurde bereits abgeschickt – bitte Seite neu laden.");
         var nowUtc = time.GetUtcNow();
@@ -96,7 +96,7 @@ internal sealed class SubmitFormUseCase(
         await AdoptUploadsAsync(def, submission, ct);
         await store.ExecuteAsync(submission, ct);
 
-        // 6. Inline-Schritte; Deferred bleiben Pending und werden per Run-Token vom Client angestoßen.
+        // 6. Inline steps; deferred ones stay pending and are triggered by the client with the run token.
         var deferredLeft = await pipeline.RunAsync(submission, def, published.Version, RunMode.Inline, null, ct);
         await save.ExecuteAsync(submission, ct);
 
@@ -111,9 +111,9 @@ internal sealed class SubmitFormUseCase(
     }
 
     /// <summary>
-    /// Hochgeladene Dateien wandern von uploads/ (verwaisbar, Housekeeping räumt nach 2 Tagen)
-    /// nach attachments/ und in die Artefakte der Einsendung – damit hängen sie an deren Lebenszyklus
-    /// (Löschen/Retention entsorgt die Blobs mit).
+    /// Uploaded files move from uploads/ (orphanable, housekeeping clears them after 2 days)
+    /// to attachments/ and into the artifacts of the submission - that way they hang on its life cycle
+    /// (deletion and retention dispose of the blobs with it).
     /// </summary>
     private async Task AdoptUploadsAsync(FormDefinition def, Submission submission, CancellationToken ct)
     {
@@ -140,7 +140,7 @@ internal sealed class SubmitFormUseCase(
     private static CompletionView CompletionOf(FormDefinition def) =>
         new(def.Completion.Mode, def.Completion.Message?.ToString(), def.Completion.Url?.ToString());
 
-    /// <summary>Nur Werte zu definierten Feldern übernehmen; Mehrfachauswahl normalisieren; hidden-Feste-Werte setzen.</summary>
+    /// <summary>Take over values of defined fields only; normalize multi-select; set fixed hidden values.</summary>
     private static Dictionary<string, string> CollectValues(FormDefinition def, Dictionary<string, string> incoming)
     {
         var values = new Dictionary<string, string>();

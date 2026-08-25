@@ -24,7 +24,7 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
         var attributes = new Dictionary<string, object?>();
         if (ctx.FirstName is not null) attributes["VORNAME"] = ctx.FirstName;
         if (LastNameOf(ctx.Form, ctx.Submission.Values) is { } lastName) attributes["NACHNAME"] = lastName;
-        if (ctx.Submission.Locale is { Length: > 0 } locale) attributes["SPRACHE"] = locale;   // Segmentierung: Kampagnen in der richtigen Sprache
+        if (ctx.Submission.Locale is { Length: > 0 } locale) attributes["SPRACHE"] = locale;   // segmentation: campaigns in the right language
         if (ctx.Submission.IsConfirmed)
         {
             attributes["DOUBLE_OPT-IN"] = 1;                                   // Brevo-Standardattribut (Kategorie: 1 = Ja)
@@ -39,7 +39,7 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
         return StepResult.Ok;
     }
 
-    /// <summary>Nachname per Label-Heuristik – Gegenstück zur Vornamen-Erkennung beim Absenden.</summary>
+    /// <summary>Last name by label heuristic - the counterpart to the first-name detection on submit.</summary>
     private static string? LastNameOf(FormDefinition def, IReadOnlyDictionary<string, string> values)
     {
         static string L(FieldDefinition f) => f.Label.ToString();
@@ -47,7 +47,7 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
                     && (L(x).Contains("Nachname", StringComparison.OrdinalIgnoreCase) || L(x).Contains("last name", StringComparison.OrdinalIgnoreCase)));
         if (f is not null) return values.TryGetValue(f.Id, out var v) && v.Length > 0 ? v : null;
 
-        // Nur ein "Name"-Feld: alles nach dem ersten Leerzeichen (dieselbe Aufteilung liefert den Vornamen).
+        // Only one "name" field: everything after the first space (the same split yields the first name).
         var name = def.Fields.FirstOrDefault(x => x.Type == FieldTypes.Text && L(x).Equals("Name", StringComparison.OrdinalIgnoreCase));
         if (name is null || !values.TryGetValue(name.Id, out var full)) return null;
         var parts = full.Split(' ', 2, StringSplitOptions.TrimEntries);

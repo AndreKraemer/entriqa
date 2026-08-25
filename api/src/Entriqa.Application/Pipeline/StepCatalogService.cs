@@ -2,7 +2,7 @@ using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Application.Pipeline;
 
-/// <summary>Katalog für den Admin: alles, was per DI als ISubmissionStep registriert ist.</summary>
+/// <summary>Catalog for the admin: everything registered as an ISubmissionStep via DI.</summary>
 public sealed class StepCatalogService(IEnumerable<ISubmissionStep> steps)
 {
     public IReadOnlyList<StepDescriptor> Describe() => steps
