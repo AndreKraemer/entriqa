@@ -164,6 +164,8 @@
     [Parameter] public List<FieldRef> FormFields { get; set; } = new();
     [Parameter] public EventCallback OnRemove { get; set; }
     [Parameter] public EventCallback<int> OnMove { get; set; }
+    /// <summary>Reports model changes to the owning page. Every usage must bind this, otherwise only this
+    /// component re-renders and the preview stays stale (guarded by EditorChangedBindingTests).</summary>
     [Parameter] public EventCallback Changed { get; set; }
 
     public sealed record QuizResultRef(string Id, string Title);

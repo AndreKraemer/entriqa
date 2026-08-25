@@ -127,6 +127,8 @@ else
 @code {
     [Parameter, EditorRequired] public QuizModel Quiz { get; set; } = default!;
     [Parameter, EditorRequired] public List<string> Locales { get; set; } = default!;
+    /// <summary>Reports model changes to the owning page. Every usage must bind this, otherwise only this
+    /// component re-renders and the preview stays stale (guarded by EditorChangedBindingTests).</summary>
     [Parameter] public EventCallback Changed { get; set; }
 
     private HashSet<string> JumpTargets => Quiz.Questions
