@@ -172,6 +172,8 @@
     [Parameter] public List<FieldModel>? AllFields { get; set; }
     [Parameter] public EventCallback OnRemove { get; set; }
     [Parameter] public EventCallback<int> OnMove { get; set; }
+    /// <summary>Reports model changes to the owning page. Every usage must bind this, otherwise only this
+    /// component re-renders and the preview stays stale (guarded by EditorChangedBindingTests).</summary>
     [Parameter] public EventCallback Changed { get; set; }
 
     /// <summary>Frühere Felder, auf die eine Sichtbarkeitsbedingung zeigen darf (werttragend, nicht versteckt).</summary>

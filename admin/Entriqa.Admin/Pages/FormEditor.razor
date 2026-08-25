@@ -113,15 +113,15 @@ else
                 @if (_selTexts || _selField is null)
                 {
                     <div class="overline b-title">@T["Texte"]</div>
-                    <LTextInput Model="_model.Intro" Locales="_model.Locales" ActiveLocale="@Lang" Label="@T["Einleitungstext"]" Multiline="true" />
-                    <LTextInput Model="_model.SubmitLabel" Locales="_model.Locales" ActiveLocale="@Lang" Label="@T["Absende-Button"]" />
+                    <LTextInput Model="_model.Intro" Locales="_model.Locales" ActiveLocale="@Lang" Label="@T["Einleitungstext"]" Multiline="true" Changed="StateHasChanged" />
+                    <LTextInput Model="_model.SubmitLabel" Locales="_model.Locales" ActiveLocale="@Lang" Label="@T["Absende-Button"]" Changed="StateHasChanged" />
                     <p class="hint">@T["Felder links oder direkt in der Vorschau anklicken, um sie zu bearbeiten."]</p>
                 }
                 else
                 {
                     <div class="overline b-title">@T["Feld-Eigenschaften"]</div>
                     <FieldEditor Field="_selField" Locales="_model.Locales" ActiveLocale="@Lang" Panel="true"
-                                 AllFields="_model.Fields" OnRemove="RemoveSelected" OnMove="MoveSelected" />
+                                 AllFields="_model.Fields" OnRemove="RemoveSelected" OnMove="MoveSelected" Changed="StateHasChanged" />
                 }
             </div>
         </div>
@@ -135,7 +135,7 @@ else
         }
         else
         {
-            <QuizEditor Quiz="_model.Quiz" Locales="_model.Locales" />
+            <QuizEditor Quiz="_model.Quiz" Locales="_model.Locales" Changed="StateHasChanged" />
         }
     }
     else if (_tab == "pipeline" && _model is not null)
@@ -161,7 +161,7 @@ else
                 <StepEditor Step="step" Descriptor="DescriptorOf(step.Key)" Directory="_directory"
                             ProducedBefore="ProducedBefore(index)" QuizResults="QuizRefs" FormFields="FieldRefs"
                             OnRemove="() => _model.Steps.RemoveAt(index)"
-                            OnMove="delta => Move(_model.Steps, index, delta)" />
+                            OnMove="delta => Move(_model.Steps, index, delta)" Changed="StateHasChanged" />
             }
             <div class="flow-connector"></div>
             <div class="flow-add">
@@ -187,11 +187,11 @@ else
             </div>
             @if (_model.CompletionMode is "message" or "result")
             {
-                <LTextInput Model="_model.CompletionMessage" Locales="_model.Locales" Label="@T["Meldung"]" Multiline="true" />
+                <LTextInput Model="_model.CompletionMessage" Locales="_model.Locales" Label="@T["Meldung"]" Multiline="true" Changed="StateHasChanged" />
             }
             @if (_model.CompletionMode == "redirect")
             {
-                <LTextInput Model="_model.CompletionUrl" Locales="_model.Locales" Label="@T["Ziel-URL (z. B. /danke/)"]" />
+                <LTextInput Model="_model.CompletionUrl" Locales="_model.Locales" Label="@T["Ziel-URL (z. B. /danke/)"]" Changed="StateHasChanged" />
             }
             <p class="hint">@T["Spam-Schutz ist immer aktiv: Honeypot, Mindestalter 3 Sekunden, Rate-Limit je Absender – ohne Cookies, ohne Captcha."]</p>
         </div>
