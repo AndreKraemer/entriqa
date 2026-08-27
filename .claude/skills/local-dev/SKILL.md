@@ -5,15 +5,18 @@ description: Run and debug Entriqa locally — Azurite, the Functions API, the B
 
 # Running Entriqa locally
 
-`node dev/start.mjs --site <path-to-a-hugo-site>` starts everything. The single most
-important fact: **the Hugo site is not in this repository.** This repo ships the Hugo
-*module*; you need a separate Hugo site that imports it. Without `--site` the script falls
-back to `ENTRIQA_SITE_ROOT` and then to the current directory, and exits with
-"Keine Hugo-Site gefunden" if neither looks like one (no `hugo.toml`/`hugo.yaml`/`config.toml`).
+`npm run dev` (or `node dev/start.mjs`) starts everything. With no `--site` argument it uses
+the bundled sample site in `samples/site`, so a fresh clone runs with nothing external; the
+order is `--site <path>`, then `ENTRIQA_SITE_ROOT`, then the bundled site. It exits with
+"Keine Hugo-Site gefunden" if a given path does not look like a site (no
+`hugo.toml`/`hugo.yaml`/`config.toml`).
 
 The script rewrites the site's module import via `HUGO_MODULE_REPLACEMENTS`
 (`github.com/andrekraemer/entriqa/hugo` → this clone), so edits under `hugo/` take effect
-immediately without publishing a module version.
+immediately without publishing a module version. That path must be **absolute** — Hugo does
+not resolve a relative module replacement against the project directory on Windows and fails
+with "module does not exist". `scripts/hugo.mjs` (`npm run sample:build` / `sample:serve`)
+does the same for the sample site without Azurite and the API.
 
 ## What comes up
 
@@ -42,7 +45,8 @@ On Windows the Core Tools are found inside the Visual Studio installation
 
 `Entriqa__SeedFolder` is `seed/forms` in `local.settings.json`. On startup in Development,
 `DevSeedHostedService` publishes every `seed/forms/*.json` whose slug is not published yet —
-currently just `kontakt.json`. It **skips** forms that already exist, so editing a seed file
+`kontakt`, `beratung`, `whitepaper` and `selbsttest`, which the sample site embeds one per
+page. It **skips** forms that already exist, so editing a seed file
 does nothing until you delete the form in the admin or wipe `dev/.azurite`. That is the usual
 reason a seed change "does not show up".
 
