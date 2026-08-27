@@ -15,7 +15,7 @@ public sealed class LText
     private readonly string? _single;
     private readonly IReadOnlyDictionary<string, string>? _map;
 
-    public LText(string single) => _single = single;
+    public LText(string text) => _single = text;
     public LText(IReadOnlyDictionary<string, string> map) => _map = map;
 
     public bool IsEmpty => _single is null && (_map is null || _map.Count == 0);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -81,11 +82,11 @@ internal sealed class ExportSubmissionsCsvUseCase(
         {
             var row = new List<string?>
             {
-                s.Id, s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"), s.Locale, s.State.ToString(), s.Handling,
-                s.ConfirmedAt?.ToString("yyyy-MM-dd HH:mm:ss"), s.Source,
+                s.Id, s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), s.Locale, s.State.ToString(), s.Handling,
+                s.ConfirmedAt?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), s.Source,
             };
             row.AddRange(fields.Select(f => s.Values.GetValueOrDefault(f.Id)));
-            if (def.Quiz is not null) { row.Add(s.Quiz?.ResultId); row.Add(s.Quiz?.Pct.ToString()); }
+            if (def.Quiz is not null) { row.Add(s.Quiz?.ResultId); row.Add(s.Quiz?.Pct.ToString(CultureInfo.InvariantCulture)); }
             sb.AppendLine(string.Join(';', row.Select(Csv)));
         }
         return sb.ToString();

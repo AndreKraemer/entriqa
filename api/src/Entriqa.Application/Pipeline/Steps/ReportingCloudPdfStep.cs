@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
@@ -40,7 +41,7 @@ public sealed class ReportingCloudPdfStep(IMergeDocumentPort merge, IStoreArtifa
         {
             ["Vorname"] = ctx.FirstName ?? "",
             ["Email"] = ctx.Email,
-            ["Datum"] = time.GetUtcNow().ToString("dd.MM.yyyy"),
+            ["Datum"] = time.GetUtcNow().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
             ["Formular"] = ctx.Form.Name,
             ["QuizVersion"] = ctx.FormVersion,
             ["Felder"] = ctx.LabeledValues().Select(kv => new { Label = kv.Key, Wert = kv.Value }).ToList(),

@@ -1,0 +1,81 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_size = 4
+max_line_length = 140
+
+[*.{razor,cshtml}]
+indent_size = 4
+
+[*.{json,js,mjs,ts,yml,yaml,toml,css,html}]
+indent_size = 2
+
+[*.{csproj,props,targets,config,xml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# --- usings ---
+dotnet_sort_system_directives_first = false
+csharp_using_directive_placement = outside_namespace:silent
+
+# --- language style the codebase already follows ---
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_expression_bodied_methods = when_on_single_line:silent
+csharp_style_expression_bodied_properties = when_on_single_line:silent
+csharp_style_var_for_built_in_types = true:silent
+csharp_style_var_when_type_is_apparent = true:silent
+csharp_style_var_elsewhere = true:silent
+csharp_prefer_braces = when_multiline:silent
+csharp_style_prefer_primary_constructors = true:silent
+dotnet_style_prefer_conditional_expression_over_return = true:silent
+dotnet_style_prefer_conditional_expression_over_assignment = true:silent
+
+# --- naming ---
+dotnet_naming_rule.types_pascal.symbols = type_symbols
+dotnet_naming_rule.types_pascal.style = pascal_case
+dotnet_naming_rule.types_pascal.severity = warning
+dotnet_naming_symbols.type_symbols.applicable_kinds = class,struct,interface,enum,delegate
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = suggestion
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+
+# --- rules deliberately not build-breaking ---
+# Formatting nits must not fail a build; they are a review concern, not a correctness one.
+dotnet_diagnostic.IDE0055.severity = suggestion
+# "Remove unnecessary using" - noisy with ImplicitUsings, still worth seeing in the IDE.
+dotnet_diagnostic.IDE0005.severity = suggestion
+
+# CA1859 wants concrete types in signatures for micro-performance. On code paths that run once
+# per submission the gain is unmeasurable, while interface-typed signatures are exactly the
+# discipline the architecture tests enforce elsewhere. Visible in the IDE, not build-breaking.
+dotnet_diagnostic.CA1859.severity = suggestion
+
+# CA1848/CA1873 push LoggerMessage source-generated delegates for high-throughput logging.
+# This is an Azure Functions app handling form submissions - the log volume is orders of
+# magnitude below where that pays for itself, and the delegates would obscure the call sites.
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion
+
+# CA1822 would push members out of injectable collaborators: SwaPrincipalReader.UserName is
+# called through the injected instance at four sites, and making it static couples them to the
+# concrete type for no measurable gain.
+dotnet_diagnostic.CA1822.severity = suggestion
+# CA1716 guards namespaces of cross-language libraries against reserved words. Entriqa.Functions
+# is an application's host, not a library anyone references from another language.
+dotnet_diagnostic.CA1716.severity = suggestion

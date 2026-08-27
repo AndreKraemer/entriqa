@@ -1,3 +1,4 @@
+using System.Globalization;
 using Azure;
 using Azure.Data.Tables;
 using Entriqa.Application.Ports;
@@ -24,7 +25,7 @@ internal sealed class RegisterRateLimitHitCommand(TableStorage storage) : IRegis
     public async Task<int> ExecuteAsync(string ipHash, DateTimeOffset windowStart, CancellationToken ct = default)
     {
         var table = await storage.GetAsync("RateLimits");
-        var rowKey = windowStart.UtcTicks.ToString();
+        var rowKey = windowStart.UtcTicks.ToString(CultureInfo.InvariantCulture);
         for (var attempt = 0; attempt < 3; attempt++)
         {
             try

@@ -55,10 +55,10 @@ public static class FormSubmissionValidator
                         errors.Add(new(f.Id, m[ValidationMessages.BusinessEmail]));
                     break;
                 case FieldTypes.Text:
-                    if (value.Length > (f.MaxLength ?? 200)) errors.Add(new(f.Id, m[ValidationMessages.MaxLength].Replace("{max}", (f.MaxLength ?? 200).ToString())));
+                    if (value.Length > (f.MaxLength ?? 200)) errors.Add(new(f.Id, m[ValidationMessages.MaxLength].Replace("{max}", (f.MaxLength ?? 200).ToString(CultureInfo.InvariantCulture))));
                     break;
                 case FieldTypes.Textarea:
-                    if (value.Length > (f.MaxLength ?? 4000)) errors.Add(new(f.Id, m[ValidationMessages.MaxLength].Replace("{max}", (f.MaxLength ?? 4000).ToString())));
+                    if (value.Length > (f.MaxLength ?? 4000)) errors.Add(new(f.Id, m[ValidationMessages.MaxLength].Replace("{max}", (f.MaxLength ?? 4000).ToString(CultureInfo.InvariantCulture))));
                     break;
                 case FieldTypes.Number:
                     if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var n)

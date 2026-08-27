@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -11,6 +12,7 @@ namespace Entriqa.Admin.Services;
 /// </summary>
 public sealed class FormModel
 {
+
     public string Slug { get; set; } = "";
     public string Name { get; set; } = "";
     public string Type { get; set; } = "contact";
@@ -148,7 +150,7 @@ public sealed class FieldModel
             Type = o["type"]?.GetValue<string>() ?? "text",
             Required = o["required"]?.GetValue<bool>() ?? false,
             BusinessOnly = o["businessOnly"]?.GetValue<bool>() ?? false,
-            MaxLength = o["maxLength"]?.GetValue<int>().ToString() ?? "",
+            MaxLength = o["maxLength"]?.GetValue<int>().ToString(CultureInfo.InvariantCulture) ?? "",
             Min = o["min"]?.GetValue<decimal>().ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
             Max = o["max"]?.GetValue<decimal>().ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "",
             Source = o["source"]?.GetValue<string>() ?? "utm_source",
@@ -277,6 +279,9 @@ public sealed class StepModel
 /// </summary>
 public sealed class QuizModel
 {
+    /// <summary>One instance: the quiz check runs on every edit in the builder.</summary>
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+
     public string Scoring { get; set; } = "sum";
     public string CollectEmail { get; set; } = "optional";
     public List<QuizQuestionModel> Questions { get; } = new();
@@ -301,7 +306,7 @@ public sealed class QuizModel
         if (o["findings"] is JsonObject f)
         {
             q.HasFindings = true;
-            q.FindingsMax = f["max"]?.GetValue<int>().ToString() ?? "3";
+            q.FindingsMax = f["max"]?.GetValue<int>().ToString(CultureInfo.InvariantCulture) ?? "3";
             q.FindingsPriority = string.Join(", ", (f["priority"]?.AsArray() ?? new JsonArray()).Select(x => x!.GetValue<string>()));
             q.WarningTemplate.Load(f["warningTemplate"], locales);
             q.EmptyText.Load(f["emptyText"], locales);
@@ -336,7 +341,7 @@ public sealed class QuizModel
         try
         {
             var def = System.Text.Json.JsonSerializer.Deserialize<Entriqa.Domain.Forms.QuizDefinition>(
-                ToNode(locales).ToJsonString(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                ToNode(locales).ToJsonString(), WebJson);
             return def is null ? new[] { "Quiz ist leer." } : Entriqa.Domain.Quiz.QuizEngine.Check(def);
         }
         catch (Exception ex) { return new[] { "Prüfung nicht möglich: " + ex.Message }; }
@@ -393,7 +398,7 @@ public sealed class QuizOptionModel
 
     public static QuizOptionModel New(string id, string label, int points)
     {
-        var o = new QuizOptionModel { Id = id, Points = points.ToString() };
+        var o = new QuizOptionModel { Id = id, Points = points.ToString(CultureInfo.InvariantCulture) };
         o.Label.Set("de", label);
         return o;
     }
@@ -403,7 +408,7 @@ public sealed class QuizOptionModel
         var m = new QuizOptionModel
         {
             Id = o["id"]?.GetValue<string>() ?? "",
-            Points = o["points"]?.GetValue<int>().ToString() ?? "0",
+            Points = o["points"]?.GetValue<int>().ToString(CultureInfo.InvariantCulture) ?? "0",
             Next = o["next"]?.GetValue<string>() ?? "",
             Category = o["category"]?.GetValue<string>(),
         };
@@ -434,7 +439,7 @@ public sealed class QuizResultModel
 
     public static QuizResultModel New(string id, int min, int max, string title)
     {
-        var r = new QuizResultModel { Id = id, MinPct = min.ToString(), MaxPct = max.ToString() };
+        var r = new QuizResultModel { Id = id, MinPct = min.ToString(CultureInfo.InvariantCulture), MaxPct = max.ToString(CultureInfo.InvariantCulture) };
         r.Title.Set("de", title);
         return r;
     }
@@ -444,8 +449,8 @@ public sealed class QuizResultModel
         var r = new QuizResultModel
         {
             Id = o["id"]?.GetValue<string>() ?? "",
-            MinPct = o["minPct"]?.GetValue<int>().ToString() ?? "0",
-            MaxPct = o["maxPct"]?.GetValue<int>().ToString() ?? "100",
+            MinPct = o["minPct"]?.GetValue<int>().ToString(CultureInfo.InvariantCulture) ?? "0",
+            MaxPct = o["maxPct"]?.GetValue<int>().ToString(CultureInfo.InvariantCulture) ?? "100",
         };
         r.Title.Load(o["title"], locales);
         r.Body.Load(o["body"], locales);

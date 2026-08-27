@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
@@ -24,7 +25,7 @@ public sealed class LeadMagnetLinkStep(ICreateDownloadLinkPort links) : ISubmiss
         var hours = config.GetInt("hours") ?? 48;
         var uri = await links.CreateAsync(config.GetString("blob")!, TimeSpan.FromHours(hours), ct);
         ctx.Artifacts["download"] = uri.ToString();
-        ctx.Artifacts["downloadValidHours"] = hours.ToString();
+        ctx.Artifacts["downloadValidHours"] = hours.ToString(CultureInfo.InvariantCulture);
         return StepResult.Ok;
     }
 }

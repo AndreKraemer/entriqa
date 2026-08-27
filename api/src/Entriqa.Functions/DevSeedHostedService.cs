@@ -18,7 +18,7 @@ public sealed class DevSeedHostedService(
     IPublishFormVersionCommand publish,
     ILogger<DevSeedHostedService> log) : IHostedService
 {
-    public async Task StartAsync(CancellationToken ct)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         var folder = config["Entriqa:SeedFolder"];
         if (!env.IsDevelopment() || string.IsNullOrEmpty(folder)) return;
@@ -30,16 +30,16 @@ public sealed class DevSeedHostedService(
         {
             try
             {
-                var def = JsonSerializer.Deserialize<FormDefinition>(await File.ReadAllTextAsync(file, ct), json);
-                if (def is null || await getPublished.ExecuteAsync(def.Slug, ct) is not null) continue;
-                await publish.ExecuteAsync(def, "seed", ct);
+                var def = JsonSerializer.Deserialize<FormDefinition>(await File.ReadAllTextAsync(file, cancellationToken), json);
+                if (def is null || await getPublished.ExecuteAsync(def.Slug, cancellationToken) is not null) continue;
+                await publish.ExecuteAsync(def, "seed", cancellationToken);
                 log.LogInformation("Seed: {Slug} veröffentlicht", def.Slug);
             }
             catch (Exception ex) { log.LogWarning(ex, "Seed {File} übersprungen", file); }
         }
     }
 
-    public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>Search relative paths upwards from the output directory - works for func start, dotnet run and tests alike.</summary>
     private static string? ResolveSeedFolder(string folder)

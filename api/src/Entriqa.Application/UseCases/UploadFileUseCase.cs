@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Entriqa.Application.Ports;
 using Entriqa.Application.Security;
@@ -31,7 +32,7 @@ internal sealed class UploadFileUseCase(
             TimeSpan.Zero, TimeSpan.FromHours(options.Value.MaxSubmitHours));
 
         if (content.LongLength is 0 or > UploadRules.MaxBytes)
-            throw new AppException(ErrorCodes.Validation, ErrorMessages.UploadTooBig, AppException.Args("max", (UploadRules.MaxBytes / 1024 / 1024).ToString()));
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.UploadTooBig, AppException.Args("max", (UploadRules.MaxBytes / 1024 / 1024).ToString(CultureInfo.InvariantCulture)));
         if (!UploadRules.IsAllowed(fileName))
             throw new AppException(ErrorCodes.Validation, ErrorMessages.UploadType);
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
@@ -40,7 +41,7 @@ public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissio
             ["form"] = ctx.Form.Name,
             ["slug"] = ctx.Form.Slug,
             ["submissionId"] = ctx.Submission.Id,
-            ["receivedAt"] = ctx.Submission.CreatedAt.ToString("dd.MM.yyyy HH:mm"),
+            ["receivedAt"] = ctx.Submission.CreatedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture),
             ["source"] = ctx.Submission.Source,
             ["fields"] = ctx.LabeledValues().Select(kv => new { label = kv.Key, value = kv.Value }).ToList(),
             ["replyTo"] = ctx.Email,

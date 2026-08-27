@@ -269,7 +269,7 @@ else
             <p class="hint">@T["Shortcode in eine Hugo-Seite einfügen oder die eigenständige Adresse teilen. Beides zeigt immer die zuletzt veröffentlichte Version."]</p>
             <div class="snip"><code>{{&lt; entriqa "@Slug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< entriqa \"{Slug}\" >}}}}"))">@T["Kopieren"]</button></div>
             <div class="snip"><code>/f/@Slug/</code><button class="btn" @onclick="@(() => Copy($"/f/{Slug}/"))">@T["Kopieren"]</button></div>
-            <div class="actions"><button class="btn btn--primary" @onclick="() => _snippetDialog = false">@T["Fertig"]</button></div>
+            <div class="actions"><button class="btn btn--primary" @onclick="() => _snippetDialog = false">@T["Schließen"]</button></div>
         </div>
     </div>
 }

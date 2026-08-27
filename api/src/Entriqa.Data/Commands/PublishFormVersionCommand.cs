@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Azure;
 using Azure.Data.Tables;
@@ -24,7 +25,7 @@ internal sealed class PublishFormVersionCommand(TableStorage storage, TimeProvid
         var json = JsonSerializer.Serialize(definition, TableStorage.Json);
         await versions.UpsertEntityAsync(new FormVersionEntity
         {
-            PartitionKey = definition.Slug, RowKey = next.ToString("D4"), DefinitionJson = json, PublishedAt = now, PublishedBy = publishedBy,
+            PartitionKey = definition.Slug, RowKey = next.ToString("D4", CultureInfo.InvariantCulture), DefinitionJson = json, PublishedAt = now, PublishedBy = publishedBy,
         }, TableUpdateMode.Replace, ct);
 
         form.Name = definition.Name; form.Type = definition.Type; form.Status = "published";

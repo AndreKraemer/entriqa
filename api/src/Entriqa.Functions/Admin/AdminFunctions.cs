@@ -181,7 +181,7 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         var form = await req.ReadFormAsync(ct);
-        var file = form.Files.FirstOrDefault();
+        var file = form.Files.Count > 0 ? form.Files[0] : null;
         if (file is null) return new BadRequestResult();
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);

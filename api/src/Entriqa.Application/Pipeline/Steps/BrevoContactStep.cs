@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
@@ -28,12 +29,12 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
         if (ctx.Submission.IsConfirmed)
         {
             attributes["DOUBLE_OPT-IN"] = 1;                                   // Brevo-Standardattribut (Kategorie: 1 = Ja)
-            attributes["OPT_IN_DATE"] = ctx.Submission.ConfirmedAt!.Value.ToString("yyyy-MM-dd");
+            attributes["OPT_IN_DATE"] = ctx.Submission.ConfirmedAt!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
         if (config.GetString("attribute") is { Length: > 0 } attr && ctx.QuizResult is not null) attributes[attr] = ctx.QuizResult.Title;
         if (config.GetString("sourceAttribute") is { Length: > 0 } src && ctx.Submission.Source is not null) attributes[src] = ctx.Submission.Source;
         attributes["LAST_FORM"] = ctx.Form.Slug;
-        attributes["LAST_FORM_AT"] = time.GetUtcNow().ToString("yyyy-MM-dd");
+        attributes["LAST_FORM_AT"] = time.GetUtcNow().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         ctx.Submission.BrevoContactId = await contacts.UpsertAsync(ctx.Email!, config.GetIntList("listIds"), attributes, ct);
         return StepResult.Ok;

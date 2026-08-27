@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -38,24 +39,24 @@ public sealed class DevMailSinkAdapter(ILogger<DevMailSinkAdapter> log) : ISendT
         MailAttachment? attachment = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(Folder);
-        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
         var path = Path.Combine(Folder, $"{stamp}-template{templateId}-{Sanitize(toEmail)}.html");
 
         var html = new StringBuilder()
             .Append("<!doctype html><meta charset=\"utf-8\"><title>Dev-Mail</title>")
             .Append("<body style=\"font-family:system-ui;max-width:640px;margin:2rem auto\">")
-            .Append($"<h2>Dev-Mail (Brevo-Vorlage {templateId})</h2>")
-            .Append($"<p><b>An:</b> {Html(toName)} &lt;{Html(toEmail)}&gt;</p><table border=\"1\" cellpadding=\"6\" style=\"border-collapse:collapse\">");
+            .Append(CultureInfo.InvariantCulture, $"<h2>Dev-Mail (Brevo-Vorlage {templateId})</h2>")
+            .Append(CultureInfo.InvariantCulture, $"<p><b>An:</b> {Html(toName)} &lt;{Html(toEmail)}&gt;</p><table border=\"1\" cellpadding=\"6\" style=\"border-collapse:collapse\">");
         foreach (var (key, value) in parameters)
         {
             var text = value is null ? "" : value as string ?? JsonSerializer.Serialize(value);
             var cell = key.Contains("url", StringComparison.OrdinalIgnoreCase) && text.StartsWith("http", StringComparison.Ordinal)
                 ? $"<a href=\"{Html(text)}\">{Html(text)}</a>"
                 : Html(text);
-            html.Append($"<tr><td><b>{Html(key)}</b></td><td>{cell}</td></tr>");
+            html.Append(CultureInfo.InvariantCulture, $"<tr><td><b>{Html(key)}</b></td><td>{cell}</td></tr>");
         }
         html.Append("</table>");
-        if (attachment is not null) html.Append($"<p><b>Anhang:</b> {Html(attachment.FileName)} ({attachment.Content.Length:N0} Bytes)</p>");
+        if (attachment is not null) html.Append(CultureInfo.InvariantCulture, $"<p><b>Anhang:</b> {Html(attachment.FileName)} ({attachment.Content.Length:N0} Bytes)</p>");
         html.Append("</body>");
 
         await File.WriteAllTextAsync(path, html.ToString(), ct);

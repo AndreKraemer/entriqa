@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
@@ -68,7 +69,7 @@ public static class PayloadTemplate
         "submissionId" => ctx.Submission.Id,
         "receivedAt" => ctx.Submission.CreatedAt.ToString("O"),
         "locale" => ctx.Submission.Locale ?? "",
-        "quiz.pct" => ctx.Submission.Quiz?.Pct.ToString(),
+        "quiz.pct" => ctx.Submission.Quiz?.Pct.ToString(CultureInfo.InvariantCulture),
         "quiz.resultId" => ctx.Submission.Quiz?.ResultId,
         "quiz.resultTitle" => ctx.QuizResult?.Title.ToString(),
         "adminUrl" => $"{ctx.Options.BaseUrl.TrimEnd('/')}/admin/submissions/{Uri.EscapeDataString(ctx.Submission.Id)}",

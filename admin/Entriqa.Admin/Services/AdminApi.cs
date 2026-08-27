@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -244,8 +245,8 @@ public static class Labels
     private static readonly string[] SubmissionStates = { "In Arbeit", "Wartet auf Bestätigung", "Fehler", "Fertig" };
     private static readonly string[] StepStatuses = { "Ausstehend", "OK", "Wartet", "Fehlgeschlagen", "Blockiert", "Übersprungen" };
 
-    public static string SubmissionState(int s) => s >= 0 && s < SubmissionStates.Length ? SubmissionStates[s] : s.ToString();
-    public static string StepStatus(int s) => s >= 0 && s < StepStatuses.Length ? StepStatuses[s] : s.ToString();
+    public static string SubmissionState(int s) => s >= 0 && s < SubmissionStates.Length ? SubmissionStates[s] : s.ToString(CultureInfo.InvariantCulture);
+    public static string StepStatus(int s) => s >= 0 && s < StepStatuses.Length ? StepStatuses[s] : s.ToString(CultureInfo.InvariantCulture);
     public static string StateCss(int s) => s switch { 0 => "chip chip--busy", 1 => "chip chip--wait", 2 => "chip chip--err", 3 => "chip chip--ok", _ => "chip" };
     public static string StepCss(int s) => s switch { 1 => "chip chip--ok", 3 => "chip chip--err", 4 => "chip chip--err", 2 => "chip chip--wait", 5 => "chip", _ => "chip chip--busy" };
 }

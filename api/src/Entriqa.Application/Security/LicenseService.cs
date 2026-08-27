@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -51,7 +52,7 @@ public sealed class LicenseService(IOptions<EntriqaOptions> options, TimeProvide
 
     public static string Issue(string privateKeyPkcs8Base64, string id, string plan, DateOnly until)
     {
-        var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { id, plan, until = until.ToString("yyyy-MM-dd") }));
+        var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { id, plan, until = until.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }));
         using var ecdsa = ECDsa.Create();
         ecdsa.ImportPkcs8PrivateKey(Convert.FromBase64String(privateKeyPkcs8Base64), out _);
         var signature = ecdsa.SignData(payload, HashAlgorithmName.SHA256);

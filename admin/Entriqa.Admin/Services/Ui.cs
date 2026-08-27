@@ -1,3 +1,4 @@
+using System.Globalization;
 namespace Entriqa.Admin.Services;
 
 /// <summary>
@@ -19,7 +20,7 @@ public sealed class Ui
 
     public string this[string text] => Lang == "de" ? text : En.GetValueOrDefault(text, text);
 
-    public string F(string format, params object?[] args) => string.Format(this[format], args);
+    public string F(string format, params object?[] args) => string.Format(CultureInfo.CurrentCulture, this[format], args);
 
     private static readonly Dictionary<string, string> En = new()
     {
@@ -41,7 +42,7 @@ public sealed class Ui
         ["Entfernen"] = "Remove",
         ["Abbrechen"] = "Cancel",
         ["Kopieren"] = "Copy",
-        ["Fertig"] = "Done",
+        ["Schließen"] = "Close",
         ["Bearbeiten"] = "Edit",
         ["Wiederholen"] = "Retry",
         ["Nach oben"] = "Move up",

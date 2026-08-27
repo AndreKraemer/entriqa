@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Azure;
 using Entriqa.Application.Ports;
@@ -28,7 +29,7 @@ internal sealed class TryGetFormVersionQuery(TableStorage storage) : ITryGetForm
         var versions = await storage.GetAsync("Versions");
         try
         {
-            var e = (await versions.GetEntityAsync<FormVersionEntity>(slug, version.ToString("D4"), cancellationToken: ct)).Value;
+            var e = (await versions.GetEntityAsync<FormVersionEntity>(slug, version.ToString("D4", CultureInfo.InvariantCulture), cancellationToken: ct)).Value;
             var def = JsonSerializer.Deserialize<FormDefinition>(e.DefinitionJson, TableStorage.Json)
                 ?? throw new InvalidOperationException($"Definition {slug} v{version} ist leer.");
             return new FormVersion(slug, version, def, e.PublishedAt, e.PublishedBy);
