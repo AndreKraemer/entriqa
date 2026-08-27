@@ -9,10 +9,13 @@ plugin. This file holds only what is specific to this project.
 
 ## Hard rules
 
-- **Language: everything that lands in the repository is English** — code, comments, test
-  names, commit and PR text, documentation, README and specs. Tests follow Given/When/Then.
-  The two exceptions are product text shipped to German site visitors (`hugo/content/`,
-  admin UI strings, localized API messages) and GitHub issues, which live outside the repo.
+- **Language: English everywhere** — code, comments, test names, commit and PR text,
+  documentation, README, specs, and GitHub issues. Tests follow Given/When/Then. The one
+  exception is product text shipped to German site visitors: `hugo/content/`, the admin UI
+  strings in `Ui.cs` (whose German strings double as the translation keys),
+  `ValidationMessages`, the German branch of `ErrorMessages`, and the console output of
+  `dev/start.mjs`. `LICENSE.md` also stays German — translating licence terms has legal
+  effect. Issues #8–#23 predate the rule and are still German (see #27).
 - **No live endpoints** from tests or dev loops: Brevo, production Azure Storage and Teams
   webhooks are blocked in `pairmode.config.json`. Azurite runs locally.
 - **No browser storage and no cookies** for the website visitor (§ 25 TDDDG) — this is a
@@ -49,12 +52,16 @@ for a quick check but leaves no proof behind.
 
 ## Skills
 
-No project skills created yet (`skills` in `pairmode.config.json` is empty). Candidates,
-ordered by expected value:
+Registered in the `skills` map of `pairmode.config.json`:
+
+| Skill | Covers |
+|---|---|
+| [`local-dev`](.claude/skills/local-dev/SKILL.md) | Starting, driving and debugging the app: ports, the external Hugo site, seeding, dev mails, local auth |
+
+Still missing, ordered by expected value:
 
 | Area | Why |
 |---|---|
 | Processing pipeline | Brevo, double opt-in, PDF, Teams, webhook — the densest domain logic in the product |
 | Test conventions | 71 tests exist; the convention is written down nowhere |
 | Admin/UI design | `eq-*` classes, form builder, live preview DE/EN |
-| Running & debugging locally | Azurite + SWA CLI; a prerequisite for `/pairmode:acceptance` |

@@ -6,7 +6,9 @@
   "sourceControl": {
     "provider": "github",
     "defaultBranch": "main",
-    "protectedBranches": ["main"],
+    "protectedBranches": [
+      "main"
+    ],
     "branchPattern": "feature/{id}-{slug}"
   },
   "timeTracking": {
@@ -14,12 +16,18 @@
   },
   "verify": "node scripts/verify.mjs",
   "verifyFull": "node scripts/verify.mjs --full",
-  "candidateExclude": ["docs/", "README.md", "LICENSE.md"],
+  "candidateExclude": [
+    "docs/",
+    "README.md",
+    "LICENSE.md"
+  ],
   "forbiddenUrlPatterns": [
     "api.brevo.com",
     "*.core.windows.net",
     "*.webhook.office.com",
     "*.office.com"
   ],
-  "skills": {}
+  "skills": {
+    "local-dev": "Read .claude/skills/local-dev/SKILL.md before starting, driving or debugging the running app."
+  }
 }
