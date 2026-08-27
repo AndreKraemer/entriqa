@@ -77,11 +77,27 @@ targets `/f/index.html`, and Hugo's dev server answers that with `301 → ./`, w
 The file exists in a real build, so this is a dev-server artifact, not a product defect — verify
 that route against a deployed build or `npm run sample:build` output, never locally.
 
-## Resetting
+## Stopping and resetting
 
-Stop with Ctrl+C (all children are killed with the parent). To get back to a clean slate,
-delete `dev/.azurite` — that drops all forms, submissions and contacts, and the next start
-re-seeds `seed/forms`.
+Ctrl+C in the foreground kills the whole tree. **Killing the port listeners is not enough**: the
+parent `node dev/start.mjs` survives and keeps its children, so the next start fails with
+`EADDRINUSE` on 10000 and a socket error from the admin — which looks like a broken environment
+rather than a leftover one. That cost an acceptance run. End the parent process, then confirm
+every port has no listener before restarting:
+
+```
+netstat -ano | grep LISTENING | grep -E ':(4280|4281|7071|5100|1313|1000[0-2]) '
+```
+
+Entries in `TIME_WAIT` are harmless and clear by themselves — only a `LISTENING` line matters.
+
+To get back to a clean slate, delete `dev/.azurite` — that drops all forms, submissions and
+contacts, and the next start re-seeds `seed/forms` including the lead-magnet files. Empty
+`<TEMP>/entriqa-devmails` too, or an older confirmation mail will be the newest file you find.
+
+The API is ready later than the proxies: 4280 answers before the Functions host does. Wait for a
+form to return 200 (`curl -o /dev/null -w '%{http_code}' http://localhost:4280/api/forms/kontakt`)
+rather than for a line in the log.
 
 ## For /pairmode:acceptance
 
