@@ -48,14 +48,27 @@ Hugo does not reliably resolve a relative replacement against the project direct
 Windows — it fails with "module does not exist". This is also why the redirect is not written
 into `hugo.toml`.
 
-**A multilingual site has to provide its own localized DOI pages.** `bestaetigen/`,
-`bestaetigt/` and `f/` come from the module's own `content/`, and Hugo mounts module content
-into the default content language only — so the module can deliver them for one language and
-no more. This site therefore carries English copies under `content/en/`, which reuse the
-module's `doi-confirm` and `doi-done` layouts and only supply their own wording.
+**A multilingual site has to provide its own localized DOI pages, and name their paths.**
+`bestaetigen/`, `bestaetigt/` and `f/` come from the module's own `content/`, and Hugo mounts
+module content into the default content language only — so the module can deliver them for one
+language and no more. This site therefore carries English pages under `content/en/confirm/`
+and `content/en/confirmed/`, which reuse the module's `doi-confirm` and `doi-done` layouts and
+supply their own wording and slugs.
 
-The API matches that layout: `ConfirmPagePathFor` / `ConfirmedRedirectPathFor` in
-`EntriqaOptions` put the first configured locale at the root and every other one under
-`/{locale}/`, which is Hugo's default URL scheme. A submission in English therefore gets a
-link to `/en/bestaetigen/`. If a site publishes its languages under different paths, the
-mapping is the place to change — not the mail template.
+Because a translated page has a translated slug, the API does not guess the URL: it is
+configured per language, here in `local.settings.json`.
+
+```
+Entriqa__ConfirmPagePaths__en       = /en/confirm/
+Entriqa__ConfirmedRedirectPaths__en = /en/confirmed/
+```
+
+Where nothing is configured, `ConfirmPagePathFor` falls back to Hugo's default layout — first
+locale at the root, every other one under `/{locale}/`. That keeps the language right even
+when the path reads oddly (`/en/bestaetigen/`), which beats sending an English participant to
+a German page.
+
+**The no-script fallback follows the page language too.** The embed partial builds its
+`/f/{slug}/` link with `relLangURL`, so an English page links to `/en/f/{slug}/`, and the text
+comes from the module's own `i18n/`. Static Web Apps needs a rewrite rule per language for
+that path — `docs/staticwebapp.config.json` carries `/en/f/*` as the pattern to copy.

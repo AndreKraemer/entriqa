@@ -11,11 +11,15 @@
     "Entriqa__HousekeepingKey": "dev-housekeeping-key",
     "Entriqa__AllowAnonymousAdmin": "true",
     "Entriqa__SeedFolder": "seed/forms",
+    "Entriqa__ConfirmPagePaths__en": "/en/confirm/",
+    "Entriqa__ConfirmedRedirectPaths__en": "/en/confirmed/",
     "Entriqa__Storage__ConnectionString": "UseDevelopmentStorage=true",
     "Entriqa__Brevo__ApiKey": "",
     "Entriqa__Brevo__SenderName": "Website",
     "Entriqa__Brevo__SenderEmail": "noreply@example.org",
     "Entriqa__ReportingCloud__ApiKey": ""
   },
-  "Host": { "CORS": "*" }
+  "Host": {
+    "CORS": "*"
+  }
 }

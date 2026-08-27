@@ -20,6 +20,11 @@ public sealed class EntriqaOptions
     public int AutoRetryMax { get; set; } = 3;                              // retry a failed step automatically at most this many times
     public string ConfirmPagePath { get; set; } = "/bestaetigen/";          // static page with a POST button (never a GET confirmation: link scanners!)
     public string ConfirmedRedirectPath { get; set; } = "/bestaetigt/";
+    // Real URL per language, e.g. Entriqa__ConfirmPagePaths__en=/en/confirm/. A site names its own
+    // paths because a translated page has a translated slug - prefixing the German one would produce
+    // /en/bestaetigen/, which is nobody's URL.
+    public Dictionary<string, string> ConfirmPagePaths { get; set; } = new();
+    public Dictionary<string, string> ConfirmedRedirectPaths { get; set; } = new();
     public string IpHashSalt { get; set; } = "";                            // a salt rotating daily would be better; see the spec
     public string FreemailBlocklist { get; set; } = "";                     // additional freemail domains (comma separated), extends FreemailDomains.Default
     public string Locales { get; set; } = "de,en";                          // languages of the website (comma separated) - the admin offers exactly these
@@ -31,22 +36,27 @@ public sealed class EntriqaOptions
             .Select(l => l.ToLowerInvariant()).Distinct().ToList() is { Count: > 0 } list ? list : new List<string> { "de" };
 
     /// <summary>
-    /// The confirmation page for a submission's language. Follows Hugo's default URL layout:
-    /// the first configured locale lives at the root, every other one under /{locale}/. Without
-    /// this the participant who filled in the English form still landed on the German page.
-    /// An unknown or missing locale falls back to the root.
+    /// The confirmation page for a submission's language. Without this the participant who filled
+    /// in the English form still landed on the German page. Resolution order: the path configured
+    /// for that language, otherwise Hugo's default layout as a fallback - the first locale at the
+    /// root, every other one under /{locale}/. The fallback keeps the language right even when the
+    /// path reads oddly; an unknown or missing locale stays at the root.
     /// </summary>
-    public string ConfirmPagePathFor(string? locale) => LocalizedPath(ConfirmPagePath, locale);
+    public string ConfirmPagePathFor(string? locale) => LocalizedPath(ConfirmPagePath, ConfirmPagePaths, locale);
 
-    /// <summary>Where the confirmation redirects to afterwards - localized the same way.</summary>
-    public string ConfirmedRedirectPathFor(string? locale) => LocalizedPath(ConfirmedRedirectPath, locale);
+    /// <summary>Where the confirmation redirects to afterwards - resolved the same way.</summary>
+    public string ConfirmedRedirectPathFor(string? locale) => LocalizedPath(ConfirmedRedirectPath, ConfirmedRedirectPaths, locale);
 
-    private string LocalizedPath(string path, string? locale)
+    private string LocalizedPath(string fallback, Dictionary<string, string> byLocale, string? locale)
     {
-        if (locale is null) return path;
+        if (locale is null) return fallback;
         var l = locale.ToLowerInvariant();
+        // App-setting keys arrive in whatever casing the site wrote them, so match case-insensitively.
+        foreach (var (key, path) in byLocale)
+            if (string.Equals(key, l, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(path))
+                return path;
         var locales = SiteLocales;
-        return l == locales[0] || !locales.Contains(l) ? path : $"/{l}{path}";
+        return l == locales[0] || !locales.Contains(l) ? fallback : $"/{l}{fallback}";
     }
 
     private IReadOnlySet<string>? _extraFreemail;

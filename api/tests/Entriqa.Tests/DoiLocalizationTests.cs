@@ -13,8 +13,9 @@ namespace Entriqa.Tests;
 /// <summary>
 /// The double opt-in mail leaves the system in the participant's language, but the link in it
 /// used to point at one fixed page - so whoever filled in the English form still landed on the
-/// German confirmation page. The paths follow Hugo's default URL layout: the first configured
-/// locale lives at the root, every other one under /{locale}/.
+/// German confirmation page. A site declares the real URL per language; where it does not, the
+/// fallback follows Hugo's default layout (first locale at the root, others under /{locale}/),
+/// which at least keeps the language right even if the path reads oddly.
 /// </summary>
 public class DoiLocalizationTests
 {
@@ -26,8 +27,32 @@ public class DoiLocalizationTests
         Assert.Equal("/bestaetigen/", Options().ConfirmPagePathFor("de"));
 
     [Fact]
-    public void GivenASecondaryLocale_WhenBuildingTheConfirmPagePath_ThenItIsPrefixedWithThatLocale() =>
+    public void GivenASecondaryLocaleWithoutAConfiguredPath_WhenBuildingTheConfirmPagePath_ThenItFallsBackToThePrefixedDefault() =>
         Assert.Equal("/en/bestaetigen/", Options().ConfirmPagePathFor("en"));
+
+    [Fact]
+    public void GivenAPathConfiguredForThatLocale_WhenBuildingTheConfirmPagePath_ThenTheConfiguredPathWins()
+    {
+        var options = Options();
+        options.ConfirmPagePaths["en"] = "/en/confirm/";
+        Assert.Equal("/en/confirm/", options.ConfirmPagePathFor("en"));
+    }
+
+    [Fact]
+    public void GivenAPathConfiguredInADifferentCasing_WhenBuildingTheConfirmPagePath_ThenItStillMatches()
+    {
+        var options = Options();
+        options.ConfirmPagePaths["EN"] = "/en/confirm/";
+        Assert.Equal("/en/confirm/", options.ConfirmPagePathFor("en"));
+    }
+
+    [Fact]
+    public void GivenAPathConfiguredForTheDefaultLocale_WhenBuildingTheConfirmPagePath_ThenItWinsOverTheBareDefault()
+    {
+        var options = Options();
+        options.ConfirmPagePaths["de"] = "/danke-bestaetigen/";
+        Assert.Equal("/danke-bestaetigen/", options.ConfirmPagePathFor("de"));
+    }
 
     [Fact]
     public void GivenNoLocaleAtAll_WhenBuildingTheConfirmPagePath_ThenItFallsBackToTheRoot() =>
@@ -38,14 +63,23 @@ public class DoiLocalizationTests
         Assert.Equal("/bestaetigen/", Options().ConfirmPagePathFor("fr"));
 
     [Fact]
-    public void GivenASecondaryLocale_WhenBuildingTheConfirmedRedirectPath_ThenItIsPrefixedTheSameWay() =>
+    public void GivenASecondaryLocale_WhenBuildingTheConfirmedRedirectPath_ThenItFallsBackTheSameWay() =>
         Assert.Equal("/en/bestaetigt/", Options().ConfirmedRedirectPathFor("en"));
+
+    [Fact]
+    public void GivenAConfiguredRedirectForThatLocale_WhenBuildingTheConfirmedRedirectPath_ThenTheConfiguredPathWins()
+    {
+        var options = Options();
+        options.ConfirmedRedirectPaths["en"] = "/en/confirmed/";
+        Assert.Equal("/en/confirmed/", options.ConfirmedRedirectPathFor("en"));
+    }
 
     [Fact]
     public async Task GivenASubmissionInASecondaryLocale_WhenTheDoiMailIsSent_ThenTheConfirmLinkPointsAtThatLanguage()
     {
         var mail = Substitute.For<ISendTransactionalMailPort>();
         var options = Options();
+        options.ConfirmPagePaths["en"] = "/en/confirm/";
         var step = new DoiRequestStep(mail, TestData.Tokens());
         var ctx = new StepContext
         {
@@ -63,7 +97,7 @@ public class DoiLocalizationTests
 
         await mail.Received(1).SendAsync(
             "a@b.de", Arg.Any<string?>(), 3,
-            Arg.Is<Dictionary<string, object?>>(p => ((string)p["confirmUrl"]!).StartsWith("https://example.org/en/bestaetigen/?t=")),
+            Arg.Is<Dictionary<string, object?>>(p => ((string)p["confirmUrl"]!).StartsWith("https://example.org/en/confirm/?t=")),
             null, Arg.Any<CancellationToken>());
     }
 }

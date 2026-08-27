@@ -1,16 +1,47 @@
 {
   "routes": [
-    { "route": "/admin/*.{css,js,mjs,wasm,json,dat,svg,png,jpg,ico,woff,woff2,html,br,gz,map,txt}", "allowedRoles": ["admin"] },
-    { "route": "/admin/*", "allowedRoles": ["admin"], "rewrite": "/admin/index.html" },
-    { "route": "/api/manage/*", "allowedRoles": ["admin"] },
-    { "route": "/f/*", "rewrite": "/f/index.html" }
+    {
+      "route": "/admin/*.{css,js,mjs,wasm,json,dat,svg,png,jpg,ico,woff,woff2,html,br,gz,map,txt}",
+      "allowedRoles": [
+        "admin"
+      ]
+    },
+    {
+      "route": "/admin/*",
+      "allowedRoles": [
+        "admin"
+      ],
+      "rewrite": "/admin/index.html"
+    },
+    {
+      "route": "/api/manage/*",
+      "allowedRoles": [
+        "admin"
+      ]
+    },
+    {
+      "route": "/f/*",
+      "rewrite": "/f/index.html"
+    },
+    {
+      "route": "/en/f/*",
+      "rewrite": "/en/f/index.html"
+    }
   ],
   "navigationFallback": {
     "rewrite": "/404.html",
-    "exclude": ["/api/*", "/f/*", "/*.{css,js,png,jpg,jpeg,gif,svg,webp,ico,woff,woff2,xml,txt,json}"]
+    "exclude": [
+      "/api/*",
+      "/f/*",
+      "/en/f/*",
+      "/*.{css,js,png,jpg,jpeg,gif,svg,webp,ico,woff,woff2,xml,txt,json}"
+    ]
   },
   "responseOverrides": {
-    "401": { "redirect": "/.auth/login/aad?post_login_redirect_uri=.referrer", "statusCode": 302 }
+    "401": {
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=.referrer",
+      "statusCode": 302
+    }
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

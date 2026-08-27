@@ -1,0 +1,5 @@
+[eq_noscript]
+other = "This form needs JavaScript. Alternatively:"
+
+[eq_noscript_link]
+other = "open the form directly"
