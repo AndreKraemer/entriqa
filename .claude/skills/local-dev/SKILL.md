@@ -64,10 +64,18 @@ sends real mail.
 ## Auth locally
 
 `Entriqa__AllowAnonymousAdmin` is `true` in `local.settings.json`, so the API accepts admin
-calls without a principal. The SWA proxy on 4281 still gates the UI: you have to go through
-`/.auth/login/aad` and type `admin` into the roles field of the emulator's login form. Hitting
-5100 directly skips that gate entirely — useful for a quick UI check, misleading if you are
-testing anything authorization-related.
+calls without a principal. The gate that remains is the SWA emulator's route rules — and those
+only exist because `dev/start.mjs` passes `--swa-config-location`. Without that flag the emulator
+starts with **no rules at all**: `/api/manage/*` answers unauthenticated and the `/f/*` rewrite is
+missing, so local behaviour silently diverges from production. An acceptance run found exactly
+that. With the flag, `/api/manage/*` redirects to `/.auth/login/aad`; sign in there and type
+`admin` into the roles field. Hitting 5100 directly skips everything — fine for a quick UI check,
+misleading for anything authorization-related.
+
+**The standalone `/f/{slug}/` route cannot be exercised through the dev server.** The rewrite
+targets `/f/index.html`, and Hugo's dev server answers that with `301 → ./`, which loops back.
+The file exists in a real build, so this is a dev-server artifact, not a product defect — verify
+that route against a deployed build or `npm run sample:build` output, never locally.
 
 ## Resetting
 
@@ -79,6 +87,6 @@ re-seeds `seed/forms`.
 
 Drive port 4280 for anything a site visitor does and 4281 for the admin. Evidence should come
 from those two origins; a result taken from 1313 or 5100 does not prove the real routing,
-auth or API wiring works. `docs/staticwebapp.config.json` is the routing contract the
+auth or API wiring works. `samples/site/static/staticwebapp.config.json` is the routing contract the
 proxies emulate — `/admin/*` and `/api/manage/*` require the `admin` role, `/f/*` rewrites to
 the DOI page.

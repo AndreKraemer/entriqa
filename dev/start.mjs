@@ -108,7 +108,11 @@ run("hugo", "hugo", ["serve", "--port", "1313", "--baseURL", "http://localhost:4
 
 // The SWA proxies wait by themselves until app and API are reachable.
 setTimeout(() => {
-  run("site", "swa", ["start", "http://localhost:1313", "--api-devserver-url", "http://localhost:7071", "--port", "4280"], siteRoot);
+  // --swa-config-location: the emulator only applies routes and role rules when it is told
+  // where staticwebapp.config.json lives. Without it /api/manage/* is reachable unauthenticated
+  // and the /f/* rewrite is missing, so local behaviour silently differs from production.
+  run("site", "swa", ["start", "http://localhost:1313", "--api-devserver-url", "http://localhost:7071",
+    "--swa-config-location", `"${join(siteRoot, "static")}"`, "--port", "4280"], siteRoot);
   run("adminui", "swa", ["start", "http://localhost:5100", "--api-devserver-url", "http://localhost:7071", "--port", "4281"], siteRoot);
   setTimeout(() => {
     console.log("\n──────────────────────────────────────────────────");

@@ -11,7 +11,7 @@
 {{- $page.Store.Set "hasQbForm" true -}}
 {{- /* relLangURL keeps the fallback in the reader's language: /f/… in the default language,
        /en/f/… in the others. A multilingual site needs the matching rewrite rule per language
-       in staticwebapp.config.json - see docs/staticwebapp.config.json. */ -}}
+       in staticwebapp.config.json - see samples/site/static/staticwebapp.config.json. */ -}}
 {{- $standalone := printf "/f/%s/" $slug | relLangURL -}}
 <div class="eq-form-host" data-form="{{ $slug }}" data-api="{{ $api }}" data-lang="{{ $page.Language.Lang }}">
   <noscript><p class="eq-message eq-message--error">{{ i18n "eq_noscript" }} <a href="{{ $standalone }}">{{ i18n "eq_noscript_link" }}</a>.</p></noscript>

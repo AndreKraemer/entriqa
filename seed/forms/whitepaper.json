@@ -27,7 +27,7 @@
     { "id": "s2", "step": "brevo.contact", "when": "always",
       "config": { "listIds": [7] } },
     { "id": "s3", "step": "leadmagnet.link", "when": "always",
-      "config": { "blob": "downloads/whitepaper-beispiel.pdf" } }
+      "config": { "blob": "leadmagnets/whitepaper-beispiel.pdf" } }
   ],
   "completion": {
     "mode": "message",

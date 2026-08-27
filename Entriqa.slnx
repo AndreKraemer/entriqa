@@ -11,7 +11,6 @@
   </Folder>
   <Folder Name="/10 Docs/">
     <File Path="docs/QUICKSTART.md" />
-    <File Path="docs/staticwebapp.config.json" />
   </Folder>
   <Folder Name="/20 Build &amp; Deploy/">
     <File Path=".github/workflows/release.yml" />

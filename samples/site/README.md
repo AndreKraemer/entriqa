@@ -71,4 +71,8 @@ a German page.
 **The no-script fallback follows the page language too.** The embed partial builds its
 `/f/{slug}/` link with `relLangURL`, so an English page links to `/en/f/{slug}/`, and the text
 comes from the module's own `i18n/`. Static Web Apps needs a rewrite rule per language for
-that path — `docs/staticwebapp.config.json` carries `/en/f/*` as the pattern to copy.
+that path — `static/staticwebapp.config.json` carries `/en/f/*`, and because it sits in the site's own
+`static/` folder it is both the template a customer copies and the file the local emulator
+actually applies — `dev/start.mjs` points `--swa-config-location` at it. Note that the
+`/f/*` rewrite still cannot be exercised locally: Hugo's dev server answers
+`/f/index.html` with a redirect to `./`, which loops. A real build serves the file.
