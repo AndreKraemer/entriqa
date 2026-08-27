@@ -1,0 +1,40 @@
+<Solution>
+  <Folder Name="/00 Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path=".editorconfig" />
+    <File Path="CLAUDE.md" />
+    <File Path="README.md" />
+    <File Path="pairmode.config.json" />
+  </Folder>
+  <Folder Name="/10 Docs/">
+    <File Path="docs/QUICKSTART.md" />
+    <File Path="docs/staticwebapp.config.json" />
+  </Folder>
+  <Folder Name="/20 Build &amp; Deploy/">
+    <File Path=".github/workflows/release.yml" />
+    <File Path="pipelines/azure-pipelines-housekeeping.yml" />
+    <File Path="scripts/verify.mjs" />
+    <File Path="scripts/check-eq-classes.mjs" />
+    <File Path="scripts/hugo.mjs" />
+    <File Path="dev/start.mjs" />
+  </Folder>
+  <Folder Name="/30 Hosts/">
+    <Project Path="src/Hosts/Entriqa.Functions/Entriqa.Functions.csproj" />
+    <Project Path="src/Hosts/Entriqa.KeyTool/Entriqa.KeyTool.csproj" />
+  </Folder>
+  <Folder Name="/40 Core/">
+    <Project Path="src/Core/Entriqa.Domain/Entriqa.Domain.csproj" />
+    <Project Path="src/Core/Entriqa.Application/Entriqa.Application.csproj" />
+    <Project Path="src/Core/Entriqa.Data/Entriqa.Data.csproj" />
+    <Project Path="src/Core/Entriqa.Infrastructure/Entriqa.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/60 Ui/">
+    <Project Path="src/Ui/Entriqa.Admin/Entriqa.Admin.csproj" />
+  </Folder>
+  <Folder Name="/80 Tests/">
+    <Project Path="tests/Entriqa.Tests/Entriqa.Tests.csproj" />
+  </Folder>
+</Solution>

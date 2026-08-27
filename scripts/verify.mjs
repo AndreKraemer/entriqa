@@ -5,9 +5,9 @@
 //   node scripts/verify.mjs --full   full gate  — the same in Release, plus the
 //                                                 admin publish that release.yml does
 //
-// Why the admin is built separately: admin/Entriqa.Admin is NOT part of
-// api/Entriqa.sln but references Entriqa.Domain. Without this step a domain change
-// can break the admin and `dotnet test api` stays green.
+// The admin no longer needs a build step of its own: it is part of Entriqa.slnx, so a domain
+// change that breaks it fails the solution build. Before the projects moved it sat outside
+// the solution and had to be built separately or the breakage went unnoticed.
 
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -18,16 +18,18 @@ const full = process.argv.includes("--full");
 const config = full ? "Release" : "Debug";
 
 const steps = [
-  ["API tests", "dotnet", ["test", "api/Entriqa.sln", "-c", config, "--nologo"]],
-  ["Admin build", "dotnet", ["build", "admin/Entriqa.Admin/Entriqa.Admin.csproj", "-c", config, "--nologo"]],
-  // forms.js and the class reference in MarkupGenerator live in different projects, so no unit
-  // test can compare them - see the script's header.
+  // Build the whole solution first: `dotnet test` alone only builds what the test project
+  // depends on, so a broken admin or KeyTool would slip through unnoticed - verified by
+  // breaking the admin on purpose and watching the gate stay green.
+  ["Solution build", "dotnet", ["build", "Entriqa.slnx", "-c", config, "--nologo"]],
+  ["Tests", "dotnet", ["test", "Entriqa.slnx", "-c", config, "--nologo", "--no-build"]],
+  // forms.js is a Hugo asset with no .NET test host, so the class contract needs a script.
   ["eq-* class contract", process.execPath, [join(root, "scripts", "check-eq-classes.mjs")]],
 ];
 
 if (full) {
-  steps.push(["Admin publish", "dotnet", ["publish", "admin/Entriqa.Admin", "-c", "Release", "--nologo", "-o", "out/verify-admin"]]);
-  steps.push(["Functions publish", "dotnet", ["publish", "api/src/Entriqa.Functions", "-c", "Release", "--nologo", "-o", "out/verify-api"]]);
+  steps.push(["Admin publish", "dotnet", ["publish", "src/Ui/Entriqa.Admin", "-c", "Release", "--nologo", "-o", "out/verify-admin"]]);
+  steps.push(["Functions publish", "dotnet", ["publish", "src/Hosts/Entriqa.Functions", "-c", "Release", "--nologo", "-o", "out/verify-api"]]);
 }
 
 let failed = null;

@@ -71,10 +71,10 @@ public class EditorChangedBindingTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            var admin = Path.Combine(dir.FullName, "admin", "Entriqa.Admin");
+            var admin = Path.Combine(dir.FullName, "src", "Ui", "Entriqa.Admin");
             if (Directory.Exists(admin)) return admin;
             dir = dir.Parent;
         }
-        throw new DirectoryNotFoundException("admin/Entriqa.Admin not found above " + AppContext.BaseDirectory + ".");
+        throw new DirectoryNotFoundException("src/Ui/Entriqa.Admin not found above " + AppContext.BaseDirectory + ".");
     }
 }

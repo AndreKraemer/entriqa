@@ -3,7 +3,7 @@
 // reference the admin shows theme developers (MarkupGenerator.Classes).
 //
 // The two live in different projects - forms.js is a Hugo asset, MarkupGenerator sits in
-// admin/, which is not part of api/Entriqa.sln - so a normal unit test cannot see both. Hence
+// src/Ui - and the JS side has no .NET test host at all. Hence
 // this script, run by scripts/verify.mjs.
 //
 // Exit 0 = the reference covers everything, 1 = it has drifted.
@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const js = readFileSync(join(root, "hugo", "assets", "js", "forms.js"), "utf8");
-const generator = readFileSync(join(root, "admin", "Entriqa.Admin", "Services", "MarkupGenerator.cs"), "utf8");
+const generator = readFileSync(join(root, "src", "Ui", "Entriqa.Admin", "Services", "MarkupGenerator.cs"), "utf8");
 
 // Only the Classes array counts as the reference. The sample markup in Render() names classes
 // too, but a theme developer reads the annotated list - matching against the whole file would

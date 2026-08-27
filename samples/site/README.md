@@ -32,7 +32,7 @@ npm run sample:serve
 | Selbsttest / Self-check | `selbsttest` | Quiz with a jump to a result, percentage scoring and findings |
 
 Between them the four forms cover every field type and all three form types; the tests in
-`api/tests/Entriqa.Tests/SeedFormsTests.cs` fail if that stops being true, or if a sample
+`tests/Entriqa.Tests/SeedFormsTests.cs` fail if that stops being true, or if a sample
 would be rejected by the publish check.
 
 The form definitions live in `seed/forms/*.json`, not here — `DevSeedHostedService` publishes

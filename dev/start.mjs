@@ -101,8 +101,8 @@ mkdirSync(azuriteDir, { recursive: true });
 console.log(`Entriqa-Dev-Umgebung startet …\n  Produkt: ${repoRoot}\n  Site:    ${siteRoot}\n`);
 run("azurite", "azurite", ["--silent", "--location", `"${azuriteDir}"`]);
 await waitFor("http://127.0.0.1:10002/devstoreaccount1", "Azurite");   // otherwise the dev seed of the API fails
-run("api", funcCmd === "func" ? "func" : `"${funcCmd}"`, ["start", "--port", "7071"], join(repoRoot, "api", "src", "Entriqa.Functions"));
-run("admin", "dotnet", ["run", "--urls", "http://localhost:5100"], join(repoRoot, "admin", "Entriqa.Admin"));
+run("api", funcCmd === "func" ? "func" : `"${funcCmd}"`, ["start", "--port", "7071"], join(repoRoot, "src", "Hosts", "Entriqa.Functions"));
+run("admin", "dotnet", ["run", "--urls", "http://localhost:5100"], join(repoRoot, "src", "Ui", "Entriqa.Admin"));
 // baseURL = proxy origin, otherwise absolute URLs (icon fonts, mask SVGs) point at :1313 and fail CORS.
 run("hugo", "hugo", ["serve", "--port", "1313", "--baseURL", "http://localhost:4280/", "--appendPort=false"], siteRoot);
 

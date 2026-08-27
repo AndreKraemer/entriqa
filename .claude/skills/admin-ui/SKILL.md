@@ -5,12 +5,13 @@ description: How the Blazor admin is built — German strings as translation key
 
 # The Blazor admin
 
-22 files under `admin/Entriqa.Admin`, served at `/admin`. Pages, Components, Services — no
+22 files under `src/Ui/Entriqa.Admin`, served at `/admin`. Pages, Components, Services — no
 further ceremony.
 
-**`admin/` is not part of `api/Entriqa.sln`** but references `Entriqa.Domain`. A domain change
-can break it while `dotnet test api` stays green, which is why the verify gate builds it
-separately.
+It references `Entriqa.Domain`, so a domain change can break it. Since the projects moved into
+the standard layout it is part of `Entriqa.slnx`, and the gate builds the whole solution before
+running the tests — `dotnet test` on its own only builds what the test project depends on,
+which used to let admin breakage through unnoticed.
 
 ## The trap: German strings are the translation keys
 
@@ -82,7 +83,7 @@ eq-form  eq-form--{type}  eq-form--{slug}
 follow it, never the other way round. `scripts/check-eq-classes.mjs` enforces that in the verify
 gate: it collects every class forms.js puts into the DOM and fails when one is missing from
 `MarkupGenerator.Classes`. The two files sit in different projects (forms.js is a Hugo asset,
-the generator is in `admin/`, which is outside `api/Entriqa.sln`), so no unit test can compare
+the generator is in `admin/`, which is outside `Entriqa.slnx`), so no unit test can compare
 them — hence a script.
 
 If the guard reports a class, the fix is one of two things: document it, or stop emitting it in

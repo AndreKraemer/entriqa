@@ -20,21 +20,36 @@ plugin. This file holds only what is specific to this project.
   webhooks are blocked in `pairmode.config.json`. Azurite runs locally.
 - **No browser storage and no cookies** for the website visitor (§ 25 TDDDG) — this is a
   product promise, not an implementation detail. See README.
-- `TreatWarningsAsErrors` is on project-wide; a warning is an error.
-- **`admin/` is not part of `api/Entriqa.sln`** but references `Entriqa.Domain`. Anyone
-  touching the domain has to build the admin too — the gate does that.
+- **Build settings live at the repository root** — `Directory.Build.props`,
+  `Directory.Packages.props`, `global.json`, `nuget.config`, `.editorconfig`. Every project
+  inherits them: `TreatWarningsAsErrors`, `AnalysisLevel latest-recommended`,
+  `EnforceCodeStyleInBuild` and central package versions. A warning is an error. Analyzer rules
+  that were deliberately downgraded carry their reason in `.editorconfig`; the test project
+  relaxes `CA1707` because its `Given_When_Then` naming needs underscores.
+- **`dotnet test` does not build the whole solution** — only what the test project depends on.
+  The gate therefore builds `Entriqa.slnx` first, or a broken admin slips through.
 
 ## Layout
 
+Follows the QB .NET Solution Standard v0.5 §6.1 (Stage 1), with the non-.NET parts of the
+product alongside it. Solution folders in `Entriqa.slnx` mirror the physical ones (§6.2).
+
 | Folder | Contents |
 |---|---|
-| `hugo/` | Hugo module: shortcode, embed partial, forms.js/css, DOI pages. **Markdown here is product, not documentation.** |
-| `api/` | .NET 10, Azure Functions isolated, Clean Architecture (Domain/Application/Data/Infrastructure/Functions) |
-| `admin/` | Blazor WASM admin served under `/admin` |
-| `dev/` | `node dev/start.mjs` starts Azurite + SWA CLI locally |
+| `src/Hosts/` | `Entriqa.Functions` (Azure Functions isolated, composition root) and `Entriqa.KeyTool` (licence tool, vendor only) |
+| `src/Core/` | `Entriqa.Domain`, `.Application`, `.Data`, `.Infrastructure` — Clean Architecture, dependencies point inwards |
+| `src/Ui/` | `Entriqa.Admin`, the Blazor WASM admin served under `/admin` |
+| `tests/` | `Entriqa.Tests` — never under `src/` |
+| `hugo/` | Hugo module: shortcode, embed partial, forms.js/css, i18n, DOI pages. **Markdown here is product, not documentation.** |
 | `samples/site/` | Bilingual Hugo site importing the module; `dev/start.mjs` defaults to it. Covers every field type and all three form types |
 | `seed/forms/` | The form definitions the sample site embeds; published at startup by `DevSeedHostedService` |
-| `docs/`, `pipelines/`, `tools/` | Documentation, customer templates, licensing tool |
+| `scripts/`, `dev/` | The verify gate and the local dev launcher |
+| `docs/`, `pipelines/` | Documentation and the customer pipeline template |
+
+Deviations from the standard, deliberate: no Aspire `AppHost`/`MigrationService` (no relational
+database — Azure Tables, and `dev/start.mjs` fills that role), no `src/Modules` (Stage 2 needs
+≥ 4 developers, §5.2), and `hugo/`, `seed/`, `samples/` have no counterpart in a pure .NET
+layout.
 
 ## Verify
 

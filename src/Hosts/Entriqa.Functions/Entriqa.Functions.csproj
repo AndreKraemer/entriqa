@@ -4,9 +4,9 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Entriqa.Application\Entriqa.Application.csproj" />
-    <ProjectReference Include="..\Entriqa.Data\Entriqa.Data.csproj" />
-    <ProjectReference Include="..\Entriqa.Infrastructure\Entriqa.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Core\Entriqa.Application\Entriqa.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Core\Entriqa.Data\Entriqa.Data.csproj" />
+    <ProjectReference Include="..\..\..\src\Core\Entriqa.Infrastructure\Entriqa.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />

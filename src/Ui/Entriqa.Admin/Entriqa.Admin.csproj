@@ -11,6 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Reine Domänenlogik (QuizEngine.Check) läuft auch im Browser: dieselbe Pfadprüfung wie beim Veröffentlichen, live im Builder. -->
-    <ProjectReference Include="..\..\api\src\Entriqa.Domain\Entriqa.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Core\Entriqa.Domain\Entriqa.Domain.csproj" />
   </ItemGroup>
 </Project>

@@ -9,7 +9,7 @@ What happens after a visitor submits. Nine steps, one runner, ~850 lines — and
 implicit logic in the product. Adding a step is easy; getting its *position* and *mode* right
 is where mistakes happen.
 
-Runner: `api/src/Entriqa.Application/Pipeline/SubmissionPipelineService.cs`
+Runner: `src/Core/Entriqa.Application/Pipeline/SubmissionPipelineService.cs`
 Contract: `ISubmissionStep.cs` · Check rules: `PublishCheckService.cs` · Steps: `Pipeline/Steps/`
 
 ## The steps

@@ -1,11 +1,11 @@
 ---
 name: test-conventions
-description: How tests are written in this project — the Given/When/Then naming scheme, TestData, NSubstitute for ports, FakeTimeProvider, NetArchTest. Use before writing or changing any test in api/tests, and whenever a story needs its failing proof.
+description: How tests are written in this project — the Given/When/Then naming scheme, TestData, NSubstitute for ports, FakeTimeProvider, NetArchTest. Use before writing or changing any test in tests/Entriqa.Tests, and whenever a story needs its failing proof.
 ---
 
 # Test conventions
 
-94 tests live in `api/tests/Entriqa.Tests`, one file per subject. Every pairmode story starts
+94 tests live in `tests/Entriqa.Tests`, one file per subject. Every pairmode story starts
 with a red test, so this is the first thing to get right.
 
 ## The naming scheme is absolute
@@ -91,7 +91,7 @@ that helper rather than hard-coding `../../../..`.
 `node scripts/verify.mjs` runs everything. While iterating:
 
 ```
-dotnet test api/Entriqa.sln -c Debug --nologo --filter "FullyQualifiedName~QuizEngineTests"
+dotnet test Entriqa.slnx -c Debug --nologo --filter "FullyQualifiedName~QuizEngineTests"
 ```
 
 Evidence for pairmode only counts through `verify-run.mjs` — see [`local-dev`](../local-dev/SKILL.md)

@@ -12,7 +12,7 @@ namespace Entriqa.Application.Security;
 /// Payload JSON <c>{"id","plan","until"}</c>, signature ECDSA P-256/SHA-256 over the payload bytes.
 /// No phone home, no kill switch: without a valid key everything keeps working,
 /// the admin permanently shows the unlicensed notice (the Kirby model).
-/// Issuing keys: tools/Entriqa.KeyTool (the private key stays with the vendor).
+/// Issuing keys: src/Hosts/Entriqa.KeyTool (the private key stays with the vendor).
 /// </summary>
 public sealed class LicenseService(IOptions<EntriqaOptions> options, TimeProvider time)
 {
