@@ -30,7 +30,7 @@ internal sealed class ConfirmSubmissionUseCase(
 
         var s = await getSubmission.ExecuteAsync(subject, ct)
             ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
-        var redirect = options.Value.BaseUrl.TrimEnd('/') + options.Value.ConfirmedRedirectPath;
+        var redirect = options.Value.BaseUrl.TrimEnd('/') + options.Value.ConfirmedRedirectPathFor(s.Locale);
         var already = s.IsConfirmed;
 
         if (!already)

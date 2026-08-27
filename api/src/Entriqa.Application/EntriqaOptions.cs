@@ -30,6 +30,25 @@ public sealed class EntriqaOptions
         _siteLocales ??= Locales.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.ToLowerInvariant()).Distinct().ToList() is { Count: > 0 } list ? list : new List<string> { "de" };
 
+    /// <summary>
+    /// The confirmation page for a submission's language. Follows Hugo's default URL layout:
+    /// the first configured locale lives at the root, every other one under /{locale}/. Without
+    /// this the participant who filled in the English form still landed on the German page.
+    /// An unknown or missing locale falls back to the root.
+    /// </summary>
+    public string ConfirmPagePathFor(string? locale) => LocalizedPath(ConfirmPagePath, locale);
+
+    /// <summary>Where the confirmation redirects to afterwards - localized the same way.</summary>
+    public string ConfirmedRedirectPathFor(string? locale) => LocalizedPath(ConfirmedRedirectPath, locale);
+
+    private string LocalizedPath(string path, string? locale)
+    {
+        if (locale is null) return path;
+        var l = locale.ToLowerInvariant();
+        var locales = SiteLocales;
+        return l == locales[0] || !locales.Contains(l) ? path : $"/{l}{path}";
+    }
+
     private IReadOnlySet<string>? _extraFreemail;
     public IReadOnlySet<string> ExtraFreemailDomains =>
         _extraFreemail ??= FreemailBlocklist.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)

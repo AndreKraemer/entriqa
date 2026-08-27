@@ -48,7 +48,14 @@ Hugo does not reliably resolve a relative replacement against the project direct
 Windows — it fails with "module does not exist". This is also why the redirect is not written
 into `hugo.toml`.
 
-**The DOI pages only exist in the default language.** `bestaetigen/`, `bestaetigt/` and `f/`
-come from the module's own `content/`, and Hugo mounts module content into the default
-content language only. The English tree therefore has no confirmation pages. A bilingual
-customer site has the same gap, so a real fix belongs in the module, not here.
+**A multilingual site has to provide its own localized DOI pages.** `bestaetigen/`,
+`bestaetigt/` and `f/` come from the module's own `content/`, and Hugo mounts module content
+into the default content language only — so the module can deliver them for one language and
+no more. This site therefore carries English copies under `content/en/`, which reuse the
+module's `doi-confirm` and `doi-done` layouts and only supply their own wording.
+
+The API matches that layout: `ConfirmPagePathFor` / `ConfirmedRedirectPathFor` in
+`EntriqaOptions` put the first configured locale at the root and every other one under
+`/{locale}/`, which is Hugo's default URL scheme. A submission in English therefore gets a
+link to `/en/bestaetigen/`. If a site publishes its languages under different paths, the
+mapping is the place to change — not the mail template.

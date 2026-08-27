@@ -41,7 +41,7 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
         var token = tokens.Issue(FormTokenService.KindConfirm, ctx.Submission.Id);
         // The link points at the static confirmation page; only its button posts to /api/confirm.
         // Never straight at a GET endpoint - link scanners (Outlook SafeLinks and friends) would confirm the opt-in.
-        var confirmUrl = $"{ctx.Options.BaseUrl.TrimEnd('/')}{ctx.Options.ConfirmPagePath}?t={Uri.EscapeDataString(token)}";
+        var confirmUrl = $"{ctx.Options.BaseUrl.TrimEnd('/')}{ctx.Options.ConfirmPagePathFor(ctx.Submission.Locale)}?t={Uri.EscapeDataString(token)}";
 
         var parameters = new Dictionary<string, object?>
         {

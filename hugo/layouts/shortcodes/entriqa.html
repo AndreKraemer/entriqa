@@ -1,7 +1,9 @@
 {{- /*
-  Bettet ein Formular des Formularsystems ein.
-  Aufruf: {{< form "slug" >}}  oder  {{< form slug="slug" >}}
-  Dünner Wrapper um partials/entriqa/embed.html (dasselbe für Layouts).
+  Embeds a form of the form system.
+  Usage: {{< entriqa "slug" >}}  or  {{< entriqa slug="slug" >}}
+  The shortcode is named after this file, so `entriqa` is the name - that is also what the
+  admin puts on the clipboard (Forms.razor, FormEditor.razor).
+  Thin wrapper around partials/entriqa/embed.html (the same thing for layouts).
 */ -}}
 {{- $slug := .Get "slug" | default (.Get 0) -}}
 {{- partial "entriqa/embed" (dict "slug" $slug "page" .Page) -}}

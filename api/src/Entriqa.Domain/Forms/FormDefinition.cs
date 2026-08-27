@@ -22,6 +22,12 @@ public sealed record FormDefinition(
     bool Handling,                                 // submissions get an open/done state
     IReadOnlyList<string>? Locales = null)         // supported languages; null/empty = ["de"]
 {
+    // The admin always writes both collections, hand-written or imported JSON does not have to.
+    // A missing key used to arrive as null and take the publish check down with a
+    // NullReferenceException - an unhandled error instead of a reportable finding.
+    public IReadOnlyList<FieldDefinition> Fields { get; init; } = Fields ?? Array.Empty<FieldDefinition>();
+    public IReadOnlyList<StepDefinition> Pipeline { get; init; } = Pipeline ?? Array.Empty<StepDefinition>();
+
     public FieldDefinition? EmailField => Fields.FirstOrDefault(f => f.Type == FieldTypes.Email);
     public FieldDefinition? ConsentField => Fields.FirstOrDefault(f => f.Type == FieldTypes.Consent);
 
