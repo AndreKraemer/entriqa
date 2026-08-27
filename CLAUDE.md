@@ -61,12 +61,7 @@ Registered in the `skills` map of `pairmode.config.json`:
 
 | Skill | Covers |
 |---|---|
-| [`local-dev`](.claude/skills/local-dev/SKILL.md) | Starting, driving and debugging the app: ports, the external Hugo site, seeding, dev mails, local auth |
-
-Still missing, ordered by expected value:
-
-| Area | Why |
-|---|---|
-| Processing pipeline | Brevo, double opt-in, PDF, Teams, webhook — the densest domain logic in the product |
-| Test conventions | 81 tests exist; the convention is written down nowhere |
-| Admin/UI design | `eq-*` classes, form builder, live preview DE/EN |
+| [`local-dev`](.claude/skills/local-dev/SKILL.md) | Starting, driving and debugging the app: ports, the bundled sample site, seeding, dev mails, local auth |
+| [`test-conventions`](.claude/skills/test-conventions/SKILL.md) | Given/When/Then naming, `TestData`, NSubstitute on ports, `FakeTimeProvider`, the architecture tests |
+| [`processing-pipeline`](.claude/skills/processing-pipeline/SKILL.md) | Step contract, DOI phases, inline vs deferred, critical vs blocked, publish checks |
+| [`admin-ui`](.claude/skills/admin-ui/SKILL.md) | German strings as translation keys, the form builder, the schematic preview, the `eq-*` contract |

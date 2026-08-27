@@ -28,6 +28,9 @@
     "*.office.com"
   ],
   "skills": {
-    "local-dev": "Read .claude/skills/local-dev/SKILL.md before starting, driving or debugging the running app."
+    "local-dev": "Read .claude/skills/local-dev/SKILL.md before starting, driving or debugging the running app.",
+    "test-conventions": "Read .claude/skills/test-conventions/SKILL.md before writing or changing any test, including a story's failing proof.",
+    "processing-pipeline": "Read .claude/skills/processing-pipeline/SKILL.md before adding or changing a pipeline step or touching the double opt-in flow.",
+    "admin-ui": "Read .claude/skills/admin-ui/SKILL.md before changing the Blazor admin, any Ui.cs string, or the eq-* markup contract."
   }
 }
