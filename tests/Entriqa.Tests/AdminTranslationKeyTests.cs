@@ -15,15 +15,26 @@ namespace Entriqa.Tests;
 /// </summary>
 public class AdminTranslationKeyTests
 {
-    private static readonly Regex Entry = new(@"^\s*\[""(?<key>(?:[^""\\]|\\.)*)""\]\s*=\s*""(?<value>(?:[^""\\]|\\.)*)"",",
+    // Only the key half: requiring the value literal and its trailing comma on the same line
+    // silently skipped every wrapped entry - 21 of 366 in Ui.cs, all of them long strings whose
+    // translation sits on the following line. A duplicate among those stayed invisible.
+    private static readonly Regex Entry = new(@"^\s*\[""(?<key>(?:[^""\\]|\\.)*)""\]\s*=",
         RegexOptions.Compiled | RegexOptions.Multiline);
 
-    private static string UiSource()
+    /// <summary>The English table only - a second indexer-initialised dictionary in the same file
+    /// would otherwise contribute phantom duplicates.</summary>
+    private static string EnglishTable()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             var file = Path.Combine(dir.FullName, "src", "Ui", "Entriqa.Admin", "Services", "Ui.cs");
-            if (File.Exists(file)) return File.ReadAllText(file);
+            if (!File.Exists(file)) continue;
+            var text = File.ReadAllText(file);
+            var start = text.IndexOf("En = new()", StringComparison.Ordinal);
+            Assert.True(start >= 0, "the En dictionary was not found in Ui.cs - did it move or get renamed?");
+            var end = text.IndexOf("};", start, StringComparison.Ordinal);
+            Assert.True(end > start, "the En dictionary is not terminated");
+            return text[start..end];
         }
         throw new FileNotFoundException($"Ui.cs not found above {AppContext.BaseDirectory}");
     }
@@ -31,7 +42,7 @@ public class AdminTranslationKeyTests
     [Fact]
     public void GivenTheEnglishTranslationTable_WhenCollectingItsKeys_ThenNoKeyIsDefinedTwice()
     {
-        var keys = Entry.Matches(UiSource()).Select(m => m.Groups["key"].Value).ToList();
+        var keys = Entry.Matches(EnglishTable()).Select(m => m.Groups["key"].Value).ToList();
         Assert.NotEmpty(keys);
         var duplicates = keys.GroupBy(k => k, StringComparer.Ordinal)
             .Where(g => g.Count() > 1).Select(g => $"\"{g.Key}\" ×{g.Count()}").ToList();

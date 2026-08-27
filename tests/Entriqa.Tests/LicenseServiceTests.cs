@@ -35,17 +35,27 @@ public class LicenseServiceTests
         // one side pins the culture the signature verifies but the date does not survive, and every
         // licence fails on such a server. CA1305 does not flag ParseExact(string, string), so the
         // analyzer cannot stand in for this test.
-        var previous = CultureInfo.CurrentCulture;
-        try
+        // Run on a thread of its own rather than mutating the ambient culture of a pooled test
+        // thread: xUnit runs classes in parallel, and a try/finally still leaves a window in which
+        // the process-visible culture is not what a neighbouring test assumes. A dedicated thread
+        // has no such window - nothing else ever runs on it.
+        Exception? failure = null;
+        var thread = new Thread(() =>
         {
-            CultureInfo.CurrentCulture = new CultureInfo(culture);
-            var (priv, pub) = NewPair();
-            var key = LicenseService.Issue(priv, "L-1001", "site", new DateOnly(2027, 8, 23));
-            var info = LicenseService.Validate(key, pub, Now);
-            Assert.Equal("valid", info.Status);
-            Assert.Equal(new DateOnly(2027, 8, 23), info.ValidUntil);
-        }
-        finally { CultureInfo.CurrentCulture = previous; }
+            try
+            {
+                CultureInfo.CurrentCulture = new CultureInfo(culture);
+                var (priv, pub) = NewPair();
+                var key = LicenseService.Issue(priv, "L-1001", "site", new DateOnly(2027, 8, 23));
+                var info = LicenseService.Validate(key, pub, Now);
+                Assert.Equal("valid", info.Status);
+                Assert.Equal(new DateOnly(2027, 8, 23), info.ValidUntil);
+            }
+            catch (Exception ex) { failure = ex; }
+        });
+        thread.Start();
+        thread.Join();
+        if (failure is not null) throw new Xunit.Sdk.XunitException($"under {culture}: {failure.Message}");
     }
 
     [Fact]

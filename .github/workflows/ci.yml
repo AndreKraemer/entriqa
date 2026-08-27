@@ -59,9 +59,24 @@ jobs:
       - name: Build the sample site
         run: npm run sample:build
 
-      - name: The English consulting page must render its form host in English
+      - name: Every sample page must embed its form, and the English tree must be English
+        # A static build cannot show the rendered fields - forms.js builds those client-side from
+        # the API response. What it does prove is that the shortcode resolved, the module's
+        # partial ran and relLangURL produced the right language, which is where a broken
+        # shortcode, a missing i18n key or an invalid hugo.toml would surface.
         run: |
-          page=samples/site/public/en/consulting/index.html
-          test -f "$page" || { echo "::error::$page was not generated"; exit 1; }
-          grep -q 'data-lang=en' "$page" || { echo "::error::form host is not marked as English"; exit 1; }
-          grep -q 'data-form=beratung' "$page" || { echo "::error::consulting form is not embedded"; exit 1; }
+          set -e
+          check() {
+            test -f "$1" || { echo "::error::$1 was not generated"; exit 1; }
+            grep -q "$2" "$1" || { echo "::error::$1 does not contain $2"; exit 1; }
+          }
+          check samples/site/public/kontakt/index.html    'data-form=kontakt'
+          check samples/site/public/beratung/index.html   'data-form=beratung'
+          check samples/site/public/whitepaper/index.html 'data-form=whitepaper'
+          check samples/site/public/selbsttest/index.html 'data-form=selbsttest'
+          check samples/site/public/en/consulting/index.html 'data-form=beratung'
+          check samples/site/public/en/consulting/index.html 'data-lang=en'
+          # A missing i18n key renders the German fallback and every data- attribute above still
+          # matches, so the translated string itself has to be asserted.
+          check samples/site/public/en/consulting/index.html 'This form needs JavaScript'
+          check samples/site/public/kontakt/index.html        'Dieses Formular braucht JavaScript'

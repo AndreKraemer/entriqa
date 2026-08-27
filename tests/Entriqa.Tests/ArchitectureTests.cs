@@ -41,10 +41,14 @@ public class ArchitectureTests
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? Enumerable.Empty<string>()));
     }
 
+    /// <summary>
+    /// IL-level, and that is the limit of it: NetArchTest sees a dependency only once a type is
+    /// actually used, so an unused ProjectReference passes here. The project-file rules below are
+    /// what catch that.
+    /// </summary>
     [Fact]
-    public void GivenInfrastructureAssembly_WhenInspectingDependencies_ThenDataIsNotReferenced()
+    public void GivenInfrastructureAssembly_WhenInspectingDependencies_ThenNoDataTypeIsUsed()
     {
-        // The mirror of the rule above. Only the csproj held this direction; nothing asserted it.
         var result = Types.InAssembly(Infrastructure)
             .ShouldNot().HaveDependencyOnAny("Entriqa.Data", "Entriqa.Functions")
             .GetResult();
@@ -52,22 +56,37 @@ public class ArchitectureTests
     }
 
     /// <summary>
-    /// The admin is a UI project and may see the Domain only (Solution Standard section 8.1). It is
-    /// asserted on the project file rather than the assembly: Entriqa.Admin is a Blazor WASM app and
-    /// does not load in this test host. Before the projects moved it sat outside the solution and
-    /// reached the domain through ..\..pi\src\...; now it is a sibling of Core under src/, so
-    /// ..\..\Core\Entriqa.Application\... is one line away - and nothing enforced the boundary.
+    /// The admin is a UI project and may see the Domain only (Solution Standard section 8.1).
+    /// Before the projects moved it sat outside the solution; now it is a sibling of Core under
+    /// src/, so a reference to Application is one line away - and nothing enforced the boundary.
     /// </summary>
     [Fact]
-    public void GivenTheAdminProject_WhenInspectingItsReferences_ThenOnlyTheDomainIsReferenced()
+    public void GivenTheAdminProject_WhenInspectingItsReferences_ThenOnlyTheDomainIsReferenced() =>
+        AssertProjectReferences(Path.Combine("src", "Ui", "Entriqa.Admin", "Entriqa.Admin.csproj"), "Entriqa.Domain");
+
+    [Fact]
+    public void GivenTheInfrastructureProject_WhenInspectingItsReferences_ThenOnlyApplicationIsReferenced() =>
+        AssertProjectReferences(Path.Combine("src", "Core", "Entriqa.Infrastructure", "Entriqa.Infrastructure.csproj"), "Entriqa.Application");
+
+    /// <summary>
+    /// Reads the project file rather than the assembly. That catches a reference which has been
+    /// added but not used yet - invisible to the IL rules above - and it works for Entriqa.Admin,
+    /// whose WASM assembly does not load in this test host. The element count is asserted too, so
+    /// a reference written in a shape the pattern does not match fails loudly instead of silently
+    /// dropping out of the set.
+    /// </summary>
+    private static void AssertProjectReferences(string relativeCsproj, params string[] expected)
     {
-        var csproj = Path.Combine(RepoRoot(), "src", "Ui", "Entriqa.Admin", "Entriqa.Admin.csproj");
-        Assert.True(File.Exists(csproj), $"admin project not found at {csproj}");
+        var csproj = Path.Combine(RepoRoot(), relativeCsproj);
+        Assert.True(File.Exists(csproj), $"project not found at {csproj}");
+        var text = File.ReadAllText(csproj);
+        var elements = System.Text.RegularExpressions.Regex.Count(text, @"<(?:Project)?Reference\b");
         var referenced = System.Text.RegularExpressions.Regex
-            .Matches(File.ReadAllText(csproj), @"<ProjectReference[^>]*Include=""[^""]*[\\/](Entriqa\.[A-Za-z]+)\.csproj""")
+            .Matches(text, @"<(?:Project)?Reference[^>]*Include=""[^""]*[\\/](Entriqa\.[\w.]+)\.csproj""")
             .Select(m => m.Groups[1].Value)
             .ToHashSet();
-        Assert.Equal(new[] { "Entriqa.Domain" }, referenced.OrderBy(x => x));
+        Assert.Equal(elements, referenced.Count);
+        Assert.Equal(expected.OrderBy(x => x), referenced.OrderBy(x => x));
     }
 
     private static string RepoRoot()

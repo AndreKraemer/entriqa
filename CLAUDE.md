@@ -10,8 +10,8 @@ plugin. This file holds only what is specific to this project.
 ## Hard rules
 
 - **Language: English everywhere** — code, comments, test names, commit and PR text,
-  documentation, README, specs, and GitHub issues. Tests follow Given/When/Then. The one
-  exceptions are texts an end user or operator reads: `hugo/content/`, the admin UI strings in
+  documentation, specs, and GitHub issues. Tests follow Given/When/Then. The exceptions are
+  texts an end user or operator reads: `hugo/content/`, the admin UI strings in
   `Ui.cs` (whose German strings double as the translation keys), `ValidationMessages`, the German
   branch of `ErrorMessages`, the publish-check findings in `PublishCheckService` and
   `QuizEngine.Check`, the log messages, and the console output of `dev/start.mjs`. `README.md`
@@ -57,7 +57,6 @@ Deliberate deviations from the standard, as complete as it is currently known:
 - `hugo/`, `seed/`, `samples/` have no counterpart in a pure .NET layout;
 - no `/build` or `/deploy`; CI lives in `.github/workflows/` (GitHub requires that path) and the
   gate in `scripts/`;
-- `global.json` uses `rollForward: latestPatch` per §21.1;
 - one flat `tests/Entriqa.Tests` instead of a mirror of `/src`, and no separate
   `*.ArchitectureTests` project — the architecture tests are a class inside it;
 - xUnit v2 on `Microsoft.NET.Test.Sdk`, not xUnit v3 on Microsoft Testing Platform (§22.1);

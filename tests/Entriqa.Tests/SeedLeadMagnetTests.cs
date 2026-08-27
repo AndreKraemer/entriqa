@@ -93,6 +93,11 @@ public class SeedLeadMagnetTests
         var digits = new string(text[(marker + "startxref".Length)..].TrimStart().TakeWhile(char.IsAsciiDigit).ToArray());
         Assert.True(int.TryParse(digits, out var offset), $"{name} has an unreadable startxref offset");
         Assert.True(offset > 0 && offset < bytes.Length, $"{name}: startxref {offset} is outside the file");
-        Assert.StartsWith("xref", text[offset..], StringComparison.Ordinal);
+        // A classic xref table starts with "xref"; a PDF 1.5+ cross-reference stream points at an
+        // indirect object instead. Accept both, or this rejects a perfectly good replacement file.
+        var atOffset = text[offset..];
+        var valid = atOffset.StartsWith("xref", StringComparison.Ordinal)
+                 || System.Text.RegularExpressions.Regex.IsMatch(atOffset, @"^\d+\s+\d+\s+obj");
+        Assert.True(valid, $"{name}: startxref {offset} points at neither an xref table nor an object");
     }
 }
