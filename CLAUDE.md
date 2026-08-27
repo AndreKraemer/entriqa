@@ -1,54 +1,60 @@
-# Entriqa — Projekt-Baseline
+# Entriqa — Project Baseline
 
-Selbst gehostetes Formular- und Einsendungssystem für Hugo-Websites auf Azure Static Web
-Apps: Formulare, Quizzes, Uploads und eine konfigurierbare Verarbeitungs-Pipeline (E-Mail,
-Brevo, Double-Opt-in, PDF, Teams, Webhook), administriert über einen Blazor-WASM-Admin.
+Self-hosted form and submission system for Hugo websites on Azure Static Web Apps: forms,
+quizzes, uploads and a configurable processing pipeline (email, Brevo, double opt-in, PDF,
+Teams, webhook), administered through a Blazor WASM admin.
 
-Der Prozess (Story → Plan → roter Test → Implementierung → Review → PR) steckt im
-pairmode-Plugin. Diese Datei hält nur, was projektspezifisch ist.
+The process (story → plan → red test → implementation → review → PR) lives in the pairmode
+plugin. This file holds only what is specific to this project.
 
-## Harte Regeln
+## Hard rules
 
-- **Sprache:** Code, Kommentare, Testnamen und Commit-/PR-Texte auf **Englisch**.
-  Dokumentation, Issues und Nutzertexte auf **Deutsch**. Tests nach Given/When/Then.
-- **Keine Live-Endpunkte** aus Tests oder Dev-Loops: Brevo, produktives Azure Storage und
-  Teams-Webhooks sind in `pairmode.config.json` gesperrt. Lokal läuft Azurite.
-- **Kein Browser-Storage und keine Cookies** beim Website-Besucher (§ 25 TDDDG) — das ist
-  ein Produktversprechen, kein Implementierungsdetail. Siehe README.
-- `TreatWarningsAsErrors` ist projektweit an; eine Warnung ist ein Fehler.
-- **`admin/` ist nicht Teil von `api/Entriqa.sln`**, referenziert aber `Entriqa.Domain`.
-  Wer die Domain anfasst, muss den Admin mitbauen — das Gate tut das.
+- **Language: everything that lands in the repository is English** — code, comments, test
+  names, commit and PR text, documentation, README and specs. Tests follow Given/When/Then.
+  The two exceptions are product text shipped to German site visitors (`hugo/content/`,
+  admin UI strings, localized API messages) and GitHub issues, which live outside the repo.
+- **No live endpoints** from tests or dev loops: Brevo, production Azure Storage and Teams
+  webhooks are blocked in `pairmode.config.json`. Azurite runs locally.
+- **No browser storage and no cookies** for the website visitor (§ 25 TDDDG) — this is a
+  product promise, not an implementation detail. See README.
+- `TreatWarningsAsErrors` is on project-wide; a warning is an error.
+- **`admin/` is not part of `api/Entriqa.sln`** but references `Entriqa.Domain`. Anyone
+  touching the domain has to build the admin too — the gate does that.
 
-## Aufbau
+## Layout
 
-| Ordner | Inhalt |
+| Folder | Contents |
 |---|---|
-| `hugo/` | Hugo-Modul: Shortcode, Embed-Partial, forms.js/css, DOI-Seiten. **Markdown hier ist Produkt, keine Doku.** |
+| `hugo/` | Hugo module: shortcode, embed partial, forms.js/css, DOI pages. **Markdown here is product, not documentation.** |
 | `api/` | .NET 10, Azure Functions isolated, Clean Architecture (Domain/Application/Data/Infrastructure/Functions) |
-| `admin/` | Blazor-WASM-Admin unter `/admin` |
-| `dev/` | `node dev/start.mjs` startet Azurite + SWA-CLI lokal |
-| `seed/`, `docs/`, `pipelines/`, `tools/` | Beispieldaten, Doku, Kunden-Vorlagen, Lizenzwerkzeug |
+| `admin/` | Blazor WASM admin served under `/admin` |
+| `dev/` | `node dev/start.mjs` starts Azurite + SWA CLI locally |
+| `seed/`, `docs/`, `pipelines/`, `tools/` | Sample data, documentation, customer templates, licensing tool |
 
 ## Verify
 
-| Zweck | Kommando |
+| Purpose | Command |
 |---|---|
-| Schnelles Gate (jede Änderung) | `node scripts/verify.mjs` |
-| Volles Gate (vor dem PR) | `node scripts/verify.mjs --full` |
-| Lokale Umgebung starten | `node dev/start.mjs` |
+| Fast gate (every change) | `node scripts/verify.mjs` |
+| Full gate (before the PR) | `node scripts/verify.mjs --full` |
+| Start the local environment | `node dev/start.mjs` |
 
-Das schnelle Gate baut und testet `api/` in Debug und baut den Admin. Das volle Gate macht
-dasselbe in Release und führt zusätzlich die beiden Publishes aus, die `release.yml` beim
-Tag-Build fährt. Exit 0 = PASS.
+The fast gate builds and tests `api/` in Debug and builds the admin. The full gate does the
+same in Release and additionally runs the two publishes that `release.yml` performs on a tag
+build. Exit 0 = PASS.
+
+Note: a run only counts as evidence when it goes through pairmode's `verify-run.mjs`, which
+records the fingerprint of the working tree. Calling `scripts/verify.mjs` directly is fine
+for a quick check but leaves no proof behind.
 
 ## Skills
 
-Noch keine Projekt-Skills angelegt (`skills` in `pairmode.config.json` ist leer).
-Kandidaten, nach erwartetem Nutzen sortiert:
+No project skills created yet (`skills` in `pairmode.config.json` is empty). Candidates,
+ordered by expected value:
 
-| Bereich | Warum |
+| Area | Why |
 |---|---|
-| Verarbeitungs-Pipeline | Brevo, Double-Opt-in, PDF, Teams, Webhook — die dichteste Domänenlogik im Produkt |
-| Test-Konventionen | 71 Tests existieren; die Konvention steht nirgends geschrieben |
-| Admin/UI-Design | `eq-*`-Klassen, Formular-Builder, Live-Vorschau DE/EN |
-| Lokal starten & debuggen | Azurite + SWA-CLI; Voraussetzung für `/pairmode:acceptance` |
+| Processing pipeline | Brevo, double opt-in, PDF, Teams, webhook — the densest domain logic in the product |
+| Test conventions | 71 tests exist; the convention is written down nowhere |
+| Admin/UI design | `eq-*` classes, form builder, live preview DE/EN |
+| Running & debugging locally | Azurite + SWA CLI; a prerequisite for `/pairmode:acceptance` |

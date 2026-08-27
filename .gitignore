@@ -4,6 +4,6 @@
 node_modules/
 local.settings.json.bak
 
-# Verify-Gate-Artefakte (scripts/verify.mjs --full) und Release-Publishes
+# Verify gate artifacts (scripts/verify.mjs --full) and release publishes
 out/
 .claude/settings.local.json
