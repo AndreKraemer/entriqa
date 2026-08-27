@@ -61,16 +61,38 @@ Leave `Entriqa__Brevo__ApiKey` and `Entriqa__ReportingCloud__ApiKey` empty.
 hosts, and that block exists because a dev loop against live Brevo creates real contacts and
 sends real mail.
 
-## Auth locally
+## Auth locally — measure it, do not assume it
 
-`Entriqa__AllowAnonymousAdmin` is `true` in `local.settings.json`, so the API accepts admin
-calls without a principal. The gate that remains is the SWA emulator's route rules — and those
-only exist because `dev/start.mjs` passes `--swa-config-location`. Without that flag the emulator
-starts with **no rules at all**: `/api/manage/*` answers unauthenticated and the `/f/*` rewrite is
-missing, so local behaviour silently diverges from production. An acceptance run found exactly
-that. With the flag, `/api/manage/*` redirects to `/.auth/login/aad`; sign in there and type
-`admin` into the roles field. Hitting 5100 directly skips everything — fine for a quick UI check,
-misleading for anything authorization-related.
+What is gated locally is narrower than it looks, and the difference has already misled one
+acceptance report. Measured on the branch, with no login anywhere:
+
+| Request | Result |
+|---|---|
+| `4281/`, `4281/einsendungen` | **200** — the admin UI shell is served |
+| `4281/api/manage/*` | 302 → `/.auth/login/aad` |
+| `4280/admin/` | 302 → `/.auth/login/aad` |
+| `7071/api/manage/*` | 200, **data in plain text** |
+
+Three separate mechanisms produce that table, and confusing them is the trap:
+
+- **The route rules gate the API, not the local admin UI.** `staticwebapp.config.json` protects
+  `/admin/*`, and in production the admin lives there. Locally it is served at the *root* of the
+  second proxy, where no rule matches — so the shell comes through. The application notices and
+  renders "Bitte zuerst anmelden …" instead of data, because every one of its calls is redirected.
+  Tracked as issue #33; until it is fixed, **the redirect-before-load behaviour cannot be observed
+  locally at all**, so never report it as verified from a local run.
+- **Both proxies do get the configuration**, even though only the site proxy is passed
+  `--swa-config-location`: they run with `cwd = samples/site` and the SWA CLI finds
+  `static/staticwebapp.config.json` there. Before that file moved into the site there were no rules
+  at all, `/api/manage/*` answered 200 unauthenticated, and the `/f/*` rewrite was missing.
+- **`Entriqa__AllowAnonymousAdmin` is `true`**, so the API on 7071 serves admin data to anyone.
+  That is a deliberate development setting and is unaffected by any proxy configuration — it is
+  why port 7071 is a convenient way to read state during a test run, and why nothing measured
+  there says anything about authorization.
+
+To sign in: open `/.auth/login/aad` on 4281, pick a username, and type `admin` into the roles
+field. Hitting 5100 directly skips every layer — fine for a quick look at a component, worthless
+for anything authorization-related.
 
 **The standalone `/f/{slug}/` route cannot be exercised through the dev server.** The rewrite
 targets `/f/index.html`, and Hugo's dev server answers that with `301 → ./`, which loops back.
@@ -102,7 +124,9 @@ rather than for a line in the log.
 ## For /pairmode:acceptance
 
 Drive port 4280 for anything a site visitor does and 4281 for the admin. Evidence should come
-from those two origins; a result taken from 1313 or 5100 does not prove the real routing,
-auth or API wiring works. `samples/site/static/staticwebapp.config.json` is the routing contract the
+from those two origins; a result taken from 1313 or 5100 does not prove the real routing or API
+wiring works. **Authorization is the exception** — see the auth section above: the admin UI is
+outside the route rules locally, so a local run cannot show that the admin is gated. Say so in the
+report rather than reporting it as verified. `samples/site/static/staticwebapp.config.json` is the routing contract the
 proxies emulate — `/admin/*` and `/api/manage/*` require the `admin` role, `/f/*` rewrites to
 the DOI page.
