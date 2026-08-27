@@ -45,7 +45,8 @@ plugin. This file holds only what is specific to this project.
 | Start the local environment | `npm run dev` |
 | Build the sample site alone | `npm run sample:build` |
 
-The fast gate builds and tests `api/` in Debug and builds the admin. It does **not** build
+The fast gate builds and tests `api/` in Debug, builds the admin, and checks the `eq-*` class
+reference against `forms.js` (`scripts/check-eq-classes.mjs`). It does **not** build
 the sample site — that needs Hugo and Go, which the release workflow does not have; run
 `npm run sample:build` by hand after touching `hugo/` or `samples/site/`. The full gate does the
 same in Release and additionally runs the two publishes that `release.yml` performs on a tag

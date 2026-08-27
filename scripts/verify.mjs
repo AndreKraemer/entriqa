@@ -20,6 +20,9 @@ const config = full ? "Release" : "Debug";
 const steps = [
   ["API tests", "dotnet", ["test", "api/Entriqa.sln", "-c", config, "--nologo"]],
   ["Admin build", "dotnet", ["build", "admin/Entriqa.Admin/Entriqa.Admin.csproj", "-c", config, "--nologo"]],
+  // forms.js and the class reference in MarkupGenerator live in different projects, so no unit
+  // test can compare them - see the script's header.
+  ["eq-* class contract", process.execPath, [join(root, "scripts", "check-eq-classes.mjs")]],
 ];
 
 if (full) {

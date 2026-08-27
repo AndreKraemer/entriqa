@@ -26,7 +26,10 @@ public static class MarkupGenerator
             {
                 case "section": L(1, $"<h3 class=\"eq-section\">{E(f.Label.Get(loc))}</h3>"); continue;
                 case "divider": L(1, "<hr class=\"eq-divider\">"); continue;
-                case "page": L(1, "<!-- Seitenwechsel: <div class=\"eq-page\"> umschließt die folgenden Felder -->"); continue;
+                case "page":
+                    L(1, "<!-- Seitenwechsel: forms.js legt je Seite ein <div class=\"eq-page\" data-page=\"n\"> um die folgenden Felder,");
+                    L(1, "     darüber <p class=\"eq-form__pages\"> als Seitenanzeige, darunter <div class=\"eq-actions eq-page__nav\"> mit Zurück/Weiter -->");
+                    continue;
                 case "hidden": L(1, $"<input type=\"hidden\" name=\"{f.Id}\">  <!-- Quelle: {f.Source} -->"); continue;
             }
             L(1, $"<div class=\"eq-field eq-field--{f.Type}{req}\" data-field=\"{f.Id}\">");
@@ -58,6 +61,10 @@ public static class MarkupGenerator
                         L(2, "<div class=\"eq-field__scale\" role=\"radiogroup\">");
                         L(3, $"<label class=\"eq-field__scale-option\"><input type=\"radio\" name=\"{f.Id}\" value=\"1\"> <span>1</span></label>  <!-- … bis n -->");
                         L(2, "</div>");
+                        break;
+                    case "file":
+                        L(2, $"<input class=\"eq-field__control\" type=\"file\" id=\"{id}\" name=\"{f.Id}\"{(f.Required ? " required" : "")} accept=\"…\">");
+                        L(2, "<p class=\"eq-field__file-status\" hidden></p>  <!-- Upload-Status -->");
                         break;
                     default:
                         var type = f.Type is "email" or "number" or "date" or "tel" ? f.Type : "text";
@@ -105,19 +112,31 @@ public static class MarkupGenerator
         ("eq-field__error", "Fehlermeldung unter dem Feld"),
         ("eq-field__options", "Container der Checkboxen bei Mehrfachauswahl"),
         ("eq-field__option", "Eine Checkbox-Zeile der Mehrfachauswahl"),
+        ("eq-field__scale", "Container der Bewertungsskala (role=radiogroup)"),
+        ("eq-field__scale-option", "Eine Stufe der Bewertungsskala (label mit Radio)"),
+        ("eq-field__file-status", "Status unter einem Datei-Feld; sichtbar während und nach dem Upload"),
         ("eq-section", "Zwischenüberschrift"),
         ("eq-divider", "Trennlinie (<hr>)"),
+        ("eq-page", "Eine Seite eines mehrseitigen Formulars (data-page=\"n\")"),
+        ("eq-page__nav", "Zurück/Weiter-Leiste einer Seite; trägt zusätzlich eq-actions"),
+        ("eq-form__pages", "Seitenanzeige über einem mehrseitigen Formular (aria-live)"),
         ("eq-actions", "Container für den Absende-Button"),
         ("eq-submit", "Absende-Button (auch der Weiter-Button im Quiz)"),
         ("eq-message", "Rückmeldung; Modifier --success | --error"),
         ("eq-quiz", "Quiz-Container"),
-        ("eq-quiz__progress", "Fortschrittsbalken; Füllung eq-quiz__progress-bar (Breite per style – einzige Inline-Ausnahme)"),
+        ("eq-quiz__progress", "Fortschrittsbalken des Quiz"),
+        ("eq-quiz__progress-bar", "Füllung des Fortschrittsbalkens (Breite per style – einzige Inline-Ausnahme)"),
         ("eq-quiz__question", "Aktuelle Frage (fieldset, data-question)"),
         ("eq-quiz__question-text", "Fragetext (legend)"),
         ("eq-quiz__option", "Eine Antwort (label mit Radio); Modifier --selected"),
-        ("eq-quiz__nav", "Zurück/Weiter-Leiste; Zurück-Button eq-quiz__back"),
+        ("eq-quiz__nav", "Zurück/Weiter-Leiste des Quiz"),
+        ("eq-quiz__back", "Zurück-Button in der Quiz-Navigation"),
         ("eq-quiz__contact", "Kontaktfelder-Schritt vor dem Ergebnis"),
-        ("eq-quiz__result", "Ergebnis-Box mit __result-title, __result-body und __findings-Liste"),
+        ("eq-quiz__result", "Ergebnis-Box (erscheint am Ende des Quiz)"),
+        ("eq-quiz__result-title", "Überschrift des Ergebnisses"),
+        ("eq-quiz__result-body", "Fließtext des Ergebnisses"),
+        ("eq-quiz__findings", "Liste der individuellen Befunde (<ul>)"),
+        ("eq-quiz__finding", "Ein einzelner Befund (<li>)"),
         ("eq-loading", "Platzhalter beim Laden"),
     };
 }

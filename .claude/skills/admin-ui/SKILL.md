@@ -78,17 +78,19 @@ eq-form  eq-form--{type}  eq-form--{slug}
   eq-actions  eq-submit  eq-message  eq-loading
 ```
 
-**The source of truth is `hugo/assets/js/forms.js`, not the generator.** The two have drifted:
-forms.js emits eleven classes `MarkupGenerator` does not document —
+**The source of truth is `hugo/assets/js/forms.js`, not the generator** — the reference has to
+follow it, never the other way round. `scripts/check-eq-classes.mjs` enforces that in the verify
+gate: it collects every class forms.js puts into the DOM and fails when one is missing from
+`MarkupGenerator.Classes`. The two files sit in different projects (forms.js is a Hugo asset,
+the generator is in `admin/`, which is outside `api/Entriqa.sln`), so no unit test can compare
+them — hence a script.
 
-```
-eq-ready  eq-form--busy  eq-form--done  eq-form__pages  eq-page__nav
-eq-field--error  eq-field__file-status  eq-message--error  eq-message--success
-eq-quiz__finding  eq-quiz__option--selected
-```
+If the guard reports a class, the fix is one of two things: document it, or stop emitting it in
+forms.js. Never silence the check. A class that reaches a customer's theme and then disappears
+is a breaking change for them.
 
-When you touch either side, check the other. A class that reaches a customer's theme and then
-disappears is a breaking change for them.
+Modifiers (`--busy`, `--selected`) count as documented when they are named in the prose of their
+base class's entry; child elements (`__result-title`) need an entry of their own.
 
 `hugo/assets/css/forms.css` styles only 15 base classes — it deliberately provides structure,
 not looks, so the page's own CSS wins. Do not add cosmetic rules there.
