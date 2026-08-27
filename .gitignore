@@ -7,3 +7,8 @@ local.settings.json.bak
 # Verify gate artifacts (scripts/verify.mjs --full) and release publishes
 out/
 .claude/settings.local.json
+
+# Hugo build output of the sample site
+samples/site/public/
+samples/site/resources/
+samples/site/.hugo_build.lock

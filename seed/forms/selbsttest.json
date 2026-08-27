@@ -1,0 +1,92 @@
+{
+  "slug": "selbsttest",
+  "name": "Selbsttest Formular-Reife (Beispiel: Quiz mit Weichen und Befunden)",
+  "type": "quiz",
+  "locales": ["de", "en"],
+  "intro": {
+    "de": "Fünf Fragen zu Ihren Formularen. Am Ende sehen Sie eine Einschätzung und die auffälligsten Punkte.",
+    "en": "Five questions about your forms. At the end you get an assessment and the most notable findings."
+  },
+  "submitLabel": { "de": "Auswerten", "en": "Evaluate" },
+  "handling": false,
+  "fields": [],
+  "quiz": {
+    "scoring": "sum",
+    "collectEmail": "optional",
+    "questions": [
+      { "id": "q1",
+        "text": { "de": "Haben Sie überhaupt Formulare auf der Website?", "en": "Do you have any forms on your website at all?" },
+        "topic": { "de": "Formulare", "en": "Forms" },
+        "options": [
+          { "id": "a", "label": { "de": "Nein, nur eine E-Mail-Adresse", "en": "No, just an email address" }, "points": 0, "next": "result:start" },
+          { "id": "b", "label": { "de": "Ja, ein einfaches Kontaktformular", "en": "Yes, a simple contact form" }, "points": 1, "next": "q2" },
+          { "id": "c", "label": { "de": "Ja, mehrere", "en": "Yes, several" }, "points": 2, "next": "q2" }
+        ] },
+      { "id": "q2",
+        "text": { "de": "Kommen die Einsendungen zuverlässig an?", "en": "Do submissions arrive reliably?" },
+        "topic": { "de": "Zustellung", "en": "Delivery" },
+        "options": [
+          { "id": "a", "label": { "de": "Manches landet im Spam", "en": "Some of it ends up in spam" }, "points": 0,
+            "finding": { "de": "Einsendungen gehen im Spam verloren – ohne Ablage im System merkt das niemand.", "en": "Submissions get lost in spam – without storage in the system nobody notices." } },
+          { "id": "b", "label": { "de": "Meistens", "en": "Mostly" }, "points": 1 },
+          { "id": "c", "label": { "de": "Ja, mit Ablage und Übersicht", "en": "Yes, with storage and an overview" }, "points": 2 }
+        ] },
+      { "id": "q3",
+        "text": { "de": "Wie halten Sie Spam ab?", "en": "How do you keep spam out?" },
+        "topic": { "de": "Spam-Schutz", "en": "Spam protection" },
+        "options": [
+          { "id": "a", "label": { "de": "Gar nicht", "en": "Not at all" }, "points": 0,
+            "finding": { "de": "Ohne Spam-Schutz ist jedes offene Formular früher oder später ein Bot-Ziel.", "en": "Without spam protection every open form becomes a bot target sooner or later." } },
+          { "id": "b", "label": { "de": "Mit einem Captcha", "en": "With a captcha" }, "points": 1,
+            "finding": { "de": "Captchas kosten Abschlüsse und setzen meist Drittanbieter-Cookies.", "en": "Captchas cost conversions and usually set third-party cookies." } },
+          { "id": "c", "label": { "de": "Honeypot, Token, Rate-Limit", "en": "Honeypot, tokens, rate limiting" }, "points": 2 }
+        ] },
+      { "id": "q4",
+        "text": { "de": "Setzen Ihre Formulare Cookies oder Browser-Storage?", "en": "Do your forms set cookies or use browser storage?" },
+        "topic": { "de": "Einwilligungen", "en": "Consent" },
+        "options": [
+          { "id": "a", "label": { "de": "Ja, mit Banner", "en": "Yes, with a banner" }, "points": 0,
+            "finding": { "de": "Ein Banner nur wegen des Formulars ist vermeidbar – § 25 TDDDG greift erst beim Speichern.", "en": "A banner just for the form is avoidable – § 25 TDDDG only applies once you store something." } },
+          { "id": "b", "label": { "de": "Weiß ich nicht", "en": "I do not know" }, "points": 1 },
+          { "id": "c", "label": { "de": "Nein", "en": "No" }, "points": 2 }
+        ] },
+      { "id": "q5",
+        "text": { "de": "Was passiert nach dem Absenden automatisch?", "en": "What happens automatically after submitting?" },
+        "topic": { "de": "Verarbeitung", "en": "Processing" },
+        "options": [
+          { "id": "a", "label": { "de": "Nichts, wir tippen ab", "en": "Nothing, we retype it" }, "points": 0,
+            "finding": { "de": "Abtippen ist die teuerste Form der Datenübernahme und die fehleranfälligste.", "en": "Retyping is the most expensive and most error-prone way to move data." } },
+          { "id": "b", "label": { "de": "Eine Benachrichtigung", "en": "A notification" }, "points": 1 },
+          { "id": "c", "label": { "de": "CRM, Bestätigung, Dokumente", "en": "CRM, confirmation, documents" }, "points": 2 }
+        ] }
+    ],
+    "results": [
+      { "id": "start", "minPct": 0, "maxPct": 24,
+        "title": { "de": "Am Anfang", "en": "At the beginning" },
+        "body": { "de": "Eine E-Mail-Adresse ist kein Formular. Der erste Schritt kostet wenig und bringt sofort Struktur.", "en": "An email address is not a form. The first step is cheap and brings structure right away." } },
+      { "id": "grundlagen", "minPct": 25, "maxPct": 59,
+        "title": { "de": "Grundlagen stehen", "en": "Basics in place" },
+        "body": { "de": "Formulare gibt es, aber Zustellung und Schutz sind noch Glückssache.", "en": "You have forms, but delivery and protection are still a matter of luck." } },
+      { "id": "solide", "minPct": 60, "maxPct": 84,
+        "title": { "de": "Solide", "en": "Solid" },
+        "body": { "de": "Vieles läuft. Der Hebel liegt jetzt in der automatischen Weiterverarbeitung.", "en": "Much of it works. The leverage now lies in automatic processing." } },
+      { "id": "reif", "minPct": 85, "maxPct": 100,
+        "title": { "de": "Ausgereift", "en": "Mature" },
+        "body": { "de": "Ihre Formulare sind ein Prozess, kein Anhängsel. Weiter so.", "en": "Your forms are a process, not an afterthought. Keep it up." } }
+    ],
+    "findings": {
+      "max": 3,
+      "priority": ["q4", "q3", "q2", "q5"],
+      "warningTemplate": { "de": "Beim Thema {topic} ist noch Luft nach oben.", "en": "There is room for improvement on {topic}." },
+      "emptyText": { "de": "Wir haben nichts Auffälliges gefunden.", "en": "We found nothing of note." }
+    }
+  },
+  "pipeline": [
+    { "id": "s1", "step": "notify.mail", "when": "hasEmail",
+      "config": { "to": "selbsttest@example.org", "templateId": 1 } }
+  ],
+  "completion": {
+    "mode": "result",
+    "message": { "de": "Danke fürs Mitmachen.", "en": "Thanks for taking part." }
+  }
+}

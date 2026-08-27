@@ -1,0 +1,39 @@
+{
+  "slug": "whitepaper",
+  "name": "Whitepaper-Download (Beispiel: Lead-Magnet mit Double-Opt-in)",
+  "type": "leadmagnet",
+  "locales": ["de", "en"],
+  "intro": {
+    "de": "Tragen Sie sich ein – den Download-Link schicken wir per E-Mail, sobald Sie die Adresse bestätigt haben.",
+    "en": "Sign up – we will email the download link once you have confirmed your address."
+  },
+  "submitLabel": { "de": "Whitepaper anfordern", "en": "Request the whitepaper" },
+  "handling": false,
+  "fields": [
+    { "id": "name", "type": "text", "label": { "de": "Name", "en": "Name" }, "required": true },
+    { "id": "email", "type": "email", "label": { "de": "Geschäftliche E-Mail", "en": "Business email" },
+      "required": true, "businessOnly": true },
+    { "id": "kampagne", "type": "hidden", "label": { "de": "Kampagne", "en": "Campaign" }, "source": "utm_campaign" },
+    { "id": "consent", "type": "consent", "required": true,
+      "label": { "de": "Einwilligung", "en": "Consent" },
+      "text": {
+        "de": "Ich möchte das Whitepaper erhalten und bin mit der Verarbeitung meiner Adresse einverstanden. Ich kann jederzeit widersprechen.",
+        "en": "I would like to receive the whitepaper and agree to my address being processed. I can object at any time."
+      } }
+  ],
+  "pipeline": [
+    { "id": "s1", "step": "doi.request", "when": "hasEmail",
+      "config": { "templateId": 3 } },
+    { "id": "s2", "step": "brevo.contact", "when": "always",
+      "config": { "listIds": [7] } },
+    { "id": "s3", "step": "leadmagnet.link", "when": "always",
+      "config": { "blob": "downloads/whitepaper-beispiel.pdf" } }
+  ],
+  "completion": {
+    "mode": "message",
+    "message": {
+      "de": "Fast geschafft: Bitte bestätigen Sie den Link in der E-Mail, die wir Ihnen gerade geschickt haben.",
+      "en": "Almost done: please confirm the link in the email we just sent you."
+    }
+  }
+}

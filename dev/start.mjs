@@ -1,4 +1,4 @@
-// Starts the complete local Entriqa dev environment: npm install && node dev/start.mjs --site <hugo-site>
+// Starts the complete local Entriqa dev environment: npm install && node dev/start.mjs
 //
 //   http://localhost:4280        website (Hugo) with working forms
 //   http://localhost:4281        form admin (sign in under /.auth/login/aad with the role "admin" first)
@@ -6,8 +6,9 @@
 // Prozesse: Azurite (Storage-Emulator) · Functions-API · Blazor-Admin · Hugo · 2× SWA-CLI-Proxy.
 // Without a Brevo key, mails end up as clickable HTML files in <TEMP>/entriqa-devmails/.
 //
-// The Hugo site comes from --site <path> or the environment variable ENTRIQA_SITE_ROOT
-// (fallback: the current directory). Its Hugo module import of
+// The Hugo site comes from --site <path> or the environment variable ENTRIQA_SITE_ROOT;
+// without either, the sample site bundled in samples/site is used, so a fresh clone runs
+// with no external site at all. Its Hugo module import of
 // github.com/andrekraemer/entriqa/hugo is redirected automatically via HUGO_MODULE_REPLACEMENTS
 // to this clone - local changes to layouts and assets take effect right away.
 //
@@ -29,10 +30,11 @@ const siteArg = (() => {
   const i = process.argv.indexOf("--site");
   return i >= 0 ? process.argv[i + 1] : undefined;
 })();
-const siteRoot = resolve(siteArg ?? process.env.ENTRIQA_SITE_ROOT ?? process.cwd());
+const bundledSite = join(repoRoot, "samples", "site");
+const siteRoot = resolve(siteArg ?? process.env.ENTRIQA_SITE_ROOT ?? bundledSite);
 const looksLikeSite = ["hugo.toml", "hugo.yaml", "config.toml", "config"].some(f => existsSync(join(siteRoot, f)));
 if (!looksLikeSite) {
-  console.error(`\nKeine Hugo-Site gefunden in: ${siteRoot}\n  Site angeben mit: node dev/start.mjs --site <pfad>  (oder ENTRIQA_SITE_ROOT setzen)\n`);
+  console.error(`\nKeine Hugo-Site gefunden in: ${siteRoot}\n  Site angeben mit: node dev/start.mjs --site <pfad>  (oder ENTRIQA_SITE_ROOT setzen)\n  Ohne Angabe wird die Beispielseite aus samples/site verwendet.\n`);
   process.exit(1);
 }
 

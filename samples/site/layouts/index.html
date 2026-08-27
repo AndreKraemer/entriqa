@@ -1,0 +1,13 @@
+{{ define "main" }}
+  <article class="page">
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+    <ul class="page-list">
+      {{ range where site.RegularPages "Section" "" }}
+        {{ if ne .RelPermalink $.RelPermalink }}
+          <li><a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ with .Params.lead }} — {{ . }}{{ end }}</li>
+        {{ end }}
+      {{ end }}
+    </ul>
+  </article>
+{{ end }}

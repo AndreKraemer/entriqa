@@ -32,7 +32,9 @@ plugin. This file holds only what is specific to this project.
 | `api/` | .NET 10, Azure Functions isolated, Clean Architecture (Domain/Application/Data/Infrastructure/Functions) |
 | `admin/` | Blazor WASM admin served under `/admin` |
 | `dev/` | `node dev/start.mjs` starts Azurite + SWA CLI locally |
-| `seed/`, `docs/`, `pipelines/`, `tools/` | Sample data, documentation, customer templates, licensing tool |
+| `samples/site/` | Bilingual Hugo site importing the module; `dev/start.mjs` defaults to it. Covers every field type and all three form types |
+| `seed/forms/` | The form definitions the sample site embeds; published at startup by `DevSeedHostedService` |
+| `docs/`, `pipelines/`, `tools/` | Documentation, customer templates, licensing tool |
 
 ## Verify
 
@@ -40,9 +42,12 @@ plugin. This file holds only what is specific to this project.
 |---|---|
 | Fast gate (every change) | `node scripts/verify.mjs` |
 | Full gate (before the PR) | `node scripts/verify.mjs --full` |
-| Start the local environment | `node dev/start.mjs` |
+| Start the local environment | `npm run dev` |
+| Build the sample site alone | `npm run sample:build` |
 
-The fast gate builds and tests `api/` in Debug and builds the admin. The full gate does the
+The fast gate builds and tests `api/` in Debug and builds the admin. It does **not** build
+the sample site — that needs Hugo and Go, which the release workflow does not have; run
+`npm run sample:build` by hand after touching `hugo/` or `samples/site/`. The full gate does the
 same in Release and additionally runs the two publishes that `release.yml` performs on a tag
 build. Exit 0 = PASS.
 
@@ -63,5 +68,5 @@ Still missing, ordered by expected value:
 | Area | Why |
 |---|---|
 | Processing pipeline | Brevo, double opt-in, PDF, Teams, webhook — the densest domain logic in the product |
-| Test conventions | 71 tests exist; the convention is written down nowhere |
+| Test conventions | 81 tests exist; the convention is written down nowhere |
 | Admin/UI design | `eq-*` classes, form builder, live preview DE/EN |

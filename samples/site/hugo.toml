@@ -1,0 +1,35 @@
+# Sample site for local development and acceptance runs.
+# Started by `node dev/start.mjs` (which defaults to this directory).
+baseURL = "http://localhost:4280/"
+title = "Entriqa Sample Site"
+defaultContentLanguage = "de"
+defaultContentLanguageInSubdir = false
+enableInlineShortcodes = true
+
+[languages]
+  [languages.de]
+    contentDir = "content/de"
+    label = "Deutsch"
+    weight = 1
+    title = "Entriqa Beispielseite"
+  [languages.en]
+    contentDir = "content/en"
+    label = "English"
+    weight = 2
+    title = "Entriqa Sample Site"
+
+[module]
+  # The same import a customer writes (see docs/QUICKSTART.md). It is redirected to this
+  # clone via HUGO_MODULE_REPLACEMENTS, so changes under hugo/ take effect without
+  # publishing a module version. `node dev/start.mjs` and `npm run sample:*` set that
+  # variable to an ABSOLUTE path - a relative one is not resolved reliably on Windows,
+  # which is why the redirect is not configured here.
+  [[module.imports]]
+    path = "github.com/andrekraemer/entriqa/hugo"
+
+[params]
+  [params.forms]
+    apiBase = "/api"
+
+[markup.goldmark.renderer]
+  unsafe = true

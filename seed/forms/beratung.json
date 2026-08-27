@@ -1,0 +1,70 @@
+{
+  "slug": "beratung",
+  "name": "Beratungsanfrage (Beispiel: mehrseitig, bedingte Felder)",
+  "type": "contact",
+  "locales": ["de", "en"],
+  "intro": {
+    "de": "Erzählen Sie uns von Ihrem Vorhaben. Zwei Schritte, etwa drei Minuten.",
+    "en": "Tell us about your project. Two steps, about three minutes."
+  },
+  "submitLabel": { "de": "Anfrage senden", "en": "Send request" },
+  "handling": true,
+  "fields": [
+    { "id": "kontakt_section", "type": "section", "label": { "de": "Ihre Kontaktdaten", "en": "Your contact details" } },
+    { "id": "firma", "type": "text", "label": { "de": "Firma", "en": "Company" },
+      "placeholder": { "de": "Muster GmbH", "en": "Example Ltd" } },
+    { "id": "name", "type": "text", "label": { "de": "Name", "en": "Name" }, "required": true },
+    { "id": "email", "type": "email", "label": { "de": "Geschäftliche E-Mail", "en": "Business email" },
+      "required": true, "businessOnly": true,
+      "help": { "de": "Bitte keine Freemail-Adresse.", "en": "Please use a business address, not freemail." } },
+    { "id": "telefon", "type": "tel", "label": { "de": "Telefon", "en": "Phone" },
+      "placeholder": { "de": "+49 …", "en": "+49 …" } },
+    { "id": "trenner", "type": "divider", "label": { "de": "", "en": "" } },
+    { "id": "seite2", "type": "page", "label": { "de": "Weiter zum Vorhaben", "en": "Continue to your project" } },
+
+    { "id": "vorhaben_section", "type": "section", "label": { "de": "Ihr Vorhaben", "en": "Your project" } },
+    { "id": "projekttyp", "type": "select", "label": { "de": "Worum geht es?", "en": "What is it about?" }, "required": true,
+      "options": [
+        { "de": "Neue Website", "en": "New website" },
+        { "de": "Relaunch", "en": "Relaunch" },
+        { "de": "Formulare und Einsendungen", "en": "Forms and submissions" },
+        { "de": "Etwas anderes", "en": "Something else" }
+      ] },
+    { "id": "projekttyp_andere", "type": "text", "label": { "de": "Und zwar?", "en": "Namely?" },
+      "visibleIf": { "field": "projekttyp", "options": [3] } },
+    { "id": "leistungen", "type": "multiselect", "label": { "de": "Wobei sollen wir unterstützen?", "en": "Where should we help?" },
+      "options": [
+        { "de": "Konzeption", "en": "Concept" },
+        { "de": "Umsetzung", "en": "Implementation" },
+        { "de": "Betrieb", "en": "Operations" },
+        { "de": "Schulung", "en": "Training" }
+      ] },
+    { "id": "beschreibung", "type": "textarea", "label": { "de": "Kurz beschrieben", "en": "In short" }, "required": true, "maxLength": 2000 },
+    { "id": "budget", "type": "number", "label": { "de": "Budgetrahmen in Euro", "en": "Budget in euros" }, "min": 500, "max": 250000 },
+    { "id": "starttermin", "type": "date", "label": { "de": "Gewünschter Start", "en": "Preferred start" } },
+    { "id": "dringlichkeit", "type": "rating", "label": { "de": "Wie dringend ist es?", "en": "How urgent is it?" }, "max": 5,
+      "help": { "de": "1 = hat Zeit, 5 = brennt.", "en": "1 = no rush, 5 = urgent." } },
+    { "id": "briefing", "type": "file", "label": { "de": "Briefing anhängen", "en": "Attach a briefing" },
+      "help": { "de": "PDF oder Office-Dokument, höchstens 10 MB.", "en": "PDF or Office document, 10 MB at most." } },
+    { "id": "trenner2", "type": "divider", "label": { "de": "", "en": "" } },
+    { "id": "newsletter", "type": "checkbox", "label": { "de": "Schickt mir gelegentlich Neues per E-Mail", "en": "Send me occasional news by email" } },
+    { "id": "quelle", "type": "hidden", "label": { "de": "Quelle", "en": "Source" }, "source": "utm_source" },
+    { "id": "consent", "type": "consent", "required": true,
+      "label": { "de": "Einwilligung", "en": "Consent" },
+      "text": {
+        "de": "Ich bin einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verarbeitet werden.",
+        "en": "I agree that my details may be processed to handle my request."
+      } }
+  ],
+  "pipeline": [
+    { "id": "s1", "step": "notify.mail", "when": "always",
+      "config": { "to": "beratung@example.org", "templateId": 1 } }
+  ],
+  "completion": {
+    "mode": "message",
+    "message": {
+      "de": "Danke! Wir melden uns innerhalb eines Werktags.",
+      "en": "Thank you! We will get back to you within one working day."
+    }
+  }
+}
