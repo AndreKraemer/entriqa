@@ -3,7 +3,7 @@
 //   http://localhost:4280        website (Hugo) with working forms
 //   http://localhost:4281        form admin (sign in under /.auth/login/aad with the role "admin" first)
 //
-// Prozesse: Azurite (Storage-Emulator) · Functions-API · Blazor-Admin · Hugo · 2× SWA-CLI-Proxy.
+// Processes: Azurite (storage emulator), the Functions API, the Blazor admin, Hugo, 2x SWA CLI proxy.
 // Without a Brevo key, mails end up as clickable HTML files in <TEMP>/entriqa-devmails/.
 //
 // The Hugo site comes from --site <path> or the environment variable ENTRIQA_SITE_ROOT;

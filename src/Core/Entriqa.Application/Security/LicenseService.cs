@@ -39,7 +39,7 @@ public sealed class LicenseService(IOptions<EntriqaOptions> options, TimeProvide
             using var doc = JsonDocument.Parse(payload);
             var id = doc.RootElement.GetProperty("id").GetString() ?? "";
             var plan = doc.RootElement.GetProperty("plan").GetString() ?? "";
-            var until = DateOnly.ParseExact(doc.RootElement.GetProperty("until").GetString() ?? "", "yyyy-MM-dd");
+            var until = DateOnly.ParseExact(doc.RootElement.GetProperty("until").GetString() ?? "", "yyyy-MM-dd", CultureInfo.InvariantCulture);
             return until < DateOnly.FromDateTime(now.UtcDateTime)
                 ? new LicenseInfo(false, id, plan, until, "expired")
                 : new LicenseInfo(true, id, plan, until, "valid");

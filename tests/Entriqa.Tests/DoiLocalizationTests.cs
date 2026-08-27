@@ -63,6 +63,16 @@ public class DoiLocalizationTests
         Assert.Equal("/bestaetigen/", Options().ConfirmPagePathFor("fr"));
 
     [Fact]
+    public void GivenAConfiguredPathThatIsBlank_WhenBuildingTheConfirmPagePath_ThenTheFallbackStillApplies()
+    {
+        // An app setting can be present but empty (Entriqa__ConfirmPagePaths__en=), which would
+        // otherwise make the confirmation link point at the site root.
+        var options = Options();
+        options.ConfirmPagePaths["en"] = "   ";
+        Assert.Equal("/en/bestaetigen/", options.ConfirmPagePathFor("en"));
+    }
+
+    [Fact]
     public void GivenASecondaryLocale_WhenBuildingTheConfirmedRedirectPath_ThenItFallsBackTheSameWay() =>
         Assert.Equal("/en/bestaetigt/", Options().ConfirmedRedirectPathFor("en"));
 

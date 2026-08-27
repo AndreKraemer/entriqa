@@ -36,19 +36,23 @@ for (const line of js.split(/\r?\n/)) {
   for (const m of line.matchAll(/\beq-[a-z0-9_-]*[a-z0-9]/g)) emitted.add(m[0]);
 }
 
-// Parse the tuples rather than substring-matching the file. A plain includes() cannot tell
-// eq-quiz__finding from eq-quiz__findings, so removing the former from the reference still
-// looked documented - the guard reported green on real drift.
-const listed = new Set();
-for (const m of reference.matchAll(/\("(eq-[a-z0-9_-]+)"/g)) listed.add(m[1]);
+// Parse the tuples into base -> meaning rather than substring-matching the file. A plain
+// includes() cannot tell eq-quiz__finding from eq-quiz__findings, so removing the former still
+// looked documented - and searching a modifier across the WHOLE reference was just as blind:
+// dropping --error from the eq-field entry stayed green because eq-message still mentioned it,
+// and a fabricated eq-quiz--selected passed because --selected is documented on
+// eq-quiz__option. Both were found by mutating the guard and watching it stay green.
+const meanings = new Map();
+for (const m of reference.matchAll(/\("(eq-[a-z0-9_-]+)",\s*"((?:[^"\\]|\\.)*)"\)/g)) meanings.set(m[1], m[2]);
 
 // A modifier counts as documented when its base class is listed and the modifier is named in
-// the prose - the reference writes them as "Modifier --selected", not as a full class. The
-// trailing boundary keeps --error from being satisfied by --errors.
+// THAT entry's prose - the reference writes them as "Modifier --selected", not as full classes.
+// The trailing boundary keeps --error from being satisfied by --errors or --error_x.
 const documented = (cls) => {
   const [base, modifier] = cls.split("--");
-  if (!listed.has(base)) return false;
-  return modifier === undefined || new RegExp(`--${modifier}(?![a-z0-9-])`).test(reference);
+  const meaning = meanings.get(base);
+  if (meaning === undefined) return false;
+  return modifier === undefined || new RegExp(`--${modifier}(?![\\w-])`).test(meaning);
 };
 
 const missing = [...emitted].filter((c) => !documented(c)).sort();

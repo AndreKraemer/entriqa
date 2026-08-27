@@ -5,13 +5,13 @@ description: How tests are written in this project — the Given/When/Then namin
 
 # Test conventions
 
-94 tests live in `tests/Entriqa.Tests`, one file per subject. Every pairmode story starts
+Tests live in `tests/Entriqa.Tests`, one file per subject. Every pairmode story starts
 with a red test, so this is the first thing to get right.
 
 ## The naming scheme is absolute
 
-`GivenPreconditions_WhenStateUnderTest_ThenExpectedBehavior` — **84 of 84 test methods follow
-it.** A name that does not is a mistake, not a style preference. Write the three parts as
+`GivenPreconditions_WhenStateUnderTest_ThenExpectedBehavior` — **every test method in the project
+follows it, without exception.** A name that does not is a mistake, not a style preference. Write the three parts as
 readable English, long names are fine:
 
 ```

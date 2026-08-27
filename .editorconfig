@@ -72,10 +72,11 @@ dotnet_diagnostic.CA1859.severity = suggestion
 dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA1873.severity = suggestion
 
-# CA1822 would push members out of injectable collaborators: SwaPrincipalReader.UserName is
-# called through the injected instance at four sites, and making it static couples them to the
-# concrete type for no measurable gain.
-dotnet_diagnostic.CA1822.severity = suggestion
 # CA1716 guards namespaces of cross-language libraries against reserved words. Entriqa.Functions
 # is an application's host, not a library anyone references from another language.
 dotnet_diagnostic.CA1716.severity = suggestion
+
+# CA1822 is scoped, not silenced: it stays a build error everywhere except the one collaborator
+# where obeying it would couple four call sites to the concrete type.
+[**/Http/SwaPrincipalReader.cs]
+dotnet_diagnostic.CA1822.severity = suggestion

@@ -1,0 +1,67 @@
+# PR gate: build and all tests on every pull request against main, plus pushes to main itself.
+# QB Solution Standard v0.5 §4/§21.2 make this non-negotiable - a gate that only exists as a
+# local script is not a branch policy. Enable it as a required check in the branch protection
+# rules, otherwise this workflow reports but does not block.
+#
+# It runs the same entry point developers run (scripts/verify.mjs), so the two cannot drift:
+# solution build, all tests against that build, and the eq-* class contract.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify gate
+        run: node scripts/verify.mjs
+
+  # The sample site needs Hugo and Go, which the verify gate deliberately does not require - so
+  # it gets its own job rather than making every contributor install them. This is what catches a
+  # broken shortcode, a missing i18n key or an invalid hugo.toml before a release does.
+  sample-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the sample site
+        run: npm run sample:build
+
+      - name: The English consulting page must render its form host in English
+        run: |
+          page=samples/site/public/en/consulting/index.html
+          test -f "$page" || { echo "::error::$page was not generated"; exit 1; }
+          grep -q 'data-lang=en' "$page" || { echo "::error::form host is not marked as English"; exit 1; }
+          grep -q 'data-form=beratung' "$page" || { echo "::error::consulting form is not embedded"; exit 1; }

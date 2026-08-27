@@ -37,7 +37,9 @@ public class SeedLeadMagnetTests
     public void GivenASeedFormWithADownloadStep_WhenResolvingItsBlobPath_ThenTheFileShipsInSeedLeadMagnets()
     {
         var repo = Repo();
-        var missing = ConfiguredDownloads()
+        var configured = ConfiguredDownloads().ToList();
+        Assert.NotEmpty(configured);   // an empty set would make every assertion below vacuous
+        var missing = configured
             .Where(d => !File.Exists(Path.Combine(repo.FullName, "seed", d.Blob.Replace('/', Path.DirectorySeparatorChar))))
             .Select(d => $"{d.File} → {d.Blob}")
             .ToList();
@@ -49,7 +51,9 @@ public class SeedLeadMagnetTests
     {
         // BlobArtifactAdapter takes the path verbatim, and the admin's file picker writes
         // leadmagnets/… - a sample using a different prefix would not be reproducible there.
-        var wrong = ConfiguredDownloads()
+        var configured = ConfiguredDownloads().ToList();
+        Assert.NotEmpty(configured);
+        var wrong = configured
             .Where(d => !d.Blob.StartsWith("leadmagnets/", StringComparison.Ordinal))
             .Select(d => $"{d.File} → {d.Blob}")
             .ToList();
@@ -68,6 +72,27 @@ public class SeedLeadMagnetTests
             var bytes = File.ReadAllBytes(f);
             Assert.True(bytes.Length > 0, $"{Path.GetFileName(f)} is empty");
             Assert.Equal("%PDF"u8.ToArray(), bytes.Take(4).ToArray());
+            // A CRLF-mangled PDF still starts with %PDF and is still non-empty - the two checks
+            // above cannot see the very corruption .gitattributes exists to prevent. The xref
+            // table is a list of byte offsets, so every inserted CR shifts it out of alignment.
+            var crlf = Enumerable.Range(0, bytes.Length - 1).Any(i => bytes[i] == 0x0D && bytes[i + 1] == 0x0A);
+            Assert.False(crlf, $"{Path.GetFileName(f)} contains CRLF - line-ending conversion has corrupted it");
+            AssertXrefOffsetIsIntact(bytes, Path.GetFileName(f));
         }
+    }
+
+    /// <summary>
+    /// Resolves the startxref pointer and checks it actually lands on the xref table. This is the
+    /// assertion that fails on a byte-shifted file even if the CRLF check were ever relaxed.
+    /// </summary>
+    private static void AssertXrefOffsetIsIntact(byte[] bytes, string name)
+    {
+        var text = System.Text.Encoding.ASCII.GetString(bytes);
+        var marker = text.LastIndexOf("startxref", StringComparison.Ordinal);
+        Assert.True(marker >= 0, $"{name} has no startxref");
+        var digits = new string(text[(marker + "startxref".Length)..].TrimStart().TakeWhile(char.IsAsciiDigit).ToArray());
+        Assert.True(int.TryParse(digits, out var offset), $"{name} has an unreadable startxref offset");
+        Assert.True(offset > 0 && offset < bytes.Length, $"{name}: startxref {offset} is outside the file");
+        Assert.StartsWith("xref", text[offset..], StringComparison.Ordinal);
     }
 }

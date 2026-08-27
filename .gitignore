@@ -12,3 +12,7 @@ out/
 samples/site/public/
 samples/site/resources/
 samples/site/.hugo_build.lock
+
+# Agent worktrees created by pairmode reviewers - transient, and their presence otherwise
+# changes the verify-run fingerprint on every review round.
+.claude/worktrees/

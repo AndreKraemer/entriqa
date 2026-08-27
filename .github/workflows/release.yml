@@ -17,14 +17,17 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          global-json-file: global.json
 
-      - name: Build and test
-        # Build the solution first, the same way scripts/verify.mjs does: `dotnet test` alone
-        # only builds what the test project needs, so a broken admin would reach the publish step.
-        run: |
-          dotnet build Entriqa.slnx -c Release
-          dotnet test Entriqa.slnx -c Release --no-build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify gate
+        # The same entry point the PR gate and developers use, so a release can never ship
+        # something the gate would have rejected - including the eq-* class contract, which
+        # a bare `dotnet test` does not check.
+        run: node scripts/verify.mjs --full
 
       - name: Publish the API
         run: |

@@ -73,11 +73,20 @@ public class SeedFormsTests
 
     [Theory]
     [MemberData(nameof(SeedFiles))]
-    public void GivenAShippedSeedForm_WhenResolvingEveryDeclaredLocale_ThenTheSlugAndFileNameAgree(string fileName)
+    public void GivenAShippedSeedForm_WhenReadingItsSlug_ThenItAgreesWithTheFileName(string fileName)
     {
-        var form = Load(fileName);
-        Assert.Equal(Path.GetFileNameWithoutExtension(fileName), form.Slug);
-        foreach (var locale in form.EffectiveLocales) Assert.Equal(locale, form.Localize(locale).MatchLocale(locale));
+        // DevSeedHostedService keys on the slug, the sample site embeds by slug, and a mismatch
+        // would publish a form nobody can find under the name of the file that defines it.
+        Assert.Equal(Path.GetFileNameWithoutExtension(fileName), Load(fileName).Slug);
+    }
+
+    [Theory]
+    [MemberData(nameof(SeedFiles))]
+    public void GivenAShippedSeedForm_WhenReadingItsLocales_ThenItIsBilingual(string fileName)
+    {
+        // The samples exist to demonstrate a bilingual product; a form that quietly dropped its
+        // English texts would still pass the publish check, which only validates DECLARED locales.
+        Assert.Equal(new[] { "de", "en" }, Load(fileName).EffectiveLocales);
     }
 
     /// <summary>
@@ -85,12 +94,26 @@ public class SeedFormsTests
     /// every field type and every form type appears at least once. Without this the coverage
     /// silently rots the first time someone edits a sample.
     /// </summary>
+    /// <summary>
+    /// Pinned to beratung.json, not to the union over all samples: the criterion is about ONE form
+    /// showing every type. A union stays green while the types are redistributed across samples,
+    /// which is exactly the regression this is meant to catch.
+    /// </summary>
     [Fact]
-    public void GivenAllShippedSeedForms_WhenCollectingTheirFieldTypes_ThenEveryKnownFieldTypeIsDemonstrated()
+    public void GivenTheConsultingSample_WhenCollectingItsFieldTypes_ThenEveryKnownFieldTypeIsDemonstrated()
     {
-        var used = Directory.EnumerateFiles(SeedFolder(), "*.json")
-            .SelectMany(f => Load(Path.GetFileName(f)).Fields).Select(f => f.Type).ToHashSet();
+        var used = Load("beratung.json").Fields.Select(f => f.Type).ToHashSet();
         Assert.Empty(FieldTypes.All.Except(used));
+    }
+
+    [Fact]
+    public void GivenAllShippedSeedForms_WhenCollectingTheirStepKeys_ThenTheLeadMagnetChainIsDemonstrated()
+    {
+        // Without this, deleting the leadmagnet.link step from the whitepaper sample leaves the
+        // whole suite green - including SeedLeadMagnetTests, which then iterates an empty set.
+        var used = Directory.EnumerateFiles(SeedFolder(), "*.json")
+            .SelectMany(f => Load(Path.GetFileName(f)).Pipeline).Select(s => s.Step).ToHashSet();
+        Assert.Empty(new[] { "notify.mail", "doi.request", "brevo.contact", "leadmagnet.link" }.Except(used));
     }
 
     [Fact]

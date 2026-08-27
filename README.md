@@ -42,11 +42,13 @@ kein Phone-Home.
 
 | Ordner | Inhalt |
 |---|---|
-| `hugo/` | Hugo-Modul: Shortcode, Embed-Partial, forms.js/css, DOI-Seiten |
-| `api/` | .NET-10-Backend (Azure Functions isolated, Clean Architecture, 54 Tests) |
-| `admin/` | Blazor-WASM-Admin (läuft unter `/admin`) |
-| `seed/` | Beispiel-Formulardefinition für den lokalen Start |
-| `dev/` | `node dev/start.mjs` startet die komplette lokale Umgebung |
+| `hugo/` | Hugo-Modul: Shortcode, Embed-Partial, forms.js/css, i18n, DOI-Seiten |
+| `src/Core/` | .NET-10-Kern: Domain, Application, Data, Infrastructure (Clean Architecture) |
+| `src/Hosts/` | Azure Functions (isolated) und das Lizenz-Schlüsselwerkzeug |
+| `src/Ui/` | Blazor-WASM-Admin (läuft unter `/admin`) |
+| `tests/` | Unit- und Architekturtests |
+| `samples/site/` | Zweisprachige Beispielseite; `npm run dev` startet sie ohne weitere Angabe |
+| `seed/` | Beispiel-Formulardefinitionen und Lead-Magnet-Dateien für den lokalen Start |
+| `dev/`, `scripts/` | Lokale Umgebung und Verify-Gate |
 | `pipelines/` | Azure-DevOps-Vorlagen (u. a. Housekeeping-Schedule) |
 | `docs/` | Quickstart und Spezifikation |
-| `tools/` | Lizenz-Schlüsselwerkzeug (nur für den Hersteller relevant) |

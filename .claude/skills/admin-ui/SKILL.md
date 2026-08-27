@@ -5,8 +5,7 @@ description: How the Blazor admin is built — German strings as translation key
 
 # The Blazor admin
 
-22 files under `src/Ui/Entriqa.Admin`, served at `/admin`. Pages, Components, Services — no
-further ceremony.
+`src/Ui/Entriqa.Admin`, served at `/admin`. Pages, Components, Services — no further ceremony.
 
 It references `Entriqa.Domain`, so a domain change can break it. Since the projects moved into
 the standard layout it is part of `Entriqa.slnx`, and the gate builds the whole solution before
@@ -82,9 +81,8 @@ eq-form  eq-form--{type}  eq-form--{slug}
 **The source of truth is `hugo/assets/js/forms.js`, not the generator** — the reference has to
 follow it, never the other way round. `scripts/check-eq-classes.mjs` enforces that in the verify
 gate: it collects every class forms.js puts into the DOM and fails when one is missing from
-`MarkupGenerator.Classes`. The two files sit in different projects (forms.js is a Hugo asset,
-the generator is in `admin/`, which is outside `Entriqa.slnx`), so no unit test can compare
-them — hence a script.
+`MarkupGenerator.Classes`. forms.js is a Hugo asset with no .NET test host, so the comparison
+needs a script rather than a unit test.
 
 If the guard reports a class, the fix is one of two things: document it, or stop emitting it in
 forms.js. Never silence the check. A class that reaches a customer's theme and then disappears
@@ -93,8 +91,8 @@ is a breaking change for them.
 Modifiers (`--busy`, `--selected`) count as documented when they are named in the prose of their
 base class's entry; child elements (`__result-title`) need an entry of their own.
 
-`hugo/assets/css/forms.css` styles only 15 base classes — it deliberately provides structure,
-not looks, so the page's own CSS wins. Do not add cosmetic rules there.
+`hugo/assets/css/forms.css` styles only a subset — it deliberately provides structure, not looks,
+so the page's own CSS wins. Do not add cosmetic rules there.
 
 ## Working on it
 

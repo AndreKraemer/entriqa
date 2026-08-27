@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using Entriqa.Application.Security;
 using Xunit;
@@ -23,6 +24,28 @@ public class LicenseServiceTests
         Assert.True(info.Valid);
         Assert.Equal("site", info.Plan);
         Assert.Equal(new DateOnly(2027, 8, 23), info.ValidUntil);
+    }
+
+    [Theory]
+    [InlineData("ar-SA")]   // Umm al-Qura calendar: ParseExact without a culture throws
+    [InlineData("th-TH")]   // Buddhist calendar: 2027 parses as 1484, so a valid key reads "expired"
+    public void GivenAServerCultureWithANonGregorianCalendar_WhenRoundTrippingAKey_ThenItStaysValid(string culture)
+    {
+        // Issue() formats the expiry into the SIGNED payload and Validate() parses it back. If only
+        // one side pins the culture the signature verifies but the date does not survive, and every
+        // licence fails on such a server. CA1305 does not flag ParseExact(string, string), so the
+        // analyzer cannot stand in for this test.
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(culture);
+            var (priv, pub) = NewPair();
+            var key = LicenseService.Issue(priv, "L-1001", "site", new DateOnly(2027, 8, 23));
+            var info = LicenseService.Validate(key, pub, Now);
+            Assert.Equal("valid", info.Status);
+            Assert.Equal(new DateOnly(2027, 8, 23), info.ValidUntil);
+        }
+        finally { CultureInfo.CurrentCulture = previous; }
     }
 
     [Fact]

@@ -11,11 +11,13 @@ plugin. This file holds only what is specific to this project.
 
 - **Language: English everywhere** — code, comments, test names, commit and PR text,
   documentation, README, specs, and GitHub issues. Tests follow Given/When/Then. The one
-  exception is product text shipped to German site visitors: `hugo/content/`, the admin UI
-  strings in `Ui.cs` (whose German strings double as the translation keys),
-  `ValidationMessages`, the German branch of `ErrorMessages`, and the console output of
-  `dev/start.mjs`. `LICENSE.md` also stays German — translating licence terms has legal
-  effect. Issues #8–#23 predate the rule and are still German (see #27).
+  exceptions are texts an end user or operator reads: `hugo/content/`, the admin UI strings in
+  `Ui.cs` (whose German strings double as the translation keys), `ValidationMessages`, the German
+  branch of `ErrorMessages`, the publish-check findings in `PublishCheckService` and
+  `QuizEngine.Check`, the log messages, and the console output of `dev/start.mjs`. `README.md`
+  and `LICENSE.md` stay German too — the licence because translating its terms has legal effect.
+  Everything else, comments in build files included, is English. Issues #8–#23 and the German
+  code comments predate the rule (see #27).
 - **No live endpoints** from tests or dev loops: Brevo, production Azure Storage and Teams
   webhooks are blocked in `pairmode.config.json`. Azurite runs locally.
 - **No browser storage and no cookies** for the website visitor (§ 25 TDDDG) — this is a
@@ -32,7 +34,8 @@ plugin. This file holds only what is specific to this project.
 ## Layout
 
 Follows the QB .NET Solution Standard v0.5 §6.1 (Stage 1), with the non-.NET parts of the
-product alongside it. Solution folders in `Entriqa.slnx` mirror the physical ones (§6.2).
+product alongside it. Solution folders in `Entriqa.slnx` mirror the physical ones, except
+`20 Build & Deploy`, which gathers four (§6.2 asks for one each).
 
 | Folder | Contents |
 |---|---|
@@ -46,10 +49,20 @@ product alongside it. Solution folders in `Entriqa.slnx` mirror the physical one
 | `scripts/`, `dev/` | The verify gate and the local dev launcher |
 | `docs/`, `pipelines/` | Documentation and the customer pipeline template |
 
-Deviations from the standard, deliberate: no Aspire `AppHost`/`MigrationService` (no relational
-database — Azure Tables, and `dev/start.mjs` fills that role), no `src/Modules` (Stage 2 needs
-≥ 4 developers, §5.2), and `hugo/`, `seed/`, `samples/` have no counterpart in a pure .NET
-layout.
+Deliberate deviations from the standard, as complete as it is currently known:
+
+- no Aspire `AppHost`/`MigrationService` — no relational database (Azure Tables), and
+  `dev/start.mjs` fills that role;
+- no `src/Modules` — Stage 2 needs ≥ 4 developers (§5.2);
+- `hugo/`, `seed/`, `samples/` have no counterpart in a pure .NET layout;
+- no `/build` or `/deploy`; CI lives in `.github/workflows/` (GitHub requires that path) and the
+  gate in `scripts/`;
+- `global.json` uses `rollForward: latestPatch` per §21.1;
+- one flat `tests/Entriqa.Tests` instead of a mirror of `/src`, and no separate
+  `*.ArchitectureTests` project — the architecture tests are a class inside it;
+- xUnit v2 on `Microsoft.NET.Test.Sdk`, not xUnit v3 on Microsoft Testing Platform (§22.1);
+- still missing and tracked as debt: `docs/adr/` with a first ADR, an E2E smoke, and
+  `build/Version.Build.props` (§4, §21.3).
 
 ## Verify
 
@@ -60,8 +73,8 @@ layout.
 | Start the local environment | `npm run dev` |
 | Build the sample site alone | `npm run sample:build` |
 
-The fast gate builds and tests `api/` in Debug, builds the admin, and checks the `eq-*` class
-reference against `forms.js` (`scripts/check-eq-classes.mjs`). It does **not** build
+The fast gate builds `Entriqa.slnx` in Debug, runs all tests against that build, and checks the
+`eq-*` class reference against `forms.js` (`scripts/check-eq-classes.mjs`). It does **not** build
 the sample site — that needs Hugo and Go, which the release workflow does not have; run
 `npm run sample:build` by hand after touching `hugo/` or `samples/site/`. The full gate does the
 same in Release and additionally runs the two publishes that `release.yml` performs on a tag

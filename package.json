@@ -2,7 +2,7 @@
   "name": "entriqa",
   "version": "1.1.0",
   "private": true,
-  "description": "Local dev environment for Entriqa (Azurite + SWA CLI) and the sample Hugo site; product code lives in api/, admin/ and hugo/.",
+  "description": "Local dev environment for Entriqa (Azurite + SWA CLI) and the sample Hugo site; product code lives in src/ and hugo/.",
   "scripts": {
     "dev": "node dev/start.mjs",
     "sample:build": "node scripts/hugo.mjs build",
