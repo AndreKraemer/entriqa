@@ -1,0 +1,6 @@
+# Visitor-facing strings of the Hugo module. German is the product's default language.
+[eq_noscript]
+other = "Dieses Formular braucht JavaScript. Alternativ:"
+
+[eq_noscript_link]
+other = "Formular direkt öffnen"

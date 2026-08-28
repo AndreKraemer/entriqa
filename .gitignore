@@ -3,3 +3,16 @@
 **/obj/
 node_modules/
 local.settings.json.bak
+
+# Verify gate artifacts (scripts/verify.mjs --full) and release publishes
+out/
+.claude/settings.local.json
+
+# Hugo build output of the sample site
+samples/site/public/
+samples/site/resources/
+samples/site/.hugo_build.lock
+
+# Agent worktrees created by pairmode reviewers - transient, and their presence otherwise
+# changes the verify-run fingerprint on every review round.
+.claude/worktrees/

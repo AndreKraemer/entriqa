@@ -1,0 +1,82 @@
+# PR gate: build and all tests on every pull request against main, plus pushes to main itself.
+# QB Solution Standard v0.5 §4/§21.2 make this non-negotiable - a gate that only exists as a
+# local script is not a branch policy. Enable it as a required check in the branch protection
+# rules, otherwise this workflow reports but does not block.
+#
+# It runs the same entry point developers run (scripts/verify.mjs), so the two cannot drift:
+# solution build, all tests against that build, and the eq-* class contract.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify gate
+        run: node scripts/verify.mjs
+
+  # The sample site needs Hugo and Go, which the verify gate deliberately does not require - so
+  # it gets its own job rather than making every contributor install them. This is what catches a
+  # broken shortcode, a missing i18n key or an invalid hugo.toml before a release does.
+  sample-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the sample site
+        run: npm run sample:build
+
+      - name: Every sample page must embed its form, and the English tree must be English
+        # A static build cannot show the rendered fields - forms.js builds those client-side from
+        # the API response. What it does prove is that the shortcode resolved, the module's
+        # partial ran and relLangURL produced the right language, which is where a broken
+        # shortcode, a missing i18n key or an invalid hugo.toml would surface.
+        run: |
+          set -e
+          check() {
+            test -f "$1" || { echo "::error::$1 was not generated"; exit 1; }
+            grep -q "$2" "$1" || { echo "::error::$1 does not contain $2"; exit 1; }
+          }
+          check samples/site/public/kontakt/index.html    'data-form=kontakt'
+          check samples/site/public/beratung/index.html   'data-form=beratung'
+          check samples/site/public/whitepaper/index.html 'data-form=whitepaper'
+          check samples/site/public/selbsttest/index.html 'data-form=selbsttest'
+          check samples/site/public/en/consulting/index.html 'data-form=beratung'
+          check samples/site/public/en/consulting/index.html 'data-lang=en'
+          # A missing i18n key renders the German fallback and every data- attribute above still
+          # matches, so the translated string itself has to be asserted.
+          check samples/site/public/en/consulting/index.html 'This form needs JavaScript'
+          check samples/site/public/kontakt/index.html        'Dieses Formular braucht JavaScript'

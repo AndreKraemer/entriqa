@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(node scripts/verify.mjs:*)"
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "pairmode": {
+      "source": {
+        "source": "github",
+        "repo": "AndreKraemer/pairmode"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "pairmode@pairmode": true
+  }
+}

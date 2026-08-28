@@ -1,0 +1,82 @@
+/* Deliberately plain site styling. The point of the sample is that the form inherits it:
+   forms.css from the module only sets structure, the eq-* elements pick up these
+   variables, fonts and colors. If a form looks foreign here, the module is at fault. */
+
+:root {
+  --ink: #1c1f26;
+  --muted: #5b6270;
+  --line: #d9dde5;
+  --accent: #1d6fa5;
+  --bg: #ffffff;
+  --bg-soft: #f5f7fa;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e7eaf0;
+    --muted: #a2abbb;
+    --line: #333a47;
+    --accent: #6ab7e8;
+    --bg: #14171c;
+    --bg-soft: #1c2028;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a { color: var(--accent); }
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1rem 1.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.site-brand { font-weight: 600; text-decoration: none; color: var(--ink); }
+.site-nav { display: flex; gap: 1rem; margin-right: auto; }
+.site-nav a, .site-langs a { text-decoration: none; }
+.site-nav a[aria-current], .site-langs a[aria-current] { text-decoration: underline; color: var(--ink); }
+.site-langs { display: flex; gap: .75rem; font-size: .9rem; }
+
+.site-main { max-width: 46rem; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+.page h1 { line-height: 1.2; margin-top: 0; }
+.page-lead { color: var(--muted); font-size: 1.1rem; }
+.page-list { padding-left: 1.1rem; }
+.page-list li { margin: .4rem 0; }
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding: 1rem 1.5rem;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* The one place the sample styles the form host: give it room and a soft frame,
+   so it is visually obvious where the embedded form starts and ends. */
+.eq-form-host {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.note {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-soft);
+  padding: .75rem 1rem;
+  margin: 1.5rem 0;
+  font-size: .95rem;
+}

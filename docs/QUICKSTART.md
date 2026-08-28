@@ -43,7 +43,7 @@ path = "github.com/andrekraemer/entriqa/hugo"
 {{ partial "entriqa-assets.html" . }}
 ```
 
-3. `staticwebapp.config.json` in die Repo-Wurzel (Vorlage in `docs/`): schützt `/admin/*` und
+3. `staticwebapp.config.json` in die Repo-Wurzel (Vorlage: `samples/site/static/`): schützt `/admin/*` und
    `/api/manage/*` mit der Rolle `admin` und rewritet `/f/{slug}/` auf die Standalone-Seite.
 
 4. Formular einbetten – im Content per Shortcode oder im Layout per Partial:

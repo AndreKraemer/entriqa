@@ -1,5 +1,5 @@
-# Entriqa-Release: Tag v* pushen (z. B. v1.0.0) → Tests laufen, API und Admin werden gebaut
-# und als ZIPs an ein GitHub-Release gehängt. Genau diese ZIPs referenziert docs/QUICKSTART.md.
+# Entriqa release: push a v* tag (e.g. v1.0.0) - the solution is built and tested, API and admin
+# are published and attached to a GitHub release as ZIPs. docs/QUICKSTART.md points at exactly these.
 name: release
 
 on:
@@ -17,26 +17,33 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          global-json-file: global.json
 
-      - name: Tests
-        run: dotnet test api -c Release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
-      - name: API publizieren
+      - name: Verify gate
+        # The same entry point the PR gate and developers use, so a release can never ship
+        # something the gate would have rejected - including the eq-* class contract, which
+        # a bare `dotnet test` does not check.
+        run: node scripts/verify.mjs --full
+
+      - name: Publish the API
         run: |
-          dotnet publish api/src/Entriqa.Functions -c Release -o out/api
+          dotnet publish src/Hosts/Entriqa.Functions -c Release -o out/api
           cd out/api && zip -r ../../entriqa-api-${GITHUB_REF_NAME}.zip .
 
-      - name: Admin publizieren
+      - name: Publish the admin
         run: |
-          dotnet publish admin/Entriqa.Admin -c Release -o out/admin
-          # Produktion liegt unter /admin/ – base-href ersetzen (siehe docs/QUICKSTART.md)
+          dotnet publish src/Ui/Entriqa.Admin -c Release -o out/admin
+          # Production is served under /admin/ - rewrite the base href (see docs/QUICKSTART.md)
           sed -i 's|<base href="/" />|<base href="/admin/" />|' out/admin/wwwroot/index.html
           grep -q '<base href="/admin/" />' out/admin/wwwroot/index.html
           rm -f out/admin/wwwroot/index.html.br out/admin/wwwroot/index.html.gz
           cd out/admin/wwwroot && zip -r ../../../entriqa-admin-${GITHUB_REF_NAME}.zip .
 
-      - name: Release anlegen
+      - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{ .Language.Lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} · {{ site.Title }}{{ end }}</title>
+  <meta name="robots" content="noindex">
+  {{ with resources.Get "css/site.css" }}
+    <link rel="stylesheet" href="{{ (. | minify | fingerprint).RelPermalink }}">
+  {{ end }}
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-brand" href="{{ "/" | relLangURL }}">{{ site.Title }}</a>
+    <nav class="site-nav">
+      {{ range site.Menus.main }}
+        <a href="{{ .URL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a>
+      {{ end }}
+    </nav>
+    <nav class="site-langs" aria-label="{{ if eq .Language.Lang "de" }}Sprache{{ else }}Language{{ end }}">
+      {{ range .AllTranslations }}
+        <a href="{{ .RelPermalink }}"{{ if eq .Language.Lang $.Language.Lang }} aria-current="true"{{ end }}>{{ .Language.Label }}</a>
+      {{ else }}
+        <span>{{ .Language.Label }}</span>
+      {{ end }}
+    </nav>
+  </header>
+
+  <main class="site-main">
+    {{ block "main" . }}{{ end }}
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      {{ if eq .Language.Lang "de" }}
+        Beispielseite für die lokale Entwicklung. Keine Cookies, kein Browser-Storage.
+      {{ else }}
+        Sample site for local development. No cookies, no browser storage.
+      {{ end }}
+    </p>
+  </footer>
+
+  {{/* Loads forms.css and forms.js from the entriqa module. Must sit before </body>. */}}
+  {{ partial "entriqa-assets.html" . }}
+</body>
+</html>

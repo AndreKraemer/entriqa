@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <!-- TFM, nullability, warnings-as-errors and package versions come from the repository root
+         (Directory.Build.props / Directory.Packages.props).
+         Production is served under /admin/ of the SWA, locally (dotnet run) under /. The publish step does
+         not set StaticWebAssetBasePath; the base href is rewritten at publish time instead (see release.yml). -->
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Pure domain logic (QuizEngine.Check) runs in the browser too: the same path check as on publish, live in the builder. -->
+    <ProjectReference Include="..\..\..\src\Core\Entriqa.Domain\Entriqa.Domain.csproj" />
+  </ItemGroup>
+</Project>

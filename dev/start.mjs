@@ -1,13 +1,14 @@
-// Starts the complete local Entriqa dev environment: npm install && node dev/start.mjs --site <hugo-site>
+// Starts the complete local Entriqa dev environment: npm install && node dev/start.mjs
 //
 //   http://localhost:4280        website (Hugo) with working forms
 //   http://localhost:4281        form admin (sign in under /.auth/login/aad with the role "admin" first)
 //
-// Prozesse: Azurite (Storage-Emulator) · Functions-API · Blazor-Admin · Hugo · 2× SWA-CLI-Proxy.
+// Processes: Azurite (storage emulator), the Functions API, the Blazor admin, Hugo, 2x SWA CLI proxy.
 // Without a Brevo key, mails end up as clickable HTML files in <TEMP>/entriqa-devmails/.
 //
-// The Hugo site comes from --site <path> or the environment variable ENTRIQA_SITE_ROOT
-// (fallback: the current directory). Its Hugo module import of
+// The Hugo site comes from --site <path> or the environment variable ENTRIQA_SITE_ROOT;
+// without either, the sample site bundled in samples/site is used, so a fresh clone runs
+// with no external site at all. Its Hugo module import of
 // github.com/andrekraemer/entriqa/hugo is redirected automatically via HUGO_MODULE_REPLACEMENTS
 // to this clone - local changes to layouts and assets take effect right away.
 //
@@ -29,10 +30,11 @@ const siteArg = (() => {
   const i = process.argv.indexOf("--site");
   return i >= 0 ? process.argv[i + 1] : undefined;
 })();
-const siteRoot = resolve(siteArg ?? process.env.ENTRIQA_SITE_ROOT ?? process.cwd());
+const bundledSite = join(repoRoot, "samples", "site");
+const siteRoot = resolve(siteArg ?? process.env.ENTRIQA_SITE_ROOT ?? bundledSite);
 const looksLikeSite = ["hugo.toml", "hugo.yaml", "config.toml", "config"].some(f => existsSync(join(siteRoot, f)));
 if (!looksLikeSite) {
-  console.error(`\nKeine Hugo-Site gefunden in: ${siteRoot}\n  Site angeben mit: node dev/start.mjs --site <pfad>  (oder ENTRIQA_SITE_ROOT setzen)\n`);
+  console.error(`\nKeine Hugo-Site gefunden in: ${siteRoot}\n  Site angeben mit: node dev/start.mjs --site <pfad>  (oder ENTRIQA_SITE_ROOT setzen)\n  Ohne Angabe wird die Beispielseite aus samples/site verwendet.\n`);
   process.exit(1);
 }
 
@@ -99,14 +101,18 @@ mkdirSync(azuriteDir, { recursive: true });
 console.log(`Entriqa-Dev-Umgebung startet …\n  Produkt: ${repoRoot}\n  Site:    ${siteRoot}\n`);
 run("azurite", "azurite", ["--silent", "--location", `"${azuriteDir}"`]);
 await waitFor("http://127.0.0.1:10002/devstoreaccount1", "Azurite");   // otherwise the dev seed of the API fails
-run("api", funcCmd === "func" ? "func" : `"${funcCmd}"`, ["start", "--port", "7071"], join(repoRoot, "api", "src", "Entriqa.Functions"));
-run("admin", "dotnet", ["run", "--urls", "http://localhost:5100"], join(repoRoot, "admin", "Entriqa.Admin"));
+run("api", funcCmd === "func" ? "func" : `"${funcCmd}"`, ["start", "--port", "7071"], join(repoRoot, "src", "Hosts", "Entriqa.Functions"));
+run("admin", "dotnet", ["run", "--urls", "http://localhost:5100"], join(repoRoot, "src", "Ui", "Entriqa.Admin"));
 // baseURL = proxy origin, otherwise absolute URLs (icon fonts, mask SVGs) point at :1313 and fail CORS.
 run("hugo", "hugo", ["serve", "--port", "1313", "--baseURL", "http://localhost:4280/", "--appendPort=false"], siteRoot);
 
 // The SWA proxies wait by themselves until app and API are reachable.
 setTimeout(() => {
-  run("site", "swa", ["start", "http://localhost:1313", "--api-devserver-url", "http://localhost:7071", "--port", "4280"], siteRoot);
+  // --swa-config-location: the emulator only applies routes and role rules when it is told
+  // where staticwebapp.config.json lives. Without it /api/manage/* is reachable unauthenticated
+  // and the /f/* rewrite is missing, so local behaviour silently differs from production.
+  run("site", "swa", ["start", "http://localhost:1313", "--api-devserver-url", "http://localhost:7071",
+    "--swa-config-location", `"${join(siteRoot, "static")}"`, "--port", "4280"], siteRoot);
   run("adminui", "swa", ["start", "http://localhost:5100", "--api-devserver-url", "http://localhost:7071", "--port", "4281"], siteRoot);
   setTimeout(() => {
     console.log("\n──────────────────────────────────────────────────");

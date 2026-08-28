@@ -1,0 +1,554 @@
+@page "/forms/{Slug}"
+@using System.Text.Json
+@implements IDisposable
+@inject AdminApi Api
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject Ui T
+
+<h1>@Slug</h1>
+
+@if (_status is not null)
+{
+    <p class="meta">
+        Status: <span class="chip @(_status == "published" ? "chip--ok" : "chip--busy")">@(_status == "published" ? T.F("Veröffentlicht (v{0})", _publishedVersion) : T["Entwurf"])</span>
+        @if (_updatedBy is { Length: > 0 }) { <span> · @T.F("zuletzt geändert von {0}", _updatedBy)</span> }
+        @if (_autoSavedAt is { } saved) { <span class="autosave"> · ✓ @T.F("automatisch gespeichert {0}", saved.ToLocalTime().ToString("HH:mm:ss"))</span> }
+    </p>
+}
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_info is not null) { <p class="ok">@_info</p> }
+
+@if (_model is null && _json is null) { <p>@T["Lade …"]</p> }
+else
+{
+    @if (_model is not null && _tab != "json")
+    {
+        <div class="card">
+            <div class="row">
+                <label>Name <input value="@_model.Name" @onchange="e => _model.Name = e.Value?.ToString() ?? string.Empty" /></label>
+                <label>@T["Typ"]
+                    <select value="@_model.Type" @onchange="e => _model.Type = e.Value!.ToString()!">
+                        <option value="contact">@T["Kontakt"]</option>
+                        <option value="leadmagnet">@T["Lead-Magnet"]</option>
+                        <option value="quiz">@T["Quiz"]</option>
+                    </select>
+                </label>
+                <label class="swlabel"><input type="checkbox" class="sw" checked="@_model.Handling"
+                       @onchange="e => _model.Handling = (bool)e.Value!" /> @T["Offen/Erledigt führen"]</label>
+                <label>@T["Sprachen"]
+                    @foreach (var loc in SiteLocales)
+                    {
+                        var l = loc;
+                        <label class="swlabel"><input type="checkbox" class="sw" checked="@_model.Locales.Contains(l)"
+                               @onchange="e => ToggleLocale(l, (bool)e.Value!)" /> @l.ToUpperInvariant()</label>
+                    }
+                </label>
+            </div>
+        </div>
+    }
+
+    <div class="tabs">
+        @foreach (var (key, label) in Tabs)
+        {
+            var k = key;
+            <button class="tab @(_tab == k ? "tab--active" : "")" @onclick="() => SwitchTab(k)">@T[label]</button>
+        }
+        <span class="spacer"></span>
+        <button class="expert-toggle @(_expert ? "expert-toggle--on" : "")" title="@T["Markup- und JSON-Ansicht ein-/ausblenden"]"
+                @onclick="ToggleExpert">&lt;/&gt; @T["Expertenmodus"]</button>
+    </div>
+
+    @if (_tab == "felder" && _model is not null)
+    {
+        <div class="builder">
+            <div class="b-left">
+                <div class="overline b-title">@T["Struktur"]</div>
+                <div class="b-block @(_selTexts ? "b-block--sel" : "")" @onclick="SelectTexts">
+                    <span class="b-ic">¶</span>
+                    <span class="b-label">@T["Einleitung & Button"]</span>
+                </div>
+                @foreach (var (field, i) in _model.Fields.Select((f, i) => (f, i)))
+                {
+                    var index = i;
+                    var f = field;
+                    <div class="b-block @(ReferenceEquals(f, _selField) ? "b-block--sel" : "") @(index == _dragOver ? "b-block--over" : "")"
+                         draggable="true"
+                         @onclick="() => SelectField(f)"
+                         @ondragstart="() => _dragIndex = index"
+                         @ondragenter="() => _dragOver = index" @ondragenter:preventDefault
+                         @ondragover:preventDefault
+                         @ondragend="() => { _dragIndex = null; _dragOver = null; }"
+                         @ondrop="() => DropOn(index)">
+                        <span class="b-grip" title="Ziehen zum Sortieren">⋮⋮</span>
+                        <span class="b-label">@BlockLabel(f)</span>
+                        @if (f.Required && !f.IsLayout) { <span class="b-req">*</span> }
+                    </div>
+                }
+                <button class="b-add" @onclick="AddField">@T["+ Feld hinzufügen"]</button>
+            </div>
+            <div class="b-canvas">
+                <div class="canvas-tools">
+                    @if (_model.Locales.Count > 1)
+                    {
+                        <div class="langtoggle">
+                            @foreach (var loc in _model.Locales)
+                            {
+                                var l = loc;
+                                <button class="@(Lang == l ? "langtoggle--on" : "")" @onclick="() => _lang = l">@LangName(l)</button>
+                            }
+                        </div>
+                    }
+                    else { <span></span> }
+                    <span class="hint">@T["Zum Bearbeiten anklicken · Gestaltung kommt vom Website-Theme"]</span>
+                </div>
+                <div class="b-stage">
+                    <FormPreview Model="_model" Interactive="true" Locale="@Lang"
+                                 Selected="_selField" TextsSelected="_selTexts"
+                                 OnSelectField="SelectField" OnSelectTexts="SelectTexts" />
+                </div>
+            </div>
+            <div class="b-props">
+                @if (_selTexts || _selField is null)
+                {
+                    <div class="overline b-title">@T["Texte"]</div>
+                    <LTextInput Model="_model.Intro" Locales="_model.Locales" ActiveLocale="@Lang" Label="@T["Einleitungstext"]" Multiline="true" Changed="StateHasChanged" />
+                    <LTextInput Model="_model.SubmitLabel" Locales="_model.Locales" ActiveLocale="@Lang" Label="@T["Absende-Button"]" Changed="StateHasChanged" />
+                    <p class="hint">@T["Felder links oder direkt in der Vorschau anklicken, um sie zu bearbeiten."]</p>
+                }
+                else
+                {
+                    <div class="overline b-title">@T["Feld-Eigenschaften"]</div>
+                    <FieldEditor Field="_selField" Locales="_model.Locales" ActiveLocale="@Lang" Panel="true"
+                                 AllFields="_model.Fields" OnRemove="RemoveSelected" OnMove="MoveSelected" Changed="StateHasChanged" />
+                }
+            </div>
+        </div>
+    }
+    else if (_tab == "quiz" && _model is not null)
+    {
+        @if (_model.Quiz is null)
+        {
+            <p class="hint">@T["Dieses Formular hat noch kein Quiz."]</p>
+            <button class="btn btn--primary" @onclick="() => _model.Quiz = QuizModel.Starter()">@T["Quiz anlegen"]</button>
+        }
+        else
+        {
+            <QuizEditor Quiz="_model.Quiz" Locales="_model.Locales" Changed="StateHasChanged" />
+        }
+    }
+    else if (_tab == "pipeline" && _model is not null)
+    {
+        <div class="flow">
+            <div class="flow-trigger">
+                <span class="flow-ic">↓</span>
+                <div><strong>@T["Einsendung geht ein"]</strong>
+                    <div class="hint">@T["Nach erfolgreicher Prüfung laufen die Schritte von oben nach unten."]</div>
+                </div>
+            </div>
+            @foreach (var (step, i) in _model.Steps.Select((s, i) => (s, i)))
+            {
+                var index = i;
+                @if (index > 0 && DescriptorOf(_model.Steps[index - 1].Key) is { SplitsPhase: true })
+                {
+                    <div class="flow-connector flow-connector--wait"><span>⏸ @T["wartet auf Bestätigung"]</span></div>
+                }
+                else
+                {
+                    <div class="flow-connector"></div>
+                }
+                <StepEditor Step="step" Descriptor="DescriptorOf(step.Key)" Directory="_directory"
+                            ProducedBefore="ProducedBefore(index)" QuizResults="QuizRefs" FormFields="FieldRefs"
+                            OnRemove="() => _model.Steps.RemoveAt(index)"
+                            OnMove="delta => Move(_model.Steps, index, delta)" Changed="StateHasChanged" />
+            }
+            <div class="flow-connector"></div>
+            <div class="flow-add">
+                <select @bind="_newStepKey">
+                    <option value="">@T["Schritt hinzufügen …"]</option>
+                    @foreach (var d in _catalog ?? new()) { <option value="@d.Key">@T[d.Name]</option> }
+                </select>
+                <button class="btn" disabled="@(_newStepKey.Length == 0)" @onclick="AddStep">@T["Hinzufügen"]</button>
+            </div>
+        </div>
+    }
+    else if (_tab == "abschluss" && _model is not null)
+    {
+        <div class="card">
+            <div class="row">
+                <label>@T["Nach dem Absenden"]
+                    <select value="@_model.CompletionMode" @onchange="e => _model.CompletionMode = e.Value!.ToString()!">
+                        <option value="message">@T["Meldung anzeigen"]</option>
+                        <option value="redirect">@T["Weiterleiten"]</option>
+                        <option value="result">@T["Quiz-Ergebnis anzeigen"]</option>
+                    </select>
+                </label>
+            </div>
+            @if (_model.CompletionMode is "message" or "result")
+            {
+                <LTextInput Model="_model.CompletionMessage" Locales="_model.Locales" Label="@T["Meldung"]" Multiline="true" Changed="StateHasChanged" />
+            }
+            @if (_model.CompletionMode == "redirect")
+            {
+                <LTextInput Model="_model.CompletionUrl" Locales="_model.Locales" Label="@T["Ziel-URL (z. B. /danke/)"]" Changed="StateHasChanged" />
+            }
+            <p class="hint">@T["Spam-Schutz ist immer aktiv: Honeypot, Mindestalter 3 Sekunden, Rate-Limit je Absender – ohne Cookies, ohne Captcha."]</p>
+        </div>
+    }
+    else if (_tab == "markup" && _model is not null)
+    {
+        <p class="hint">@T["So rendert forms.js dieses Formular – ohne Inline-Styles, ohne iframe. Gestaltung ausschließlich über das CSS der Website."]</p>
+        <pre class="markup-pre">@MarkupGenerator.Render(_model)</pre>
+        <h2>@T["Klassen-Referenz (stabiler Vertrag fürs Theme)"]</h2>
+        <div class="table-scroll">
+        <table>
+            <tbody>
+            @foreach (var (cls, meaning) in MarkupGenerator.Classes)
+            {
+                <tr><td class="label"><code>.@cls</code></td><td class="small">@meaning</td></tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    }
+    else
+    {
+        <div class="row" style="justify-content:space-between">
+            <p class="hint" style="margin:0">@T["Expertenansicht: das vollständige Definitions-JSON. Änderungen fließen beim Tab-Wechsel in den Builder zurück."]</p>
+            <button class="btn" @onclick="() => Copy(_json ?? string.Empty)">@T["JSON kopieren"]</button>
+        </div>
+        <textarea class="editor" spellcheck="false" @bind="_json" @bind:event="oninput"></textarea>
+    }
+
+    @if (_issues is not null)
+    {
+        @if (_issues.Count == 0) { <p class="ok">@T["Keine Probleme gefunden – bereit zum Veröffentlichen."]</p> }
+        else
+        {
+            <ul class="issues">
+                @foreach (var i in _issues) { <li>@i</li> }
+            </ul>
+        }
+    }
+
+    <div class="actions">
+        <button class="btn" @onclick="Save" disabled="@_busy">@T["Speichern"]</button>
+        <button class="btn" @onclick="Check" disabled="@_busy">@T["Prüfen"]</button>
+        <a class="btn" href="einsendungen/@Slug">@T["Einsendungen"]</a>
+        <span class="spacer"></span>
+        <button class="btn btn--primary" @onclick="OpenPublishDialog" disabled="@_busy">@T["Veröffentlichen …"]</button>
+    </div>
+}
+
+@if (_publishDialog && _model is not null)
+{
+    <div class="scrim" @onclick="() => _publishDialog = false">
+        <div class="modal" @onclick:stopPropagation>
+            <h2 style="margin-top:0">@T.F("Version {0} veröffentlichen", _publishedVersion + 1)</h2>
+            <p class="hint">@T["Die aktuelle Definition wird eingefroren."] @(_status == "published" ? T.F("Bestehende Einsendungen bleiben Version {0} zugeordnet.", _publishedVersion) : T["Danach ist das Formular öffentlich erreichbar."])</p>
+            <dl class="kv">
+                <dt>@T["Felder"]</dt><dd>@_model.Fields.Count@(_model.Quiz is { } q ? " · " + T.F("{0} Fragen, {1} Ergebnisse", q.Questions.Count, q.Results.Count) : "")</dd>
+                <dt>@T["Verarbeitung"]</dt><dd>@(_model.Steps.Count == 0 ? T["– nur speichern –"] : string.Join(" → ", _model.Steps.Select(s => T[DescriptorOf(s.Key)?.Name ?? s.Key])))</dd>
+                <dt>@T["Sprachen"]</dt><dd>@string.Join(", ", _model.Locales)</dd>
+                <dt>@T["Adresse"]</dt><dd><code>/f/@Slug/</code></dd>
+            </dl>
+            <div class="actions">
+                <button class="btn" @onclick="() => _publishDialog = false">@T["Abbrechen"]</button>
+                <button class="btn btn--primary" disabled="@_busy" @onclick="ConfirmPublish">@T["Jetzt veröffentlichen"]</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_snippetDialog)
+{
+    <div class="scrim" @onclick="() => _snippetDialog = false">
+        <div class="modal" @onclick:stopPropagation>
+            <h2 style="margin-top:0">@T.F("Veröffentlicht als Version {0}", _publishedVersion)</h2>
+            <p class="hint">@T["Shortcode in eine Hugo-Seite einfügen oder die eigenständige Adresse teilen. Beides zeigt immer die zuletzt veröffentlichte Version."]</p>
+            <div class="snip"><code>{{&lt; entriqa "@Slug" &gt;}}</code><button class="btn" @onclick="@(() => Copy($"{{{{< entriqa \"{Slug}\" >}}}}"))">@T["Kopieren"]</button></div>
+            <div class="snip"><code>/f/@Slug/</code><button class="btn" @onclick="@(() => Copy($"/f/{Slug}/"))">@T["Kopieren"]</button></div>
+            <div class="actions"><button class="btn btn--primary" @onclick="() => _snippetDialog = false">@T["Schließen"]</button></div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private FormModel? _model;
+    private string? _json, _status, _updatedBy, _error, _info;
+    private string _tab = "felder";
+    private int _publishedVersion;
+    private List<string>? _issues;
+    private List<StepDescriptorDto>? _catalog;
+    private IntegrationDirectory? _directory;
+    private List<string>? _siteLocales;
+    private bool _busy, _publishDialog, _snippetDialog, _expert;
+    private string _newStepKey = "";
+
+    // Builder state: selection (texts or a field), active language, drag and drop of the structure
+    private FieldModel? _selField;
+    private bool _selTexts = true;
+    private string? _lang;
+    private int? _dragIndex, _dragOver;
+
+    /// <summary>Languages of the website (Entriqa__Locales) - plus everything the form declares already.</summary>
+    private IEnumerable<string> SiteLocales =>
+        (_siteLocales ?? new List<string> { "de", "en" }).Union(_model?.Locales ?? new List<string>());
+
+    private string Lang => _lang is { Length: > 0 } l && _model?.Locales.Contains(l) == true ? l : _model?.Locales[0] ?? "de";
+
+    private static string LangName(string locale)
+    {
+        try
+        {
+            var native = System.Globalization.CultureInfo.GetCultureInfo(locale).NativeName;
+            return native.Length > 0 ? char.ToUpper(native[0], System.Globalization.CultureInfo.GetCultureInfo(locale)) + native[1..] : locale.ToUpperInvariant();
+        }
+        catch (System.Globalization.CultureNotFoundException) { return locale.ToUpperInvariant(); }
+    }
+
+    private void SelectField(FieldModel field) { _selField = field; _selTexts = false; }
+    private void SelectTexts() { _selField = null; _selTexts = true; }
+
+    private void RemoveSelected()
+    {
+        if (_selField is not null) _model!.Fields.Remove(_selField);
+        SelectTexts();
+    }
+
+    private void MoveSelected(int delta)
+    {
+        if (_selField is null) return;
+        Move(_model!.Fields, _model.Fields.IndexOf(_selField), delta);
+    }
+
+    private void DropOn(int targetIndex)
+    {
+        if (_dragIndex is not { } from || from == targetIndex) { _dragIndex = _dragOver = null; return; }
+        var item = _model!.Fields[from];
+        _model.Fields.RemoveAt(from);
+        _model.Fields.Insert(targetIndex, item);
+        _dragIndex = _dragOver = null;
+    }
+
+    private string BlockLabel(FieldModel f)
+    {
+        if (f.Type == "divider") return T["Trennlinie"];
+        var label = f.Label.Get(Lang);
+        if (label is { Length: > 0 }) return label;
+        if (f.Type == "consent" && f.ConsentText.Get(Lang) is { Length: > 0 } c) return c.Length > 24 ? c[..24] + "…" : c;
+        if (f.Id is { Length: > 0 }) return f.Id;
+        return T[FieldModel.Types.FirstOrDefault(t => t.Value == f.Type).Label ?? f.Type];
+    }
+
+    private void ToggleExpert()
+    {
+        _expert = !_expert;
+        if (!_expert && _tab is "markup" or "json") SwitchTab("felder");   // otherwise an invisible view would stay active
+    }
+
+    private List<string> ProducedBefore(int index) => _model!.Steps.Take(index)
+        .Select(s => DescriptorOf(s.Key)?.Produces).Where(p => p is not null).Select(p => p!).Distinct().ToList();
+
+    private List<StepEditor.FieldRef> FieldRefs => _model?.Fields
+        .Where(f => !f.IsLayout && f.Type != "hidden")
+        .Select(f => new StepEditor.FieldRef(f.Id, f.Label.Get(_model.Locales[0]) is { Length: > 0 } l ? l : f.Id))
+        .ToList() ?? new();
+
+    private List<StepEditor.QuizResultRef> QuizRefs => _model?.Quiz?.Results
+        .Select(r => new StepEditor.QuizResultRef(r.Id, r.Title.Get(_model.Locales[0]) is { Length: > 0 } t ? t : r.Id))
+        .ToList() ?? new();
+
+    private IEnumerable<(string, string)> Tabs
+    {
+        get
+        {
+            yield return ("felder", "Felder & Texte");
+            if (_model?.Type == "quiz" || _model?.Quiz is not null) yield return ("quiz", "Fragen & Weichen");
+            yield return ("pipeline", "Verarbeitung");
+            yield return ("abschluss", "Rückmeldung");
+            if (_expert)
+            {
+                yield return ("markup", "Markup & Klassen");
+                yield return ("json", "JSON");
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = _info = null; _issues = null; _tab = "felder";
+        try
+        {
+            _catalog ??= await Api.GetStepCatalogAsync();
+            _directory ??= await Api.GetDirectoryAsync();
+            _siteLocales ??= (await Api.GetStatusAsync()).Locales ?? new List<string> { "de", "en" };
+            var draft = await Api.TryGetDraftAsync(Slug);
+            string json;
+            if (draft is null)
+            {
+                _status = "draft";
+                var typ = System.Web.HttpUtility.ParseQueryString(new Uri(Nav.Uri).Query).Get("typ") ?? "contact";
+                json = FormTemplates.For(typ, Slug);
+                _info = T["Neues Formular – Vorlage geladen, noch nicht gespeichert."];
+            }
+            else
+            {
+                _status = draft.Status;
+                _publishedVersion = draft.PublishedVersion;
+                _updatedBy = draft.UpdatedBy;
+                json = JsonSerializer.Serialize(draft.Definition, new JsonSerializerOptions { WriteIndented = true });
+                _everSaved = true;
+            }
+            LoadModel(json);
+            _savedJson = _model!.ToJson();               // Vergleichsbasis in kanonischer Form (Roundtrip normalisiert)
+            if (_model?.Type == "quiz") _tab = "quiz";
+        }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private void LoadModel(string json)
+    {
+        _json = json;
+        _model = FormModel.Parse(json);
+        foreach (var s in _model.Steps) AttachSchema(s);
+        SelectTexts();                                     // old field references no longer hold after parsing
+    }
+
+    private void AttachSchema(StepModel step)
+    {
+        var d = DescriptorOf(step.Key);
+        step.Schema = d is null ? null : StepSchema.Parse(d.ConfigSchema);
+        if (step.Schema is not null) step.LoadConfigText(step.Schema);
+    }
+
+    private StepDescriptorDto? DescriptorOf(string key) => _catalog?.FirstOrDefault(d => d.Key == key);
+
+    private void SwitchTab(string tab)
+    {
+        if (tab == _tab) return;
+        _error = null;
+        try
+        {
+            if (tab == "json" && _model is not null) _json = _model.ToJson();       // Builder → JSON
+            else if (_tab == "json") LoadModel(_json!);                              // JSON → Builder
+            _tab = tab;
+        }
+        catch (JsonException je) { _error = T.F("Kein gültiges JSON – bitte erst korrigieren: {0}", je.Message); }
+    }
+
+    private string CurrentJson() => _tab != "json" && _model is not null ? _model.ToJson() : _json!;
+
+    private static void Move<T>(List<T> list, int index, int delta)
+    {
+        var target = index + delta;
+        if (target < 0 || target >= list.Count) return;
+        (list[index], list[target]) = (list[target], list[index]);
+    }
+
+    private void ToggleLocale(string locale, bool on)
+    {
+        if (on && !_model!.Locales.Contains(locale)) _model.Locales.Add(locale);
+        if (!on && _model!.Locales.Count > 1) _model.Locales.Remove(locale);
+    }
+
+    private void AddField()
+    {
+        var f = new FieldModel { Id = $"feld{_model!.Fields.Count + 1}" };
+        _model.Fields.Add(f);
+        SelectField(f);                                    // direkt rechts bearbeiten
+    }
+
+    private void AddStep()
+    {
+        var nextId = Enumerable.Range(1, 99).Select(i => $"s{i}").First(id => _model!.Steps.All(s => s.Id != id));
+        var s = new StepModel { Id = nextId, Key = _newStepKey };
+        AttachSchema(s);
+        _model!.Steps.Add(s);
+        _newStepKey = "";
+    }
+
+    private async Task Check() => await Guarded(async () =>
+    {
+        _issues = (await Api.CheckAsync(CurrentJson())).Issues;
+    });
+
+    private async Task Save() => await Guarded(async () =>
+    {
+        var json = CurrentJson();
+        await Api.SaveDraftAsync(Slug, json);
+        _savedJson = json; _everSaved = true;
+        _info = T["Entwurf gespeichert."];
+    });
+
+    // Autosave: only after the draft has been saved deliberately once (a new form that was merely
+    // looked at should not come into being behind the user's back). Invalid JSON in expert mode is skipped.
+    private System.Threading.Timer? _autosaveTimer;
+    private string? _savedJson;
+    private bool _everSaved;
+    private DateTimeOffset? _autoSavedAt;
+
+    protected override void OnInitialized() =>
+        _autosaveTimer = new System.Threading.Timer(_ => _ = InvokeAsync(AutosaveTick), null,
+            TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20));
+
+    private async Task AutosaveTick()
+    {
+        if (!_everSaved || _busy || _model is null) return;
+        string json;
+        try { json = CurrentJson(); using var _ = JsonDocument.Parse(json); } catch { return; }
+        if (json == _savedJson) return;
+        try
+        {
+            await Api.SaveDraftAsync(Slug, json);
+            _savedJson = json;
+            _autoSavedAt = DateTimeOffset.UtcNow;
+            StateHasChanged();
+        }
+        catch { /* the next tick tries again; deliberate save errors are shown by the save button */ }
+    }
+
+    public void Dispose() => _autosaveTimer?.Dispose();
+
+    private async Task OpenPublishDialog() => await Guarded(async () =>
+    {
+        _issues = (await Api.CheckAsync(CurrentJson())).Issues;      // check before the dialog - problems visible right away
+        if (_issues.Count == 0) _publishDialog = true;
+        else _error = T["Noch nicht bereit – bitte erst die Probleme beheben."];
+    });
+
+    private async Task ConfirmPublish() => await Guarded(async () =>
+    {
+        await Api.SaveDraftAsync(Slug, CurrentJson());               // the current state first, then publish
+        var result = await Api.PublishAsync(Slug);
+        _issues = result.Issues;
+        _publishDialog = false;
+        if (result.Version > 0)
+        {
+            _status = "published"; _publishedVersion = result.Version;
+            _snippetDialog = true;
+        }
+        else _error = T["Nicht veröffentlicht – bitte die Probleme beheben."];
+    });
+
+    private async Task Copy(string text)
+    {
+        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); } catch { /* the clipboard needs a secure context */ }
+    }
+
+    private async Task Guarded(Func<Task> action)
+    {
+        _busy = true; _error = _info = null;
+        try
+        {
+            using var _ = JsonDocument.Parse(CurrentJson());         // check the syntax up front, a clear message instead of a 400
+            await action();
+        }
+        catch (JsonException je) { _error = T.F("Kein gültiges JSON: {0}", je.Message); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+}

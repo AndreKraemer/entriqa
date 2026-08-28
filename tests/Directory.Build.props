@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- Analyzers are aimed at product code. Relaxing them here is deliberate and narrow:
+         CA1707 forbids underscores in identifiers, which is exactly the Given_When_Then naming
+         every test in this project follows - the rule and the convention cannot both hold.
+         CA1861 (hoist constant arrays) and CA1869 (cache JsonSerializerOptions) trade
+         readability for allocations that do not matter in a test that runs once. -->
+    <NoWarn>$(NoWarn);CA1707;CA1861;CA1869</NoWarn>
+  </PropertyGroup>
+</Project>

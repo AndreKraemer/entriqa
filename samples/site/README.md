@@ -1,0 +1,78 @@
+# Sample site
+
+A minimal bilingual Hugo site that imports the Entriqa module from `hugo/` the same way a
+customer site does. It exists so the product can be run, demonstrated and acceptance-tested
+from a fresh clone, without anyone having to supply a Hugo site of their own.
+
+## Running it
+
+```
+npm install
+npm run dev
+```
+
+`dev/start.mjs` defaults to this directory, so no `--site` argument is needed. Website on
+<http://localhost:4280>, admin on <http://localhost:4281>. See
+`.claude/skills/local-dev/SKILL.md` for what comes up on which port and why 1313 and 5100
+are the wrong ones to test against.
+
+To work on the site alone, without Azurite and the API (forms will render but not submit):
+
+```
+npm run sample:serve
+```
+
+## What it demonstrates
+
+| Page | Form | Shows |
+|---|---|---|
+| Kontakt / Contact | `kontakt` | The basic types: text, email, textarea, consent |
+| Beratungsanfrage / Consulting request | `beratung` | The other twelve field types, a page break, a conditional field, a rating scale and a file upload |
+| Whitepaper | `whitepaper` | Lead magnet: double opt-in before the CRM step and the download link |
+| Selbsttest / Self-check | `selbsttest` | Quiz with a jump to a result, percentage scoring and findings |
+
+Between them the four forms cover every field type and all three form types; the tests in
+`tests/Entriqa.Tests/SeedFormsTests.cs` fail if that stops being true, or if a sample
+would be rejected by the publish check.
+
+The form definitions live in `seed/forms/*.json`, not here — `DevSeedHostedService` publishes
+them at startup. It skips forms that already exist, so after editing a definition you have to
+delete the form in the admin or wipe `dev/.azurite` before the change shows up.
+
+## Two things worth knowing
+
+**The module redirect must be absolute.** The site imports
+`github.com/andrekraemer/entriqa/hugo` and relies on `HUGO_MODULE_REPLACEMENTS` pointing at
+this clone. Both `dev/start.mjs` and `scripts/hugo.mjs` set it to an absolute path, because
+Hugo does not reliably resolve a relative replacement against the project directory on
+Windows — it fails with "module does not exist". This is also why the redirect is not written
+into `hugo.toml`.
+
+**A multilingual site has to provide its own localized DOI pages, and name their paths.**
+`bestaetigen/`, `bestaetigt/` and `f/` come from the module's own `content/`, and Hugo mounts
+module content into the default content language only — so the module can deliver them for one
+language and no more. This site therefore carries English pages under `content/en/confirm/`
+and `content/en/confirmed/`, which reuse the module's `doi-confirm` and `doi-done` layouts and
+supply their own wording and slugs.
+
+Because a translated page has a translated slug, the API does not guess the URL: it is
+configured per language, here in `local.settings.json`.
+
+```
+Entriqa__ConfirmPagePaths__en       = /en/confirm/
+Entriqa__ConfirmedRedirectPaths__en = /en/confirmed/
+```
+
+Where nothing is configured, `ConfirmPagePathFor` falls back to Hugo's default layout — first
+locale at the root, every other one under `/{locale}/`. That keeps the language right even
+when the path reads oddly (`/en/bestaetigen/`), which beats sending an English participant to
+a German page.
+
+**The no-script fallback follows the page language too.** The embed partial builds its
+`/f/{slug}/` link with `relLangURL`, so an English page links to `/en/f/{slug}/`, and the text
+comes from the module's own `i18n/`. Static Web Apps needs a rewrite rule per language for
+that path — `static/staticwebapp.config.json` carries `/en/f/*`, and because it sits in the site's own
+`static/` folder it is both the template a customer copies and the file the local emulator
+actually applies — `dev/start.mjs` points `--swa-config-location` at it. Note that the
+`/f/*` rewrite still cannot be exercised locally: Hugo's dev server answers
+`/f/index.html` with a redirect to `./`, which loops. A real build serves the file.

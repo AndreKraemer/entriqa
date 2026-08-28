@@ -1,0 +1,30 @@
+# Line endings and binary safety.
+#
+# core.autocrlf=true converts anything git considers text on checkout. Git only recognises a
+# file as binary when it contains NUL bytes - a small PDF with uncompressed streams has none,
+# so seed/leadmagnets/whitepaper-beispiel.pdf came out of a fresh clone 32 bytes longer and
+# with its xref offsets broken. Declaring the types explicitly is the fix.
+
+# Normalise to LF in the repository and check out LF, matching .editorconfig (end_of_line = lf).
+* text=auto eol=lf
+
+# Never touch these, whatever their bytes look like.
+*.pdf    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.woff   binary
+*.woff2  binary
+*.zip    binary
+*.wasm   binary
+*.dll    binary
+*.exe    binary
+*.snk    binary
+
+# Windows-only scripts need CRLF to run reliably.
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf

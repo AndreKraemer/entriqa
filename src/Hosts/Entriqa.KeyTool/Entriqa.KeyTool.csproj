@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- TFM, nullability, warnings-as-errors and central package versions come from the
+       repository root (Directory.Build.props / Directory.Packages.props). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+</Project>
