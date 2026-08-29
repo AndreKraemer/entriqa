@@ -1,3 +1,5 @@
+using Entriqa.Domain.Localization;
+
 namespace Entriqa.Domain.Validation;
 
 /// <summary>
@@ -73,7 +75,21 @@ public static class ValidationMessages
         [Uploaded] = "uploaded",
     };
 
-    public static IReadOnlyDictionary<string, string> For(string? lang) => lang == "en" ? En : De;
+    /// <summary>The reference every other locale is measured against; German is the fallback, so it defines the keys.</summary>
+    public const string Reference = "de";
+
+    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> ByLocale =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>
+        {
+            [Reference] = De,
+            ["en"] = En,
+        };
+
+    /// <summary>The locales this catalog can serve completely. Adding a set above is all it takes to extend it.</summary>
+    public static IReadOnlyList<string> Locales { get; } = LocaleCatalog.CompleteLocales(ByLocale, Reference);
+
+    public static IReadOnlyDictionary<string, string> For(string? lang) =>
+        lang is not null && ByLocale.TryGetValue(lang, out var texts) ? texts : De;
 
     public static string Get(string? lang, string key) => For(lang).TryGetValue(key, out var v) ? v : key;
 }
