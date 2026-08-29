@@ -75,6 +75,29 @@ Dependencies point inwards only: Domain depends on nothing, Application not on D
 Infrastructure, Data not on Infrastructure, and entity types stay internal to the Data layer.
 A layering mistake fails the gate — it is not something a reviewer has to catch.
 
+## A double answers the request, it does not replay a script
+
+A fake `HttpMessageHandler` that hands out prepared responses in call order makes every client look
+correct, including one that never varies its request. That is not hypothetical: the paging tests for
+#22 served pages by call order, so replacing `offset={all.Count}` with `offset=0` left all 117 tests
+green while the real endpoint would have returned page one forever. Four more mutants survived in the
+same blind spot.
+
+Model the endpoint instead — slice the data by the `limit` and `offset` you were asked for, and
+report the total the API would report:
+
+```csharp
+private sealed class FakeHandler(string arrayName, long? claimedCount, int available) : HttpMessageHandler
+{
+    public List<string> Requests { get; } = new();
+    // ... parse limit/offset from the query, return that slice, empty past the end
+}
+```
+
+And assert on what was actually sent (`Assert.Equal(new[] { "…offset=0", "…offset=50" }, handler.Requests)`)
+wherever a request parameter drives the behaviour under test. A count of requests is the right
+assertion for termination; the URLs are the right assertion for correctness.
+
 ## Two traps
 
 **`TheoryData` with file names, not paths.** `SeedFormsTests` passes `kontakt.json`, not the
