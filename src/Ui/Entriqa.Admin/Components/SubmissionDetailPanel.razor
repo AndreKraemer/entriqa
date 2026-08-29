@@ -32,7 +32,7 @@ else
     }
 
     <h2>@T["Werte"]</h2>
-    <table>
+    <table class="values">
         <tbody>
         @foreach (var v in _s.Values)
         {
@@ -59,7 +59,7 @@ else
         <p><strong>@(_s.QuizResultTitle ?? q.ResultId)</strong> – @T.F("{0}/{1} Punkte auf dem Pfad ({2} %)", q.Points, q.MaxPoints, q.Pct)@(q.ReachedByJump ? " · " + T["direkt per Weiche"] : "")</p>
         @if (_s.QuizAnswers is { Count: > 0 })
         {
-            <table>
+            <table class="values">
                 <tbody>
                 @foreach (var a in _s.QuizAnswers)
                 {
