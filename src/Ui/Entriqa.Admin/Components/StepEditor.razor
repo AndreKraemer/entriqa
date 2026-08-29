@@ -1,7 +1,10 @@
 @* One card per pipeline step: catalog information, condition, criticality, schema-driven configuration.
    Formats: brevo-template/brevo-list -> DirectorySelect over the directory, blob -> file picker plus upload,
-   rc-template -> ReportingCloud templates, enum attach -> only artifacts actually produced earlier. *@
+   rc-template -> ReportingCloud templates, enum attach -> only artifacts actually produced earlier.
+   A property the schema marks "localizable" is rendered once per declared language (issue #3); the
+   locale object is storage only and is never shown, let alone typed (AC 5). *@
 @using System.Text.Json.Nodes
+@using Entriqa.Domain.Forms
 @inject AdminApi Api
 @inject Ui T
 
@@ -58,75 +61,36 @@
                             var result = r;
                             <tr>
                                 <td class="label">@result.Title</td>
-                                <td>@RcTemplateSelect(TemplateFor(result.Id), v => SetTemplateFor(result.Id, v))</td>
+                                <td>
+                                    @foreach (var loc in Locales)
+                                    {
+                                        var l = loc;
+                                        <div class="ltext-row">
+                                            @if (Locales.Count > 1) { <span class="ltext-locale">@l</span> }
+                                            @RcTemplateSelect(TemplateFor(result.Id, l), v => SetTemplateFor(result.Id, l, v))
+                                        </div>
+                                    }
+                                </td>
                             </tr>
                         }
                         </tbody>
                     </table>
                 }
-                else if (prop.Format == "brevo-template" && Directory is { BrevoConfigured: true })
+                else if (prop.Localizable)
                 {
-                    <DirectorySelect Value="@Get(prop.Name)" ValueChanged="v => Set(prop.Name, v)"
-                                     Entries="Directory.BrevoTemplates" Multi="false"
-                                     Complete="Directory.BrevoTemplatesComplete" />
-                }
-                else if (prop.Format == "brevo-list" && Directory is { BrevoConfigured: true })
-                {
-                    <DirectorySelect Value="@Get(prop.Name)" ValueChanged="v => Set(prop.Name, v)"
-                                     Entries="Directory.BrevoLists" Multi="true"
-                                     Complete="Directory.BrevoListsComplete" />
-                }
-                else if (prop.Format == "blob")
-                {
-                    <div class="row">
-                        <select value="@Get(prop.Name)" @onchange="e => Set(prop.Name, e.Value?.ToString())">
-                            <option value="">@T["– Datei wählen –"]</option>
-                            @foreach (var m in Directory?.LeadMagnets ?? new())
-                            {
-                                <option value="@m.Path" selected="@(Get(prop.Name) == m.Path)">@m.Path (@FormatSize(m.Size))</option>
-                            }
-                        </select>
-                        <InputFile OnChange="UploadBlob" />
-                        @if (_uploading) { <span class="hint">@T["lädt hoch …"]</span> }
-                    </div>
-                }
-                else if (prop.Format == "form-field")
-                {
-                    <select value="@Get(prop.Name)" @onchange="e => Set(prop.Name, e.Value?.ToString())">
-                        <option value="">@T["– Feld wählen –"]</option>
-                        @foreach (var f in FormFields)
-                        {
-                            <option value="@f.Id" selected="@(Get(prop.Name) == f.Id)">@f.Label</option>
-                        }
-                    </select>
-                }
-                else if (prop.Format == "rc-template")
-                {
-                    @RcTemplateSelect(Get(prop.Name), v => Set(prop.Name, v))
-                }
-                else if (prop.Enum is { Count: > 0 })
-                {
-                    <select value="@(Get(prop.Name) is { Length: > 0 } cur ? cur : prop.Default ?? prop.Enum[0])"
-                            @onchange="e => Set(prop.Name, e.Value?.ToString())">
-                        @foreach (var v in EnumOptions(prop))
-                        {
-                            <option value="@v" selected="@(Get(prop.Name) == v)">@EnumLabel(v)</option>
-                        }
-                    </select>
-                    @if (prop.Name == "attach" && ProducedBefore.Count == 0)
+                    @* One control per declared language, the same control the single-language case gets. *@
+                    @foreach (var loc in Locales)
                     {
-                        <div class="hint">@T["Kein vorheriger Schritt erzeugt etwas zum Mitschicken."]</div>
+                        var l = loc;
+                        <div class="ltext-row">
+                            @if (Locales.Count > 1) { <span class="ltext-locale">@l</span> }
+                            @Control(prop, Get(prop.Name, l), v => Set(prop.Name, l, v))
+                        </div>
                     }
-                }
-                else if (prop.Type == "object")
-                {
-                    <textarea rows="4" class="mono" value="@Get(prop.Name)"
-                              @onchange="e => Set(prop.Name, e.Value?.ToString())"></textarea>
                 }
                 else
                 {
-                    <input value="@Get(prop.Name)" placeholder="@prop.Default"
-                           @onchange="e => Set(prop.Name, e.Value?.ToString())" />
+                    @Control(prop, Get(prop.Name), v => Set(prop.Name, v))
                 }
             </div>
         }
@@ -154,6 +118,8 @@
     [Parameter] public IntegrationDirectory? Directory { get; set; }
     [Parameter] public List<string> ProducedBefore { get; set; } = new();
     [Parameter] public List<QuizResultRef> QuizResults { get; set; } = new();
+    /// <summary>The languages the form declares - a localizable field gets one control per entry.</summary>
+    [Parameter] public List<string> Locales { get; set; } = new() { "de" };
     [Parameter] public List<FieldRef> FormFields { get; set; } = new();
     [Parameter] public EventCallback OnRemove { get; set; }
     [Parameter] public EventCallback<int> OnMove { get; set; }
@@ -174,6 +140,18 @@
     private string Get(string name) => Step.ConfigText.GetValueOrDefault(name) ?? "";
     private void Set(string name, string? value) { Step.ConfigText[name] = value ?? ""; Notify(); }
 
+    private string Get(string name, string locale) =>
+        Step.ConfigTextByLocale.GetValueOrDefault(name)?.GetValueOrDefault(locale) ?? "";
+
+    private void Set(string name, string locale, string? value)
+    {
+        if (!Step.ConfigTextByLocale.TryGetValue(name, out var perLocale))
+            Step.ConfigTextByLocale[name] = perLocale = new Dictionary<string, string>(StringComparer.Ordinal);
+        perLocale[locale] = value ?? "";
+        Notify();
+    }
+
+
     private IEnumerable<string> EnumOptions(StepSchemaProperty prop) =>
         prop.Name != "attach" ? prop.Enum! : prop.Enum!.Where(v => v switch
         {
@@ -188,25 +166,102 @@
         _ => v,
     };
 
-    private string TemplateFor(string resultId)
+    // The result is the outer dimension and the template inside it is localizable, so the map is
+    // {resultId: {locale: template}} - or {resultId: template} while every language agrees.
+    private string TemplateFor(string resultId, string locale)
     {
         try
         {
             var obj = JsonNode.Parse(Get("templates"))?.AsObject();
-            return obj?[resultId]?.GetValue<string>() ?? "";
+            return LValue.Decompose(obj?[resultId], Locales).GetValueOrDefault(locale)?.GetValue<string>() ?? "";
         }
         catch { return ""; }
     }
 
-    private void SetTemplateFor(string resultId, string? template)
+    private void SetTemplateFor(string resultId, string locale, string? template)
     {
         JsonObject obj;
         try { obj = JsonNode.Parse(Get("templates"))?.AsObject() ?? new JsonObject(); }
         catch { obj = new JsonObject(); }
-        if (string.IsNullOrEmpty(template)) obj.Remove(resultId);
-        else obj[resultId] = template;
+        var perLocale = LValue.Decompose(obj[resultId], Locales);
+        perLocale[locale] = string.IsNullOrEmpty(template) ? null : JsonValue.Create(template);
+        if (LValue.Compose(perLocale, Locales) is { } value) obj[resultId] = value;
+        else obj.Remove(resultId);
         Set("templates", obj.ToJsonString());
     }
+
+    /// <summary>
+    /// The control for one value - the single place a step configuration field is rendered. The localizable
+    /// path calls it once per language and the plain path once, so no field can end up in the raw-JSON
+    /// textarea just because it carries a value per language.
+    /// </summary>
+    private RenderFragment Control(StepSchemaProperty prop, string current, Action<string?> set) => __builder =>
+    {
+        @if (prop.Format == "brevo-template" && Directory is { BrevoConfigured: true })
+        {
+            <DirectorySelect Value="@current" ValueChanged="v => set(v)"
+                             Entries="Directory.BrevoTemplates" Multi="false"
+                             Complete="Directory.BrevoTemplatesComplete" />
+        }
+        else if (prop.Format == "brevo-list" && Directory is { BrevoConfigured: true })
+        {
+            <DirectorySelect Value="@current" ValueChanged="v => set(v)"
+                             Entries="Directory.BrevoLists" Multi="true"
+                             Complete="Directory.BrevoListsComplete" />
+        }
+        else if (prop.Format == "blob")
+        {
+            <div class="row">
+                <select value="@current" @onchange="e => set(e.Value?.ToString())">
+                    <option value="">@T["– Datei wählen –"]</option>
+                    @foreach (var m in Directory?.LeadMagnets ?? new())
+                    {
+                        <option value="@m.Path" selected="@(current == m.Path)">@m.Path (@FormatSize(m.Size))</option>
+                    }
+                </select>
+                <InputFile OnChange="e => UploadBlob(e, set)" />
+                @if (_uploading) { <span class="hint">@T["lädt hoch …"]</span> }
+            </div>
+        }
+        else if (prop.Format == "form-field")
+        {
+            <select value="@current" @onchange="e => set(e.Value?.ToString())">
+                <option value="">@T["– Feld wählen –"]</option>
+                @foreach (var f in FormFields)
+                {
+                    <option value="@f.Id" selected="@(current == f.Id)">@f.Label</option>
+                }
+            </select>
+        }
+        else if (prop.Format == "rc-template")
+        {
+            @RcTemplateSelect(current, set)
+        }
+        else if (prop.Enum is { Count: > 0 })
+        {
+            <select value="@(current is { Length: > 0 } cur ? cur : prop.Default ?? prop.Enum[0])"
+                    @onchange="e => set(e.Value?.ToString())">
+                @foreach (var v in EnumOptions(prop))
+                {
+                    <option value="@v" selected="@(current == v)">@EnumLabel(v)</option>
+                }
+            </select>
+            @if (prop.Name == "attach" && ProducedBefore.Count == 0)
+            {
+                <div class="hint">@T["Kein vorheriger Schritt erzeugt etwas zum Mitschicken."]</div>
+            }
+        }
+        else if (prop.Type == "object")
+        {
+            <textarea rows="4" class="mono" value="@current"
+                      @onchange="e => set(e.Value?.ToString())"></textarea>
+        }
+        else
+        {
+            <input value="@current" placeholder="@prop.Default"
+                   @onchange="e => set(e.Value?.ToString())" />
+        }
+    };
 
     private RenderFragment RcTemplateSelect(string current, Action<string?> set) => __builder =>
     {
@@ -226,7 +281,7 @@
         }
     };
 
-    private async Task UploadBlob(InputFileChangeEventArgs e)
+    private async Task UploadBlob(InputFileChangeEventArgs e, Action<string?> set)
     {
         _uploading = true; _error = null;
         try
@@ -234,7 +289,7 @@
             var info = await Api.UploadLeadMagnetAsync(e.File);
             Directory?.LeadMagnets.RemoveAll(m => m.Path == info.Path);
             Directory?.LeadMagnets.Add(info);
-            Set("blob", info.Path);
+            set(info.Path);                       // the language whose picker started the upload
         }
         catch (Exception ex) { _error = T.F("Upload fehlgeschlagen: {0}", ex.Message); }
         finally { _uploading = false; }

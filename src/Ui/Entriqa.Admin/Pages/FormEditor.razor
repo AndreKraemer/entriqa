@@ -160,6 +160,7 @@ else
                 }
                 <StepEditor Step="step" Descriptor="DescriptorOf(step.Key)" Directory="_directory"
                             ProducedBefore="ProducedBefore(index)" QuizResults="QuizRefs" FormFields="FieldRefs"
+                            Locales="_model.Locales"
                             OnRemove="() => _model.Steps.RemoveAt(index)"
                             OnMove="delta => Move(_model.Steps, index, delta)" Changed="StateHasChanged" />
             }
