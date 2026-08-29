@@ -19,7 +19,7 @@ Auf deinem Rechner brauchst du **kein .NET** – API und Admin kommen fertig geb
 | `Entriqa__HousekeepingKey` | zufälliger Wert (für den 15-min-Schedule) |
 | `Entriqa__Storage__ConnectionString` | Connection String des Storage Accounts |
 | `Entriqa__Brevo__ApiKey` / `__SenderName` / `__SenderEmail` | dein Brevo-Konto |
-| `Entriqa__Locales` | z. B. `de,en` (Standard) |
+| `Entriqa__Locales` | `de,en` (Standard). Nur Sprachen, für die vollständige Besuchertexte vorliegen – zurzeit `de` und `en`. Andere Codes werden verworfen, der Start meldet sie als Warnung |
 | `Entriqa__LicenseKey` | dein Lizenzschlüssel (Produktivbetrieb) |
 
 4. In der SWA-**Rollenverwaltung** die Admin-Personen mit der Rolle `admin` einladen.

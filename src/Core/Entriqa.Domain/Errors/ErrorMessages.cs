@@ -1,3 +1,5 @@
+using Entriqa.Domain.Localization;
+
 namespace Entriqa.Domain.Errors;
 
 /// <summary>
@@ -129,7 +131,29 @@ public static class ErrorMessages
         [StepUnknown] = "Unknown step '{key}'.",
     };
 
-    public static IReadOnlyDictionary<string, string> For(string? lang) => lang == "en" ? En : De;
+    /// <summary>The reference every other locale is measured against; German is the fallback, so it defines the keys.</summary>
+    public const string Reference = "de";
+
+    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> ByLocale =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>
+        {
+            [Reference] = De,
+            ["en"] = En,
+        };
+
+    /// <summary>The locales this catalog can serve completely. Adding a set above is all it takes to extend it.</summary>
+    public static IReadOnlyList<string> Locales { get; } = LocaleCatalog.CompleteLocales(ByLocale, Reference);
+
+    /// <summary>
+    /// The texts of exactly this locale, or null when the catalog has none. Unlike <see cref="For"/> this
+    /// does not fall back to German - a caller that needs to know whether a language is really carried
+    /// here cannot ask <see cref="For"/>, because its fallback answers for every locale ever passed.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string>? Texts(string locale) =>
+        ByLocale.TryGetValue(locale, out var texts) ? texts : null;
+
+    public static IReadOnlyDictionary<string, string> For(string? lang) =>
+        lang is not null && ByLocale.TryGetValue(lang, out var texts) ? texts : De;
 
     /// <summary>Renders the text of a key; <paramref name="args"/> replaces {placeholders}. Unknown key -> the key itself.</summary>
     public static string Get(string? lang, string key, IReadOnlyDictionary<string, string>? args = null)

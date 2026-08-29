@@ -18,6 +18,7 @@ var host = new HostBuilder()
         services.AddEntriqaData();
         services.AddEntriqaInfrastructure();
         services.AddSingleton<SwaPrincipalReader>();
+        services.AddHostedService<LocaleWarningHostedService>();
         services.AddHostedService<DevSeedHostedService>();
     })
     .Build();

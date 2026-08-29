@@ -32,6 +32,15 @@ public class PublishCheckServiceTests
     [Fact]
     public void GivenValidContactForm_WhenCheckingBeforePublish_ThenNoIssuesAreReported() => Assert.Empty(Build().Check(TestData.Contact()));
 
+    // AC1/AC3 of #4: the editor is not the only way a definition gets a locale - the JSON tab, the admin
+    // API and seed files all write one unchecked. Publishing is the seam where that has to be refused.
+    [Fact]
+    public void GivenAFormDeclaringALanguageWithoutVisitorTexts_WhenCheckingBeforePublish_ThenItIsRefused()
+    {
+        var form = TestData.Contact() with { Locales = new[] { "zz" } };
+        Assert.Contains(Build().Check(form), i => i.Contains("'zz'") && i.Contains("Besuchertexte"));
+    }
+
     [Fact]
     public void GivenLeadMagnetWithoutFileAndMailAttachingAMissingArtifact_WhenCheckingBeforePublish_ThenBothStepsAreFlagged()
     {

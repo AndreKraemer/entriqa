@@ -294,9 +294,14 @@ else
     private string? _lang;
     private int? _dragIndex, _dragOver;
 
-    /// <summary>Languages of the website (Entriqa__Locales) - plus everything the form declares already.</summary>
-    private IEnumerable<string> SiteLocales =>
-        (_siteLocales ?? new List<string> { "de", "en" }).Union(_model?.Locales ?? new List<string>());
+    /// <summary>
+    /// Languages of the website: exactly what the API offers (Entriqa__Locales, already filtered to the
+    /// ones Entriqa has complete visitor-facing texts for). Deliberately not extended by what the form
+    /// declares - a definition naming a language the visitor cannot be served in is the defect, not the
+    /// reason to keep offering it. Deliberately no hardcoded fallback either: a second list here is
+    /// exactly what makes adding a language a two-place edit.
+    /// </summary>
+    private IEnumerable<string> SiteLocales => _siteLocales ?? Enumerable.Empty<string>();
 
     private string Lang => _lang is { Length: > 0 } l && _model?.Locales.Contains(l) == true ? l : _model?.Locales[0] ?? "de";
 
@@ -385,7 +390,7 @@ else
         {
             _catalog ??= await Api.GetStepCatalogAsync();
             _directory ??= await Api.GetDirectoryAsync();
-            _siteLocales ??= (await Api.GetStatusAsync()).Locales ?? new List<string> { "de", "en" };
+            _siteLocales ??= (await Api.GetStatusAsync()).Locales ?? new List<string>();
             var draft = await Api.TryGetDraftAsync(Slug);
             string json;
             if (draft is null)
@@ -414,8 +419,22 @@ else
     {
         _json = json;
         _model = FormModel.Parse(json);
+        ReconcileLocales();
         foreach (var s in _model.Steps) AttachSchema(s);
         SelectTexts();                                     // old field references no longer hold after parsing
+    }
+
+    /// <summary>
+    /// Drops languages the definition declares but the site cannot serve. Without this the editor
+    /// contradicts itself: the checkbox row would no longer offer such a language while the language
+    /// switch, the text inputs and the summary still showed it - and with no checkbox left there is no
+    /// way to remove it either, so every save would write it back. The stored texts stay in the JSON tab.
+    /// </summary>
+    private void ReconcileLocales()
+    {
+        if (_siteLocales is not { Count: > 0 } offered) return;
+        _model!.Locales.RemoveAll(l => !offered.Contains(l));
+        if (_model.Locales.Count == 0) _model.Locales.Add(offered[0]);
     }
 
     private void AttachSchema(StepModel step)
