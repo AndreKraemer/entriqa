@@ -221,7 +221,8 @@ public sealed record SubmissionDetail(string Id, string Slug, int Version, DateT
     string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers);
 
 public sealed record IntegrationDirectory(bool BrevoConfigured, List<DirectoryEntry> BrevoLists, List<DirectoryEntry> BrevoTemplates,
-    bool ReportingCloudConfigured, List<string> ReportTemplates, List<LeadMagnetInfo> LeadMagnets);
+    bool ReportingCloudConfigured, List<string> ReportTemplates, List<LeadMagnetInfo> LeadMagnets,
+    bool BrevoListsComplete = true, bool BrevoTemplatesComplete = true);
 public sealed record DirectoryEntry(long Id, string Name);
 public sealed record LeadMagnetInfo(string Path, long Size);
 public sealed record FormActivity(int Total, List<int> Daily);

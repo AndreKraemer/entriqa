@@ -69,7 +69,7 @@ public sealed record IntegrationDirectory(
     bool BrevoConfigured, IReadOnlyList<DirectoryEntry> BrevoLists, IReadOnlyList<DirectoryEntry> BrevoTemplates,
     bool ReportingCloudConfigured, IReadOnlyList<string> ReportTemplates,
     IReadOnlyList<LeadMagnetInfo> LeadMagnets,
-    // #22: a section that could not be loaded must never look complete. Skeleton - nothing sets these yet.
+    // False when that section could not be loaded - an incomplete directory must never look complete.
     bool BrevoListsComplete = true, bool BrevoTemplatesComplete = true);
 
 public sealed record DirectoryEntry(long Id, string Name);
