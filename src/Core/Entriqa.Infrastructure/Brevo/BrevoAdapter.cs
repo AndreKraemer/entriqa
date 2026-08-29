@@ -53,19 +53,39 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
     }
 
     public async Task<IReadOnlyList<BrevoListInfo>> GetListsAsync(CancellationToken ct = default)
-    {
-        using var doc = await GetJson("contacts/lists?limit=50", ct);
-        return doc.RootElement.TryGetProperty("lists", out var lists)
-            ? lists.EnumerateArray().Select(l => new BrevoListInfo(l.GetProperty("id").GetInt64(), l.GetProperty("name").GetString() ?? "")).ToList()
-            : Array.Empty<BrevoListInfo>();
-    }
+        => await GetAllAsync("contacts/lists", "lists",
+            e => new BrevoListInfo(e.GetProperty("id").GetInt64(), e.GetProperty("name").GetString() ?? ""), ct);
 
     public async Task<IReadOnlyList<BrevoTemplateInfo>> GetTemplatesAsync(CancellationToken ct = default)
+        => await GetAllAsync("smtp/templates?templateStatus=true", "templates",
+            e => new BrevoTemplateInfo(e.GetProperty("id").GetInt64(), e.GetProperty("name").GetString() ?? ""), ct);
+
+    /// <summary>
+    /// Reads every page of a Brevo collection. Brevo pages with limit/offset and reports the account total
+    /// in "count" (developers.brevo.com/reference/getlists-1). Stopping on a short page as well as on the
+    /// total keeps this correct whatever the endpoint's real maximum page size is - and a count that
+    /// promises more than the account delivers cannot spin the loop.
+    /// </summary>
+    private async Task<IReadOnlyList<T>> GetAllAsync<T>(string path, string arrayName, Func<JsonElement, T> map, CancellationToken ct)
     {
-        using var doc = await GetJson("smtp/templates?templateStatus=true&limit=100", ct);
-        return doc.RootElement.TryGetProperty("templates", out var templates)
-            ? templates.EnumerateArray().Select(t => new BrevoTemplateInfo(t.GetProperty("id").GetInt64(), t.GetProperty("name").GetString() ?? "")).ToList()
-            : Array.Empty<BrevoTemplateInfo>();
+        const int pageSize = 50;
+        const int maxPages = 200;                                       // 10.000 entries; a backstop, not a limit anybody should hit
+        var separator = path.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        var all = new List<T>();
+
+        for (var page = 0; page < maxPages; page++)
+        {
+            using var doc = await GetJson($"{path}{separator}limit={pageSize}&offset={all.Count}", ct);
+            if (!doc.RootElement.TryGetProperty(arrayName, out var entries) || entries.ValueKind != JsonValueKind.Array) break;
+
+            var fetched = 0;
+            foreach (var entry in entries.EnumerateArray()) { all.Add(map(entry)); fetched++; }
+            if (fetched < pageSize) break;                               // a short page is the last one
+
+            if (doc.RootElement.TryGetProperty("count", out var count)
+                && count.TryGetInt64(out var total) && all.Count >= total) break;
+        }
+        return all;
     }
 
     private async Task<JsonDocument> GetJson(string url, CancellationToken ct)
