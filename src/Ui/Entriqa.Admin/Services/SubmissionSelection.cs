@@ -102,12 +102,25 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
         return -1;
     }
 
-    /// <summary>The next submission of the selection, or null at its end (AC4, AC5).</summary>
-    public static string? Next(IReadOnlyList<SubmissionListItem> selection, string id) => throw new NotImplementedException();
+    /// <summary>
+    /// The next submission of the selection, or null at its end (AC4, AC5). Neighbours span the whole
+    /// selection, not the page it happens to sit on - a reader working through twenty open requests should
+    /// not stop at fifteen. A submission the selection does not contain has no neighbours in either
+    /// direction, which is what a stale address degrades to.
+    /// </summary>
+    public static string? Next(IReadOnlyList<SubmissionListItem> selection, string id)
+    {
+        var index = IndexOf(selection, id);
+        return index >= 0 && index + 1 < selection.Count ? selection[index + 1].Id : null;
+    }
 
     /// <summary>The previous submission of the selection, or null at its start (AC4, AC5).</summary>
-    public static string? Previous(IReadOnlyList<SubmissionListItem> selection, string id) => throw new NotImplementedException();
+    public static string? Previous(IReadOnlyList<SubmissionListItem> selection, string id)
+    {
+        var index = IndexOf(selection, id);
+        return index > 0 ? selection[index - 1].Id : null;
+    }
 
     /// <summary>One-based position within the selection, for the "n von m" counter; 0 when it is not in it.</summary>
-    public static int PositionOf(IReadOnlyList<SubmissionListItem> selection, string id) => throw new NotImplementedException();
+    public static int PositionOf(IReadOnlyList<SubmissionListItem> selection, string id) => IndexOf(selection, id) + 1;
 }

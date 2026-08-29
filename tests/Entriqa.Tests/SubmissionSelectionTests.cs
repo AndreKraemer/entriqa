@@ -112,6 +112,27 @@ public class SubmissionSelectionTests
     }
 
     [Fact]
+    public void GivenASelectionSpanningTwoPages_WhenAskingForTheSubmissionBeforeTheFirstOfPageTwo_ThenItIsTheLastOfPageOne()
+    {
+        var selection = new SubmissionSelection("kontakt", null, 1);
+        var items = Kontakt(selection);
+
+        Assert.Equal(selection.PageSlice(items)[^1].Id,
+            SubmissionSelection.Previous(items, items[SubmissionSelection.PerPage].Id));
+    }
+
+    [Fact]
+    public void GivenAQuickFilteredSelection_WhenWalkingItBackFromTheLastSubmission_ThenEverySubmissionOfTheSelectionIsReachedInReverseListOrder()
+    {
+        var items = Kontakt(new SubmissionSelection("kontakt", "todo", 1));
+
+        var walked = new List<string> { items[^1].Id };
+        while (SubmissionSelection.Previous(items, walked[^1]) is { } previous) walked.Add(previous);
+
+        Assert.Equal(items.Reverse().Select(s => s.Id), walked);
+    }
+
+    [Fact]
     public void GivenASubmissionInASelection_WhenAskingForItsPosition_ThenItIsCountedAcrossThePages()
     {
         var items = Kontakt(new SubmissionSelection("kontakt", null, 1));
