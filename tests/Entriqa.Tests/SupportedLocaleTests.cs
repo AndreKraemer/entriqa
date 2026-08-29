@@ -33,6 +33,15 @@ public class SupportedLocaleTests
     public void GivenACatalogWithoutTheReferenceLocale_WhenAskingForCompleteLocales_ThenNoneQualify() =>
         Assert.Empty(LocaleCatalog.CompleteLocales(Catalog(), "xx"));
 
+    // The AC3 guard only works because Texts() refuses to answer for a locale the catalog does not have.
+    // Letting it fall back like For() would disarm that guard while every test stayed green.
+    [Fact]
+    public void GivenALocaleNoCatalogCarries_WhenAskingForItsTexts_ThenNothingIsReturned()
+    {
+        Assert.Null(ValidationMessages.Texts("zz"));
+        Assert.Null(ErrorMessages.Texts("zz"));
+    }
+
     // AC3: the "both catalogs" rule itself. On the shipped catalogs this is invisible - they carry the
     // same locales, so intersecting and unioning them agree - so it is checked against catalogs that differ.
     [Fact]

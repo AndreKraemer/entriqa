@@ -32,12 +32,34 @@ public class LocaleSourceGuardTests
         Assert.Contains("_siteLocales", member.Value);             // the value the status API delivered
     }
 
-    // AC2: the warning only reaches the operator if the host actually runs it.
+    // AC2: the warning only reaches the operator if the host actually runs it. Anchored at the start of
+    // a line, so commenting the registration out fails too - deletion is not the only way to lose it.
     [Fact]
     public void GivenTheFunctionsHost_WhenReadingItsComposition_ThenTheLocaleWarningIsRegistered()
     {
-        var program = File.ReadAllText(Path.Combine(RepositoryDirectory(), "src", "Hosts", "Entriqa.Functions", "Program.cs"));
-        Assert.Contains("AddHostedService<LocaleWarningHostedService>", program);
+        var program = File.ReadAllText(Path.Combine(FunctionsDirectory(), "Program.cs"));
+        Assert.Matches(new Regex(@"^\s*services\.AddHostedService<LocaleWarningHostedService>\(\);", RegexOptions.Multiline), program);
+    }
+
+    // AC2 in full: it asks for a *warning* that *names* the code. A debug line, or one that drops the
+    // placeholder, would satisfy "something is logged" while failing the criterion as written.
+    [Fact]
+    public void GivenTheStartupWarning_WhenReadingIt_ThenItIsAWarningAndNamesTheCode()
+    {
+        var source = File.ReadAllText(Path.Combine(FunctionsDirectory(), "LocaleWarningHostedService.cs"));
+        Assert.Contains("LogWarning", source);
+        Assert.Contains("{Locale}", source);
+    }
+
+    // The reconciliation is what keeps the editor's four views of "which languages" in agreement;
+    // dropping the call is invisible from the outside and from every executing test.
+    [Fact]
+    public void GivenTheFormEditor_WhenLoadingADefinition_ThenItReconcilesTheDeclaredLanguages()
+    {
+        var source = File.ReadAllText(Path.Combine(AdminDirectory(), "Pages", "FormEditor.razor"));
+        var loadModel = Regex.Match(source, @"private void LoadModel\(string json\)\s*\{.*?\n    \}", RegexOptions.Singleline);
+        Assert.True(loadModel.Success, "FormEditor.razor no longer has a LoadModel method - update this guard.");
+        Assert.Contains("ReconcileLocales()", loadModel.Value);
     }
 
     // AC4, server half: the admin can only offer what the status hands it.
@@ -67,4 +89,6 @@ public class LocaleSourceGuardTests
     }
 
     private static string AdminDirectory() => Path.Combine(RepositoryDirectory(), "src", "Ui", "Entriqa.Admin");
+
+    private static string FunctionsDirectory() => Path.Combine(RepositoryDirectory(), "src", "Hosts", "Entriqa.Functions");
 }
