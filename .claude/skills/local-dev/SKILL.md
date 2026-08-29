@@ -90,9 +90,52 @@ Three separate mechanisms produce that table, and confusing them is the trap:
   why port 7071 is a convenient way to read state during a test run, and why nothing measured
   there says anything about authorization.
 
-To sign in: open `/.auth/login/aad` on 4281, pick a username, and type `admin` into the roles
-field. Hitting 5100 directly skips every layer — fine for a quick look at a component, worthless
-for anything authorization-related.
+To sign in: open `/.auth/login/aad` on 4281, pick a username (the field is mandatory — an empty
+one blocks the submit with a validation bubble that is easy to miss), and type `admin` into the
+roles field.
+
+**Then check that the role actually took**, before concluding anything from what the admin shows:
+
+```
+/.auth/me                 → userRoles must contain "admin"
+/api/manage/forms         → must answer 200, not redirect to /.auth/login/aad
+```
+
+**Fill the field with real keystrokes.** The emulator's login page persists each field to
+`localStorage` on `keyup` only, and its submit builds the cookie from *that*, never from the DOM
+(`node_modules/@azure/static-web-apps-cli/dist/public/auth.html`):
+
+```js
+form.on("keyup", "input, textarea", (event) => $(event.currentTarget).saveToLocalStorage());
+function saveCookie(formElement) {
+  const data = localStorage[hashStorageKey(formElement)];   // not the form's current values
+  document.cookie = `StaticWebAppsAuthCookie=${btoa(data)}; path=/`;
+}
+```
+
+So a field filled by script, by `insertText`-style automation, or by paste — anything that fires no
+keyup — leaves `localStorage` at its previous state, and the login then succeeds *with the old
+principal*: the page redirects, the admin shell loads, and `admin` is simply missing. That looks
+exactly like a correctly gated admin and cost most of an acceptance run. The form's *Clear* button
+does not rescue it either: it calls `saveToLocalStorage` on every field, storing the **default**
+roles.
+
+If the role still does not stick, write the principal yourself — which is precisely what
+`saveCookie` does — in the browser console on 4281, then reload:
+
+```js
+document.cookie = "StaticWebAppsAuthCookie=" + btoa(JSON.stringify({
+  userId: "local-dev", userRoles: ["anonymous", "authenticated", "admin"],
+  claims: [], identityProvider: "aad", userDetails: "acceptance" })) + "; path=/";
+```
+
+That is the emulator simulating a login, not a bypass of a real control — but say so in an
+acceptance report, because it is how the evidence was produced.
+
+Hitting 5100 directly skips every layer, and it does **not** proxy `/api/*`: manage calls answer
+`200` with the SPA fallback HTML, so the admin shows "Bitte zuerst anmelden …" there whoever you
+are. Fine for a quick look at a component, useless for anything that needs data — and its "200 OK"
+in a network log is a trap, not a success.
 
 **The standalone `/f/{slug}/` route cannot be exercised through the dev server.** The rewrite
 targets `/f/index.html`, and Hugo's dev server answers that with `301 → ./`, which loops back.

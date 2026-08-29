@@ -30,6 +30,11 @@ plugin. This file holds only what is specific to this project.
   relaxes `CA1707` because its `Given_When_Then` naming needs underscores.
 - **`dotnet test` does not build the whole solution** — only what the test project depends on.
   The gate therefore builds `Entriqa.slnx` first, or a broken admin slips through.
+- **Commit subjects are plain imperative sentences** — `Drop the quiz and source attributes from
+  the Brevo contact step (#23)`, never a Conventional-Commits prefix like `feat:`/`fix:`/
+  `refactor:`. The issue goes in parentheses at the end. This holds when a tool or command
+  suggests a prefix: the repository's own history is the yardstick, and a review measures
+  against it.
 
 ## Layout
 
@@ -82,6 +87,10 @@ build. Exit 0 = PASS.
 Note: a run only counts as evidence when it goes through pairmode's `verify-run.mjs`, which
 records the fingerprint of the working tree. Calling `scripts/verify.mjs` directly is fine
 for a quick check but leaves no proof behind.
+
+**Run it after committing, not before.** The fingerprint changes with the commit, so a green run
+from just before it no longer matches the tree and the stop-gate asks for another one. Verify
+while iterating as often as you like; the run that counts is the one on the committed state.
 
 ## Skills
 
