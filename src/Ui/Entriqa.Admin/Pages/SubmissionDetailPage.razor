@@ -1,12 +1,78 @@
 @page "/einsendung/{Id}"
+@inject AdminApi Api
 @inject NavigationManager Nav
 @inject Ui T
 
+<div class="filters">
+    <a class="btn" href="@BackUrl">@Back.BackLabel(T, FormName)</a>
+    @if (Position > 0)
+    {
+        <span class="hint">@T.F("{0} von {1}", Position, _items.Count)</span>
+        <button class="btn" disabled="@(Previous is null)" title="@T["Vorherige Einsendung"]"
+                aria-label="@T["Vorherige Einsendung"]" @onclick="() => Open(Previous)">‹</button>
+        <button class="btn" disabled="@(Next is null)" title="@T["Nächste Einsendung"]"
+                aria-label="@T["Nächste Einsendung"]" @onclick="() => Open(Next)">›</button>
+    }
+</div>
+
 <h1>@T["Einsendung"]</h1>
+@if (_error is not null) { <p class="error">@_error</p> }
 <SubmissionDetailPanel Id="@Id" OnDeleted="GoBack" />
 
 @code {
     [Parameter] public string Id { get; set; } = "";
 
-    private void GoBack() => Nav.NavigateTo("einsendungen");
+    private SubmissionSelection _selection = SubmissionSelection.Default;
+    private IReadOnlyList<SubmissionListItem> _items = Array.Empty<SubmissionListItem>();
+    private List<FormListItem>? _forms;
+    private string? _error;
+    private string? _loadedSlug;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _selection = SubmissionSelection.FromQuery(null, new Uri(Nav.Uri).Query);
+        // The neighbours come from the same list the reader was looking at, so the detail page loads it
+        // once per form and then walks it in memory - turning to the next submission costs no request.
+        if (_loaded && _loadedSlug == _selection.Slug) return;
+        _loaded = true;
+        _loadedSlug = _selection.Slug;
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        try
+        {
+            _forms ??= await Api.ListFormsAsync();
+            var recent = await Api.ListRecentAsync(_selection.Slug);
+            _items = _selection.Select(recent.Items, recent.LastVisitAt);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            // The submission itself is loaded by the panel and still shows; only walking and the page of
+            // the way back are lost, so this must not replace the whole page with an error.
+            _items = Array.Empty<SubmissionListItem>();
+            _error = Errors.Friendly(ex, T);
+        }
+    }
+
+    private string? FormName => _forms?.FirstOrDefault(f => f.Slug == _selection.Slug)?.Name;
+
+    /// <summary>The selection as the way back needs it: on the page holding what is on screen (AC2).</summary>
+    private SubmissionSelection Back => _selection.AtPageContaining(_items, Id);
+
+    private string BackUrl => Back.ListUrl();
+
+    private int Position => SubmissionSelection.PositionOf(_items, Id);
+    private string? Previous => SubmissionSelection.Previous(_items, Id);
+    private string? Next => SubmissionSelection.Next(_items, Id);
+
+    private void Open(string? id)
+    {
+        if (id is not null) Nav.NavigateTo(_selection.DetailUrl(id));
+    }
+
+    private void GoBack() => Nav.NavigateTo(BackUrl);
 }
