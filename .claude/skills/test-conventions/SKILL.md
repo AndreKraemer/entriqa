@@ -75,6 +75,25 @@ Dependencies point inwards only: Domain depends on nothing, Application not on D
 Infrastructure, Data not on Infrastructure, and entity types stay internal to the Data layer.
 A layering mistake fails the gate — it is not something a reviewer has to catch.
 
+## Code the test host cannot load still gets a guard
+
+`Entriqa.Admin` is not referenced by the test project and `Entriqa.Functions` deliberately is not
+either, so a Razor component and the composition root have no executing test. That is a reason to
+read their **sources**, not a reason to write "acceptance-only". `EditorChangedBindingTests` and
+`AdminTranslationKeyTests` do exactly that, and `LocaleSourceGuardTests` follows them: resolve the
+directory upwards from `AppContext.BaseDirectory`, pull out the member you care about with a regex,
+and assert what must and must not be in it.
+
+The pull is what makes it a guard rather than a grep — scanning the whole file matches the string
+anywhere, including in a comment. Anchor patterns that can be commented out (`^\s*services\.Add…`
+with `RegexOptions.Multiline`), and fail loudly when the member is gone (`Assert.True(match.Success,
+"… no longer has X — update this guard.")`) rather than passing on an empty match.
+
+It is weaker than executing the code and it does not replace the acceptance gate: it catches the
+regression, not the defect. But "the admin does not load in the test host" has twice been the
+premise of a conclusion that nothing could be guarded, and twice the review found a mutation that
+restored the pre-fix behaviour with the whole suite green.
+
 ## A double answers the request, it does not replay a script
 
 A fake `HttpMessageHandler` that hands out prepared responses in call order makes every client look

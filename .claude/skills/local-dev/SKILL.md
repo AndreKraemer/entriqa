@@ -70,6 +70,30 @@ Leave `Entriqa__Brevo__ApiKey` and `Entriqa__ReportingCloud__ApiKey` empty.
 hosts, and that block exists because a dev loop against live Brevo creates real contacts and
 sends real mail.
 
+## The application's own log lines never reach the console
+
+Nothing the app logs through `ILogger` shows up — not in `npm run dev`, not in
+`func start --verbose`, not in `dotnet run` on the Functions project. The Functions host prints its
+own lines (`Executing 'Functions.GetForm'`, the route table, the host lock) and swallows the
+worker's, so a log-based expectation silently has no evidence either way.
+
+**Do not read the silence as "it did not run."** Establish a baseline first: `DevSeedHostedService`
+logs `Seed: {Slug} veröffentlicht` for every form it publishes. If those lines are absent while the
+four forms exist in the admin, the channel is what is missing, not the behaviour.
+
+To actually see what a startup component logs, build a small console project **outside the repo**
+that references the built assemblies and runs the component with a real logger:
+
+```csharp
+using var factory = LoggerFactory.Create(b => b.AddSimpleConsole().SetMinimumLevel(LogLevel.Information));
+var service = new LocaleWarningHostedService(Options.Create(options), factory.CreateLogger<LocaleWarningHostedService>());
+await service.StartAsync(CancellationToken.None);
+```
+
+That is real evidence of the component, not of the wiring — pair it with a source guard on the
+registration (see [`test-conventions`](../test-conventions/SKILL.md)), and say in the acceptance
+report that the two together stand in for the line you could not observe.
+
 ## Auth locally — measure it, do not assume it
 
 What is gated locally is narrower than it looks, and the difference has already misled one
