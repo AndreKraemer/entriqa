@@ -88,6 +88,10 @@ Note: a run only counts as evidence when it goes through pairmode's `verify-run.
 records the fingerprint of the working tree. Calling `scripts/verify.mjs` directly is fine
 for a quick check but leaves no proof behind.
 
+**Run it after committing, not before.** The fingerprint changes with the commit, so a green run
+from just before it no longer matches the tree and the stop-gate asks for another one. Verify
+while iterating as often as you like; the run that counts is the one on the committed state.
+
 ## Skills
 
 Registered in the `skills` map of `pairmode.config.json`:
