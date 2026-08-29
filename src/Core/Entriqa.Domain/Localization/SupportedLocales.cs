@@ -1,3 +1,6 @@
+using Entriqa.Domain.Errors;
+using Entriqa.Domain.Validation;
+
 namespace Entriqa.Domain.Localization;
 
 /// <summary>
@@ -8,5 +11,6 @@ namespace Entriqa.Domain.Localization;
 /// </summary>
 public static class SupportedLocales
 {
-    public static IReadOnlyList<string> All => throw new NotImplementedException();
+    public static IReadOnlyList<string> All { get; } =
+        ValidationMessages.Locales.Intersect(ErrorMessages.Locales).ToList();
 }
