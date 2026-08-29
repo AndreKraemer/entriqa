@@ -75,4 +75,14 @@ public static class StepConfig
     public static Dictionary<string, string> GetStringMap(this JsonElement e, string name)
         => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.Object
             ? p.EnumerateObject().Where(x => x.Value.ValueKind == JsonValueKind.String).ToDictionary(x => x.Name, x => x.Value.GetString()!) : new();
+
+    // The locale-aware half, for the fields marked "localizable" in a step's ConfigSchema. A value there
+    // is a plain scalar (applies to every language) or {locale: value} - see LValue. The plain overloads
+    // above stay for everything that is not visitor facing (attach, hours, to, webhookUrl, ...).
+    public static string? GetString(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
+    public static int? GetInt(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
+    public static IReadOnlyList<int> GetIntList(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
+
+    /// <summary>Reads a map whose <em>members</em> are localizable (<c>reportingcloud.pdf</c>'s per-result templates).</summary>
+    public static Dictionary<string, string> GetStringMap(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
 }
