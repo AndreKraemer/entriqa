@@ -78,11 +78,31 @@ public static class StepConfig
 
     // The locale-aware half, for the fields marked "localizable" in a step's ConfigSchema. A value there
     // is a plain scalar (applies to every language) or {locale: value} - see LValue. The plain overloads
-    // above stay for everything that is not visitor facing (attach, hours, to, webhookUrl, ...).
-    public static string? GetString(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
-    public static int? GetInt(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
-    public static IReadOnlyList<int> GetIntList(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
+    // above stay for everything that is not visitor facing (attach, hours, to, webhookUrl, ...); reading a
+    // marked field through them returns null for the object form, which is why they must not be used there.
+    public static string? GetString(this JsonElement e, string name, string? locale)
+        => Localized(e, name, locale) is { ValueKind: JsonValueKind.String } p ? p.GetString() : null;
 
-    /// <summary>Reads a map whose <em>members</em> are localizable (<c>reportingcloud.pdf</c>'s per-result templates).</summary>
-    public static Dictionary<string, string> GetStringMap(this JsonElement e, string name, string? locale) => throw new NotImplementedException();
+    public static int? GetInt(this JsonElement e, string name, string? locale)
+        => Localized(e, name, locale) is { ValueKind: JsonValueKind.Number } p && p.TryGetInt32(out var i) ? i : null;
+
+    public static IReadOnlyList<int> GetIntList(this JsonElement e, string name, string? locale)
+        => Localized(e, name, locale) is { ValueKind: JsonValueKind.Array } p
+            ? p.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Number && x.TryGetInt32(out _)).Select(x => x.GetInt32()).ToList()
+            : Array.Empty<int>();
+
+    /// <summary>Reads a map whose <em>members</em> are localizable (<c>reportingcloud.pdf</c>'s per-result
+    /// templates): the outer keys stay what they were, each value is resolved for the language.</summary>
+    public static Dictionary<string, string> GetStringMap(this JsonElement e, string name, string? locale)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (e.ValueKind != JsonValueKind.Object || !e.TryGetProperty(name, out var p) || p.ValueKind != JsonValueKind.Object) return map;
+        foreach (var member in p.EnumerateObject())
+            if (LValue.Resolve(member.Value, locale) is { ValueKind: JsonValueKind.String } v) map[member.Name] = v.GetString()!;
+        return map;
+    }
+
+    /// <summary>The raw value of a localizable property, already reduced to one language.</summary>
+    public static JsonElement Localized(this JsonElement e, string name, string? locale)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var p) ? LValue.Resolve(p, locale) : default;
 }

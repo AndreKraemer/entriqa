@@ -13,7 +13,7 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
     public string Description => "Verschickt eine Brevo-Vorlage an die angegebene Adresse – optional mit Datei oder Link aus einem vorherigen Schritt.";
     public StepMode Mode => StepMode.Inline;
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField };
-    public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template"},"attach":{"type":"string","enum":["none","download","report","reportLink"],"title":"Mitschicken","default":"none"},"linkHours":{"type":"integer","title":"Link gültig (Stunden), nur bei reportLink","default":72}}}""";
+    public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template","localizable":true},"attach":{"type":"string","enum":["none","download","report","reportLink"],"title":"Mitschicken","default":"none"},"linkHours":{"type":"integer","title":"Link gültig (Stunden), nur bei reportLink","default":72}}}""";
     public IReadOnlyList<MailParam> MailParams => new MailParam[]
     {
         new("firstName", "Vorname aus dem Formular (kann leer sein)"),
@@ -29,7 +29,7 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
     {
-        if (config.GetInt("templateId") is null) yield return "keine Brevo-Vorlage gewählt.";
+        if (config.GetInt("templateId", form.DefaultLocale) is null) yield return "keine Brevo-Vorlage gewählt.";
         var attach = config.GetString("attach") ?? "none";
         if (attach == "download" && !producedBefore.Contains("download")) yield return "\"Download-Link\" wird von keinem vorherigen Schritt erzeugt.";
         if (attach is "report" or "reportLink" && !producedBefore.Contains("report")) yield return "\"PDF\" wird von keinem vorherigen Schritt erzeugt.";
@@ -67,7 +67,7 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
                 break;
         }
 
-        await mail.SendAsync(ctx.Email!, ctx.FirstName, config.GetInt("templateId")!.Value, parameters, attachment, ct);
+        await mail.SendAsync(ctx.Email!, ctx.FirstName, config.GetInt("templateId", ctx.Submission.Locale)!.Value, parameters, attachment, ct);
         return StepResult.Ok;
     }
 }

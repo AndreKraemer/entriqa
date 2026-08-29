@@ -20,7 +20,7 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
     public StepMode Mode => StepMode.Inline;
     public bool SplitsPhase => true;
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField, StepNeed.ConsentField };
-    public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Bestätigungsmail (Brevo-Vorlage)","format":"brevo-template"}}}""";
+    public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Bestätigungsmail (Brevo-Vorlage)","format":"brevo-template","localizable":true}}}""";
     public IReadOnlyList<MailParam> MailParams => new MailParam[]
     {
         new("confirmUrl", "Bestätigungslink – als Ziel des Buttons eintragen (Pflicht)"),
@@ -32,7 +32,7 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
     {
-        if (config.GetInt("templateId") is null) yield return "keine Brevo-Vorlage für die Bestätigungsmail.";
+        if (config.GetInt("templateId", form.DefaultLocale) is null) yield return "keine Brevo-Vorlage für die Bestätigungsmail.";
     }
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
@@ -51,7 +51,7 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
             ["site"] = ctx.Options.SiteName,
             ["validDays"] = ctx.Options.ConfirmTokenDays,
         };
-        await mail.SendAsync(ctx.Email!, ctx.FirstName, config.GetInt("templateId")!.Value, parameters, null, ct);
+        await mail.SendAsync(ctx.Email!, ctx.FirstName, config.GetInt("templateId", ctx.Submission.Locale)!.Value, parameters, null, ct);
         return StepResult.Ok;
     }
 }
