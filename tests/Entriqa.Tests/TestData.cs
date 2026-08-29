@@ -4,6 +4,7 @@ using Microsoft.Extensions.Time.Testing;
 using Entriqa.Application;
 using Entriqa.Application.Security;
 using Entriqa.Domain.Forms;
+using Entriqa.Admin.Services;
 
 namespace Entriqa.Tests;
 
@@ -21,6 +22,22 @@ internal static class TestData
     public static FormTokenService Tokens(FakeTimeProvider? time = null) => new(Microsoft.Extensions.Options.Options.Create(Options()), time ?? Time);
 
     public static JsonElement Json(string json) => JsonDocument.Parse(json).RootElement.Clone();
+
+    /// <summary>
+    /// A submissions list the way the admin receives it (#11): newest first, two forms, every quick
+    /// filter non-empty, and the "kontakt" selection long enough to span two pages of 15.
+    /// </summary>
+    public static List<SubmissionListItem> SubmissionList() =>
+        Enumerable.Range(0, 24).Select(i => new SubmissionListItem(
+            Id: $"s{i:00}",
+            Slug: i < 18 ? "kontakt" : "whitepaper",
+            Version: 1,
+            CreatedAt: Time.GetUtcNow().AddHours(-i),
+            Email: $"p{i:00}@example.org",
+            Summary: $"Person {i:00}",
+            State: i % 4,
+            Handling: i < 20 ? "open" : i < 22 ? "done" : "none",
+            QuizResultId: null)).ToList();
 
     public static FormDefinition Contact() => new(
         Slug: "kontakt", Name: "Kontakt", Type: "contact", Intro: null, SubmitLabel: null,
