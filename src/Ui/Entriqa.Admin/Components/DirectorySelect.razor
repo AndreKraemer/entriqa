@@ -1,6 +1,7 @@
 @* Selection over a Brevo directory section: search, chosen entries always visible, ids that are no longer
-   in Brevo kept with a hint. Multi (lists) and single (templates) share one component so both fields
-   behave the same. Value is the raw config text StepEditor stores - comma separated ids, one for single. *@
+   in Brevo kept with a hint. Multi (lists) and single (templates) share one component, so both fields look
+   and search alike; only activation differs - single always selects, multi toggles. Value is the raw config
+   text StepEditor stores - comma separated ids, one for single. *@
 @inject Ui T
 
 <div class="dirsel">
@@ -43,7 +44,7 @@
             var option = entry;
             <li>
                 <button type="button" class="dirsel__option @(Chosen.Contains(option.Id) ? "is-chosen" : "")"
-                        @onclick="() => Toggle(option.Id)">
+                        @onclick="() => Activate(option.Id)">
                     @option.Name <span class="hint">#@option.Id</span>
                 </button>
             </li>
@@ -87,7 +88,7 @@
 
     private IEnumerable<DirectoryEntry> Visible => Matches.Take(MaxVisible);
 
-    private async Task Toggle(long id)
+    private async Task Activate(long id)
     {
         var ids = Chosen;
         // Single: activating always selects, it never toggles off. Toggling is right for a list of many,
@@ -107,7 +108,9 @@
 
     private async Task WriteRaw(ChangeEventArgs e)
     {
-        Value = e.Value?.ToString() ?? "";
+        var typed = e.Value?.ToString() ?? "";
+        // A single-valued field must not end up with two ids just because the escape hatch accepts a list.
+        Value = Multi ? typed : typed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
         await ValueChanged.InvokeAsync(Value);
     }
 
