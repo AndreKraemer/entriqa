@@ -29,16 +29,18 @@ public sealed class EntriqaOptions
     public Dictionary<string, string> ConfirmedRedirectPaths { get; set; } = new();
     public string IpHashSalt { get; set; } = "";                            // a salt rotating daily would be better; see the spec
     public string FreemailBlocklist { get; set; } = "";                     // additional freemail domains (comma separated), extends FreemailDomains.Default
-    public string Locales { get; set; } = "de,en";                          // languages of the website (comma separated) - the admin offers exactly these
+    public string Locales { get; set; } = "de,en";                          // languages of the website (comma separated); codes without visitor texts are dropped
     public string LicenseKey { get; set; } = "";                            // Entriqa production license (empty = development, the admin shows a notice)
 
+    private IReadOnlyList<string>? _configuredLocales;
     private IReadOnlyList<string> ConfiguredLocales =>
-        Locales.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        _configuredLocales ??= Locales.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.ToLowerInvariant()).Distinct().ToList();
 
+    private IReadOnlyList<string>? _unsupportedLocales;
     /// <summary>The configured codes Entriqa has no complete visitor-facing texts for; the host names them at startup.</summary>
     public IReadOnlyList<string> UnsupportedLocales =>
-        ConfiguredLocales.Where(l => !SupportedLocales.All.Contains(l)).ToList();
+        _unsupportedLocales ??= ConfiguredLocales.Where(l => !SupportedLocales.All.Contains(l)).ToList();
 
     private IReadOnlyList<string>? _siteLocales;
     /// <summary>

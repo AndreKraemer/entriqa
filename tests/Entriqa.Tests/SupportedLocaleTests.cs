@@ -18,14 +18,20 @@ public class SupportedLocaleTests
         {
             ["de"] = new Dictionary<string, string> { ["required"] = "Pflichtfeld.", ["next"] = "Weiter" },
             ["en"] = new Dictionary<string, string> { ["required"] = "Required.", ["next"] = "Next" },
-            ["fr"] = new Dictionary<string, string> { ["required"] = "Obligatoire.", ["next"] = "Suivant" },
-            ["it"] = new Dictionary<string, string> { ["required"] = "Obbligatorio." },
+            ["zz"] = new Dictionary<string, string> { ["required"] = "Zz required.", ["next"] = "Zz next" },
+            ["yy"] = new Dictionary<string, string> { ["required"] = "Yy required." },   // incomplete on purpose
         };
 
     // AC5: a language added to the catalog becomes available on its own; an incomplete one never does.
     [Fact]
     public void GivenACatalogWithACompleteAndAnIncompleteLocale_WhenAskingForCompleteLocales_ThenOnlyTheCompleteOnesAreReturned() =>
-        Assert.Equal(new[] { "de", "en", "fr" }, LocaleCatalog.CompleteLocales(Catalog(), "de").OrderBy(l => l));
+        Assert.Equal(new[] { "de", "en", "zz" }, LocaleCatalog.CompleteLocales(Catalog(), ValidationMessages.Reference).OrderBy(l => l));
+
+    // The reference locale defines what "complete" means, so without it nothing can qualify. Pinned
+    // because the alternative - treating every locale as complete - would silently offer all of them.
+    [Fact]
+    public void GivenACatalogWithoutTheReferenceLocale_WhenAskingForCompleteLocales_ThenNoneQualify() =>
+        Assert.Empty(LocaleCatalog.CompleteLocales(Catalog(), "xx"));
 
     // AC3: the "both catalogs" rule itself. On the shipped catalogs this is invisible - they carry the
     // same locales, so intersecting and unioning them agree - so it is checked against catalogs that differ.
@@ -39,7 +45,7 @@ public class SupportedLocaleTests
     public void GivenAnUnsupportedCodeInTheConfiguration_WhenReadingTheSiteLocales_ThenOnlySupportedCodesRemain()
     {
         var options = TestData.Options();
-        options.Locales = "de,en,fr";
+        options.Locales = "de,en,zz";
         Assert.Equal(new[] { "de", "en" }, options.SiteLocales);
     }
 
@@ -48,8 +54,8 @@ public class SupportedLocaleTests
     public void GivenAnUnsupportedCodeInTheConfiguration_WhenReadingTheUnsupportedLocales_ThenThatCodeIsNamed()
     {
         var options = TestData.Options();
-        options.Locales = "de,en,fr";
-        Assert.Equal(new[] { "fr" }, options.UnsupportedLocales);
+        options.Locales = "de,en,zz";
+        Assert.Equal(new[] { "zz" }, options.UnsupportedLocales);
     }
 
     // AC1: filtering must not leave the site without any language at all.
@@ -57,7 +63,7 @@ public class SupportedLocaleTests
     public void GivenOnlyUnsupportedCodesInTheConfiguration_WhenReadingTheSiteLocales_ThenItFallsBackToGerman()
     {
         var options = TestData.Options();
-        options.Locales = "fr";
+        options.Locales = "zz";
         Assert.Equal(new[] { "de" }, options.SiteLocales);
     }
 
