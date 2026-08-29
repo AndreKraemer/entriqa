@@ -56,8 +56,26 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
 
     private static string? Set(string? value) => string.IsNullOrEmpty(value) ? null : value;
 
-    /// <summary>Names the selection the back link returns to (AC3).</summary>
-    public string BackLabel(Ui t, string? formName) => throw new NotImplementedException();
+    /// <summary>
+    /// Names the selection the back link returns to (AC3). The form name is data and stays untranslated;
+    /// everything around it is interface language. Without a form the label says "all submissions" rather
+    /// than naming the form picker, because that is where the link actually leads.
+    /// </summary>
+    public string BackLabel(Ui t, string? formName)
+    {
+        var target = formName ?? t["allen Einsendungen"];
+        return QuickLabel(t) is { } quick ? t.F("Zurück zu {0} · {1}", target, quick) : t.F("Zurück zu {0}", target);
+    }
+
+    /// <summary>The quick filter as the list writes it; null for none and for one this version does not know.</summary>
+    private string? QuickLabel(Ui t) => Quick switch
+    {
+        "new" => t["Neu seit letztem Besuch"],
+        "todo" => t["Zu bearbeiten"],
+        "waiting" => t["Wartet auf Bestätigung"],
+        "failed" => t["Fehler"],
+        _ => null,
+    };
 
     /// <summary>
     /// The submissions of this selection, in the order the list shows them. The incoming order is kept

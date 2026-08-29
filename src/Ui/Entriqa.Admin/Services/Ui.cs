@@ -338,6 +338,9 @@ public sealed class Ui
 
         // submissions
         ["Alle Formulare"] = "All forms",
+        ["Zurück zu {0}"] = "Back to {0}",
+        ["Zurück zu {0} · {1}"] = "Back to {0} · {1}",
+        ["allen Einsendungen"] = "all submissions",
         ["Neu seit letztem Besuch"] = "New since last visit",
         ["Zu bearbeiten"] = "To handle",
         ["Wartet auf Bestätigung"] = "Waiting for confirmation",
