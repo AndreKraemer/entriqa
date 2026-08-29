@@ -441,7 +441,7 @@ else
     {
         var d = DescriptorOf(step.Key);
         step.Schema = d is null ? null : StepSchema.Parse(d.ConfigSchema);
-        if (step.Schema is not null) step.LoadConfigText(step.Schema);
+        if (step.Schema is not null) step.LoadConfigText(step.Schema, _model!.Locales);
     }
 
     private StepDescriptorDto? DescriptorOf(string key) => _catalog?.FirstOrDefault(d => d.Key == key);

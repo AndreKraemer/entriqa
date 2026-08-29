@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Entriqa.Domain.Forms;
 
 namespace Entriqa.Admin.Services;
 
@@ -68,7 +69,7 @@ public sealed class FormModel
         root["handling"] = Handling;
         root["fields"] = new JsonArray(Fields.Select(f => (JsonNode)f.ToNode(Locales)).ToArray());
         if (Quiz is not null) root["quiz"] = Quiz.ToNode(Locales);
-        root["pipeline"] = new JsonArray(Steps.Select(s => (JsonNode)s.ToNode()).ToArray());
+        root["pipeline"] = new JsonArray(Steps.Select(s => (JsonNode)s.ToNode(Locales)).ToArray());
         var completion = new JsonObject { ["mode"] = CompletionMode };
         if (CompletionMessage.ToNode(Locales) is { } msg) completion["message"] = msg;
         if (CompletionUrl.ToNode(Locales) is { } url) completion["url"] = url;
@@ -205,6 +206,9 @@ public sealed class StepModel
     public string When { get; set; } = "always";
     public bool? Critical { get; set; }                          // null = the step's own default
     public Dictionary<string, string> ConfigText { get; } = new();  // Schema-Property → Rohtext
+    /// <summary>The localizable properties (issue #3): schema property → language → raw text. Kept apart
+    /// from <see cref="ConfigText"/> so the editor cannot read one of them without naming a language.</summary>
+    public Dictionary<string, Dictionary<string, string>> ConfigTextByLocale { get; } = new();
     public JsonObject? ConfigRaw { get; set; }                   // the original - the basis for writing back
 
     public static StepModel Parse(JsonObject o)
@@ -221,49 +225,71 @@ public sealed class StepModel
     }
 
     /// <summary>Fill the raw configuration texts from the original plus the schema (once, when it is shown).</summary>
-    public void LoadConfigText(StepSchema schema)
+    public void LoadConfigText(StepSchema schema, IReadOnlyList<string> locales)
     {
         ConfigText.Clear();
+        ConfigTextByLocale.Clear();
         foreach (var p in schema.Properties)
         {
             var node = ConfigRaw?[p.Name];
-            ConfigText[p.Name] = node switch
+            if (p.Localizable)
             {
-                null => "",
-                JsonArray arr => string.Join(", ", arr.Select(x => x?.ToString() ?? "")),
-                JsonObject obj => obj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
-                _ => node.ToString(),
-            };
+                // A plain value fills every language, an object splits - so the editor never shows the
+                // storage format and the operator never types one (AC 5 of issue #3).
+                ConfigTextByLocale[p.Name] = LValue.Decompose(node, locales)
+                    .ToDictionary(kv => kv.Key, kv => RawText(kv.Value), StringComparer.Ordinal);
+                continue;
+            }
+            ConfigText[p.Name] = RawText(node);
         }
     }
 
-    public JsonObject ToNode()
+    private static string RawText(JsonNode? node) => node switch
+    {
+        null => "",
+        JsonArray arr => string.Join(", ", arr.Select(x => x?.ToString() ?? "")),
+        JsonObject obj => obj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
+        _ => node.ToString(),
+    };
+
+    public JsonObject ToNode(IReadOnlyList<string> locales)
     {
         var o = new JsonObject { ["id"] = Id, ["step"] = Key, ["when"] = When };
         if (Critical is { } c) o["critical"] = c;
-        o["config"] = BuildConfig();
+        o["config"] = BuildConfig(locales);
         return o;
     }
 
-    private JsonObject BuildConfig()
+    private JsonObject BuildConfig(IReadOnlyList<string> locales)
     {
         // The original is the basis (unknown properties are kept), schema properties come from the raw texts.
         var config = ConfigRaw?.DeepClone().AsObject() ?? new JsonObject();
         foreach (var (name, text) in ConfigText)
         {
             if (string.IsNullOrWhiteSpace(text)) { config.Remove(name); continue; }
-            config[name] = Schema?.Properties.FirstOrDefault(p => p.Name == name)?.Type switch
-            {
-                "integer" => int.TryParse(text.Trim(), out var i) ? i : text.Trim(),
-                "boolean" => bool.TryParse(text.Trim(), out var b) ? b : text.Trim(),
-                "array" => new JsonArray(text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => int.TryParse(x, out var n) ? (JsonNode)n : x).ToArray()),
-                "object" => TryParseObject(text),
-                _ => text,
-            };
+            config[name] = Typed(name, text);
+        }
+        foreach (var (name, perLocale) in ConfigTextByLocale)
+        {
+            var typed = perLocale.ToDictionary(kv => kv.Key,
+                kv => string.IsNullOrWhiteSpace(kv.Value) ? null : Typed(name, kv.Value), StringComparer.Ordinal);
+            // Compose collapses back to a plain value when every language carries the same one, so a form
+            // nobody translated keeps the scalar it was published with.
+            if (LValue.Compose(typed, locales) is { } value) config[name] = value;
+            else config.Remove(name);
         }
         return config;
     }
+
+    private JsonNode Typed(string name, string text) => Schema?.Properties.FirstOrDefault(p => p.Name == name)?.Type switch
+    {
+        "integer" => int.TryParse(text.Trim(), out var i) ? (JsonNode)i : text.Trim(),
+        "boolean" => bool.TryParse(text.Trim(), out var b) ? (JsonNode)b : text.Trim(),
+        "array" => new JsonArray(text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => int.TryParse(x, out var n) ? (JsonNode)n : x).ToArray()),
+        "object" => TryParseObject(text),
+        _ => text,
+    };
 
     private static JsonNode TryParseObject(string text)
     {
@@ -490,7 +516,11 @@ public sealed record StepSchema(List<StepSchemaProperty> Properties, List<string
                     o["title"]?.GetValue<string>() ?? name,
                     o["default"]?.ToString(),
                     o["format"]?.GetValue<string>(),
-                    o["enum"]?.AsArray().Select(x => x!.GetValue<string>()).ToList()));
+                    o["enum"]?.AsArray().Select(x => x!.GetValue<string>()).ToList(),
+                    // Issue #3: the marker sits on the property, or - for a map whose members are the
+                    // localizable leaves (reportingcloud.pdf's templates) - on its additionalProperties.
+                    o["localizable"]?.GetValue<bool>() ?? false,
+                    (o["additionalProperties"] as JsonObject)?["localizable"]?.GetValue<bool>() ?? false));
             }
         }
         catch (JsonException) { /* empty schema */ }
@@ -499,4 +529,4 @@ public sealed record StepSchema(List<StepSchemaProperty> Properties, List<string
 }
 
 public sealed record StepSchemaProperty(string Name, string Type, string Title, string? Default,
-    string? Format = null, List<string>? Enum = null);
+    string? Format = null, List<string>? Enum = null, bool Localizable = false, bool LocalizableItems = false);
