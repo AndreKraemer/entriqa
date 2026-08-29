@@ -60,6 +60,13 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
         => await GetAllAsync("smtp/templates?templateStatus=true", "templates",
             e => new BrevoTemplateInfo(e.GetProperty("id").GetInt64(), e.GetProperty("name").GetString() ?? ""), ct);
 
+    /// <summary>Cheapest call that proves the key works and Brevo answers - one entry, never the directory.</summary>
+    public async Task<bool> IsReachableAsync(CancellationToken ct = default)
+    {
+        using var doc = await GetJson("contacts/lists?limit=1", ct);
+        return true;
+    }
+
     /// <summary>
     /// Reads every page of a Brevo collection. Brevo pages with limit/offset and reports the account total
     /// in "count" (developers.brevo.com/reference/getlists-1). Stopping on a short page as well as on the
