@@ -30,6 +30,11 @@ plugin. This file holds only what is specific to this project.
   relaxes `CA1707` because its `Given_When_Then` naming needs underscores.
 - **`dotnet test` does not build the whole solution** — only what the test project depends on.
   The gate therefore builds `Entriqa.slnx` first, or a broken admin slips through.
+- **Commit subjects are plain imperative sentences** — `Drop the quiz and source attributes from
+  the Brevo contact step (#23)`, never a Conventional-Commits prefix like `feat:`/`fix:`/
+  `refactor:`. The issue goes in parentheses at the end. This holds when a tool or command
+  suggests a prefix: the repository's own history is the yardstick, and a review measures
+  against it.
 
 ## Layout
 

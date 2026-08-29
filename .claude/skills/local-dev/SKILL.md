@@ -90,9 +90,39 @@ Three separate mechanisms produce that table, and confusing them is the trap:
   why port 7071 is a convenient way to read state during a test run, and why nothing measured
   there says anything about authorization.
 
-To sign in: open `/.auth/login/aad` on 4281, pick a username, and type `admin` into the roles
-field. Hitting 5100 directly skips every layer — fine for a quick look at a component, worthless
-for anything authorization-related.
+To sign in: open `/.auth/login/aad` on 4281, pick a username (the field is mandatory — an empty
+one blocks the submit with a validation bubble that is easy to miss), and type `admin` into the
+roles field.
+
+**Then check that the role actually took**, before concluding anything from what the admin shows:
+
+```
+/.auth/me                 → userRoles must contain "admin"
+/api/manage/forms         → must answer 200, not redirect to /.auth/login/aad
+```
+
+Measured with SWA CLI 2.0.10: the login form **dropped the role**. `/.auth/me` kept returning
+`["anonymous","authenticated"]` and every manage call redirected, while the admin shell still
+loaded and rendered "Bitte zuerst anmelden …". That looks exactly like a correctly gated admin and
+cost most of an acceptance run. Same result with the roles as three lines, as `admin` alone, after
+the form's *Clear* button, and through the site proxy on 4280.
+
+If the role does not stick, set the principal the way the emulator stores it — a base64 cookie,
+not HttpOnly — in the browser console on 4281, then reload:
+
+```js
+document.cookie = "StaticWebAppsAuthCookie=" + btoa(JSON.stringify({
+  userId: "local-dev", userRoles: ["anonymous", "authenticated", "admin"],
+  claims: [], identityProvider: "aad", userDetails: "acceptance" })) + "; path=/";
+```
+
+That is the emulator simulating a login, not a bypass of a real control — but say so in an
+acceptance report, because it is how the evidence was produced.
+
+Hitting 5100 directly skips every layer, and it does **not** proxy `/api/*`: manage calls answer
+`200` with the SPA fallback HTML, so the admin shows "Bitte zuerst anmelden …" there whoever you
+are. Fine for a quick look at a component, useless for anything that needs data — and its "200 OK"
+in a network log is a trap, not a success.
 
 **The standalone `/f/{slug}/` route cannot be exercised through the dev server.** The rewrite
 targets `/f/index.html`, and Hugo's dev server answers that with `301 → ./`, which loops back.
