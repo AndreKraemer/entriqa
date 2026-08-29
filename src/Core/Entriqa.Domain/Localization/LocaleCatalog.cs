@@ -9,6 +9,14 @@ namespace Entriqa.Domain.Localization;
 public static class LocaleCatalog
 {
     public static IReadOnlyList<string> CompleteLocales(
-        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> byLocale, string reference) =>
-        throw new NotImplementedException();
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> byLocale, string reference)
+    {
+        // Without the reference locale there is nothing to be complete against, so nothing qualifies -
+        // better an empty set the caller notices than a set measured against an arbitrary locale.
+        if (!byLocale.TryGetValue(reference, out var required)) return Array.Empty<string>();
+        return byLocale
+            .Where(entry => required.Keys.All(entry.Value.ContainsKey))
+            .Select(entry => entry.Key)
+            .ToList();
+    }
 }
