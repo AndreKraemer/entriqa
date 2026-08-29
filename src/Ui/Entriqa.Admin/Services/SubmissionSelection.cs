@@ -59,19 +59,48 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
     /// <summary>Names the selection the back link returns to (AC3).</summary>
     public string BackLabel(Ui t, string? formName) => throw new NotImplementedException();
 
-    /// <summary>The submissions of this selection, in the order the list shows them.</summary>
-    public IReadOnlyList<SubmissionListItem> Select(
-        IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit) => throw new NotImplementedException();
+    /// <summary>
+    /// The submissions of this selection, in the order the list shows them. The incoming order is kept
+    /// rather than re-sorted: it is the order the endpoint returns and therefore the order the reader saw,
+    /// which is what the arrows have to follow (AC4). The form is filtered here as well, although the
+    /// endpoint already narrows by slug - so a caller that loaded every form can still ask for one.
+    /// </summary>
+    public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit) =>
+        all.Where(s => Slug is null || s.Slug == Slug)
+           .Where(s => Quick switch
+           {
+               "new" => lastVisit is null || s.CreatedAt > lastVisit,
+               "todo" => s.Handling == "open",
+               "waiting" => s.State == 1,
+               "failed" => s.State == 2,
+               _ => true,
+           })
+           .ToList();
 
     /// <summary>The slice of the selection this page shows.</summary>
-    public IReadOnlyList<SubmissionListItem> PageSlice(
-        IReadOnlyList<SubmissionListItem> selection) => throw new NotImplementedException();
+    public IReadOnlyList<SubmissionListItem> PageSlice(IReadOnlyList<SubmissionListItem> selection) =>
+        selection.Skip((Page - 1) * PerPage).Take(PerPage).ToList();
 
-    public int PageCount(IReadOnlyList<SubmissionListItem> selection) => throw new NotImplementedException();
+    /// <summary>How many pages the selection has; always at least one, so an empty selection still has a page.</summary>
+    public static int PageCount(IReadOnlyList<SubmissionListItem> selection) =>
+        Math.Max(1, (selection.Count + PerPage - 1) / PerPage);
 
-    /// <summary>The same selection, moved to the page that holds this submission - where the back link goes.</summary>
-    public SubmissionSelection AtPageContaining(
-        IReadOnlyList<SubmissionListItem> selection, string id) => throw new NotImplementedException();
+    /// <summary>
+    /// The same selection, moved to the page that holds this submission - where the back link goes. Walking
+    /// the selection in the detail view can leave the page the reader came from, and then "the page before"
+    /// no longer exists as an answer; the page showing what is on screen is the one that does (AC2, AC4).
+    /// </summary>
+    public SubmissionSelection AtPageContaining(IReadOnlyList<SubmissionListItem> selection, string id)
+    {
+        var index = IndexOf(selection, id);
+        return index < 0 ? this : this with { Page = index / PerPage + 1 };
+    }
+
+    private static int IndexOf(IReadOnlyList<SubmissionListItem> selection, string id)
+    {
+        for (var i = 0; i < selection.Count; i++) if (selection[i].Id == id) return i;
+        return -1;
+    }
 
     /// <summary>The next submission of the selection, or null at its end (AC4, AC5).</summary>
     public static string? Next(IReadOnlyList<SubmissionListItem> selection, string id) => throw new NotImplementedException();
