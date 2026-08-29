@@ -90,7 +90,10 @@
     private async Task Toggle(long id)
     {
         var ids = Chosen;
-        if (!Multi) ids = ids.Contains(id) ? new List<long>() : new List<long> { id };
+        // Single: activating always selects, it never toggles off. Toggling is right for a list of many,
+        // but on a single required value a second keystroke on the same entry silently empties the step -
+        // and it looks like nothing happened. Clearing stays available, explicitly, through the chip's cross.
+        if (!Multi) ids = new List<long> { id };
         else if (!ids.Remove(id)) ids.Add(id);
         await Write(ids);   // the search is deliberately left alone - picking one entry should not lose it
     }
