@@ -1,0 +1,99 @@
+@* Selection over a Brevo directory section: search, chosen entries always visible, ids that are no longer
+   in Brevo kept with a hint. Multi (lists) and single (templates) share one component so both fields
+   behave the same. Value is the raw config text StepEditor stores - comma separated ids, one for single. *@
+@inject Ui T
+
+<div class="dirsel">
+    @if (!Complete)
+    {
+        <p class="error">@T["Das Verzeichnis konnte nicht vollständig geladen werden – hier fehlen möglicherweise Einträge."]</p>
+    }
+
+    <div class="dirsel__chosen">
+        @if (Chosen.Count == 0)
+        {
+            <span class="hint">@T["nichts gewählt"]</span>
+        }
+        @foreach (var id in Chosen)
+        {
+            var chosenId = id;
+            var entry = Entries.FirstOrDefault(e => e.Id == chosenId);
+            <span class="chip @(entry is null ? "chip--err" : "chip--ok")">
+                @(entry?.Name ?? T.F("Unbekannt (#{0})", chosenId))
+                @if (entry is null)
+                {
+                    <span class="hint"> · @T["nicht mehr in Brevo"]</span>
+                }
+                <button type="button" class="btn btn--icon" title="@T["Entfernen"]"
+                        aria-label="@T.F("{0} entfernen", entry?.Name ?? chosenId.ToString())"
+                        @onclick="() => Remove(chosenId)">✕</button>
+            </span>
+        }
+    </div>
+
+    <input type="search" class="dirsel__search" @bind="_search" @bind:event="oninput"
+           placeholder="@T["Suchen …"]" aria-label="@T["Suchen …"]" />
+
+    <ul class="dirsel__options">
+        @foreach (var entry in Visible)
+        {
+            var option = entry;
+            <li>
+                <button type="button" class="dirsel__option @(Chosen.Contains(option.Id) ? "is-chosen" : "")"
+                        @onclick="() => Toggle(option.Id)">
+                    @option.Name <span class="hint">#@option.Id</span>
+                </button>
+            </li>
+        }
+    </ul>
+    @if (Matches.Count == 0)
+    {
+        <p class="hint">@T["Keine Treffer"]</p>
+    }
+    else if (Matches.Count > MaxVisible)
+    {
+        <p class="hint">@T.F("{0} weitere – Suche verfeinern", Matches.Count - MaxVisible)</p>
+    }
+</div>
+
+@code {
+    private const int MaxVisible = 50;   // 120 lists as buttons is a wall of text, not a selection
+    private string _search = "";
+
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public List<DirectoryEntry> Entries { get; set; } = new();
+    [Parameter] public bool Multi { get; set; }
+    /// <summary>False when the directory section failed to load - the selection must not pretend to be complete.</summary>
+    [Parameter] public bool Complete { get; set; } = true;
+
+    private List<long> Chosen => Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        .Select(s => long.TryParse(s, out var id) ? id : (long?)null).Where(id => id is not null).Select(id => id!.Value).ToList();
+
+    private List<DirectoryEntry> Matches => Entries
+        .Where(e => _search.Length == 0 || e.Name.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    private IEnumerable<DirectoryEntry> Visible => Matches.Take(MaxVisible);
+
+    private async Task Toggle(long id)
+    {
+        var ids = Chosen;
+        if (!Multi) ids = ids.Contains(id) ? new List<long>() : new List<long> { id };
+        else if (!ids.Remove(id)) ids.Add(id);
+        await Write(ids);   // the search is deliberately left alone - picking one entry should not lose it
+    }
+
+    private async Task Remove(long id)
+    {
+        var ids = Chosen;
+        ids.Remove(id);
+        await Write(ids);
+    }
+
+    private async Task Write(List<long> ids)
+    {
+        Value = string.Join(", ", ids);
+        await ValueChanged.InvokeAsync(Value);
+    }
+}
