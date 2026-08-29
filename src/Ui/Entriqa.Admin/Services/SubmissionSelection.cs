@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Web;
+
 namespace Entriqa.Admin.Services;
 
 /// <summary>
@@ -16,17 +19,42 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
     /// <summary>All forms, no quick filter, page one - what a bare address means (AC3, AC4).</summary>
     public static SubmissionSelection Default => new(null, null, 1);
 
-    /// <summary>Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").</summary>
-    public static SubmissionSelection FromQuery(string? slug, string query) => throw new NotImplementedException();
+    /// <summary>
+    /// Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").
+    /// The list passes the slug of its route, the detail page passes null and lets "formular" supply it -
+    /// the detail route has no slug segment to read. A page that is missing, unparsable or below one falls
+    /// back to the first: an address is something people edit and share, and it must survive that (AC6).
+    /// </summary>
+    public static SubmissionSelection FromQuery(string? slug, string query)
+    {
+        var q = HttpUtility.ParseQueryString(query);
+        var page = int.TryParse(q["seite"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 1 ? n : 1;
+        return new SubmissionSelection(slug ?? Set(q["formular"]), Set(q["filter"]), page);
+    }
 
-    /// <summary>The query part of an address, empty when nothing but the defaults is set.</summary>
-    public string ToQuery() => throw new NotImplementedException();
+    /// <summary>The query part of an address; empty when nothing but the defaults is set.</summary>
+    public string ToQuery() => Query(withForm: false);
 
-    /// <summary>The list address this selection returns to.</summary>
-    public string ListUrl() => throw new NotImplementedException();
+    /// <summary>The list address this selection returns to - the form stays the route segment it is today.</summary>
+    public string ListUrl() =>
+        "einsendungen" + (Slug is null ? "" : "/" + Uri.EscapeDataString(Slug)) + ToQuery();
 
-    /// <summary>The detail address of one submission, carrying this selection with it.</summary>
-    public string DetailUrl(string id) => throw new NotImplementedException();
+    /// <summary>
+    /// The detail address of one submission, carrying this selection with it. The form travels in the query
+    /// here because the detail route addresses the submission, not the form.
+    /// </summary>
+    public string DetailUrl(string id) => "einsendung/" + Uri.EscapeDataString(id) + Query(withForm: true);
+
+    private string Query(bool withForm)
+    {
+        var parts = new List<string>(3);
+        if (withForm && Slug is not null) parts.Add("formular=" + Uri.EscapeDataString(Slug));
+        if (Quick is not null) parts.Add("filter=" + Uri.EscapeDataString(Quick));
+        if (Page > 1) parts.Add("seite=" + Page.ToString(CultureInfo.InvariantCulture));
+        return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
+    }
+
+    private static string? Set(string? value) => string.IsNullOrEmpty(value) ? null : value;
 
     /// <summary>Names the selection the back link returns to (AC3).</summary>
     public string BackLabel(Ui t, string? formName) => throw new NotImplementedException();
