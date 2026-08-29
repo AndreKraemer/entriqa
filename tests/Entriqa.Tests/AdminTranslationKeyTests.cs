@@ -10,8 +10,9 @@ namespace Entriqa.Tests;
 /// string silently loses its English translation. That happened: ["Fertig"] carried both "Done"
 /// and "Finished", so the dialog buttons read "Finished" in English.
 ///
-/// Scanned from source rather than loaded, following the precedent in EditorChangedBindingTests:
-/// Entriqa.Admin is a Blazor WASM project and does not load in this test host.
+/// Scanned from source rather than loaded, and for a reason that survives the admin being referenced
+/// since #11: at runtime the duplicate is already gone - the later entry has won and the dictionary
+/// holds one value. Only the source still shows both.
 /// </summary>
 public class AdminTranslationKeyTests
 {
