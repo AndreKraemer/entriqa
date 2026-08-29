@@ -1,4 +1,5 @@
 using Entriqa.Domain.Forms;
+using Entriqa.Domain.Localization;
 using Entriqa.Domain.Quiz;
 
 namespace Entriqa.Application.Pipeline;
@@ -40,8 +41,16 @@ public sealed class PublishCheckService(SubmissionPipelineService pipeline)
             issues.Add("Seitenumbrüche wirken nur in normalen Formularen – ein Quiz führt bereits Frage für Frage.");
 
         foreach (var lang in form.EffectiveLocales)
+        {
+            // A language Entriqa has no visitor-facing texts for cannot be served consistently: the field
+            // texts would come from the definition and the buttons and error messages from the German
+            // fallback. Nobody but the visitor ever sees that, so it has to be caught before publishing.
+            if (!SupportedLocales.All.Contains(lang))
+                issues.Add($"Sprache '{lang}': Entriqa hat dafür keine vollständigen Besuchertexte. "
+                           + "Das Formular würde übersetzte Feldtexte mit deutschen Bedientexten mischen.");
             foreach (var missing in MissingTexts(form, lang))
                 issues.Add($"Sprache '{lang}': Text fehlt für {missing}.");
+        }
 
         if (form.Quiz is not null) issues.AddRange(QuizEngine.Check(form.Quiz).Select(x => "Quiz: " + x));
         if (form.Quiz?.CollectEmail == "none" && form.Fields.Any(f => f.Required && !FieldTypes.IsLayout(f.Type) && f.Type != FieldTypes.Hidden))
