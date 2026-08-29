@@ -165,6 +165,21 @@ netstat -ano | grep LISTENING | grep -E ':(4280|4281|7071|5100|1313|1000[0-2]) '
 
 Entries in `TIME_WAIT` are harmless and clear by themselves — only a `LISTENING` line matters.
 
+**That check is necessary but not sufficient.** A worker can survive without holding any port and
+still answer through a proxy the next start brings up — so the ports look free, the environment looks
+fresh, and the API serves the previous session's code. That happened: the first directory query of an
+acceptance run came back empty and read as a configuration defect, until the culprit turned out to be
+an orphaned `dotnet.exe` running `Entriqa.Functions.dll` from the session before. `ps` under Git Bash
+does not list it — it only shows that shell's own descendants. Ask Windows directly:
+
+```powershell
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'entriqa' -and $_.Name -match 'node|dotnet|func' } |
+  Select-Object ProcessId, Name, CommandLine
+```
+
+Kill what it lists, then repeat until it is empty — killing the host can leave the worker behind, and
+killing the worker can leave a rebuilt one. Only then start again.
+
 To get back to a clean slate, delete `dev/.azurite` — that drops all forms, submissions and
 contacts, and the next start re-seeds `seed/forms` including the lead-magnet files. Empty
 `<TEMP>/entriqa-devmails` too, or an older confirmation mail will be the newest file you find.
@@ -172,6 +187,14 @@ contacts, and the next start re-seeds `seed/forms` including the lead-magnet fil
 The API is ready later than the proxies: 4280 answers before the Functions host does. Wait for a
 form to return 200 (`curl -o /dev/null -w '%{http_code}' http://localhost:4280/api/forms/kontakt`)
 rather than for a line in the log.
+
+**After rebuilding the admin, an open browser tab is poison.** The symptom is a wall of
+`Failed to find a valid digest in the 'integrity' attribute`, `SRI's integrity checks failed` and 404s
+on names like `Entriqa.Domain.vccoacpn42.wasm` — it reads as a broken build, and it is not. Blazor
+fingerprints every assembly and pins it with SRI; a rebuild changes the names, and a tab holding the
+old `index.html` asks for files that no longer exist. Clear that tab's cache (DevTools open → right
+click on reload → *Cache leeren und vollständig neu laden*, or Application → Clear site data), or use
+a fresh window. Nothing on the server needs fixing.
 
 ## For /pairmode:acceptance
 
@@ -182,3 +205,11 @@ outside the route rules locally, so a local run cannot show that the admin is ga
 report rather than reporting it as verified. `samples/site/static/staticwebapp.config.json` is the routing contract the
 proxies emulate — `/admin/*` and `/api/manage/*` require the `admin` role, `/f/*` rewrites to
 the DOI page.
+
+**The in-app browser cannot activate a control with the keyboard.** Tab moves focus and typing
+works, but Enter and Space on a focused `<button>` do nothing — measured against a plain
+`<button type="button">` injected into the page, which records no click either. So a criterion about
+keyboard operation is **undrivable** there: drive a real browser, or write in the report that the
+criterion is unverified and why. Do not infer it from a working mouse click — that is how a keyboard
+criterion gets ticked without ever being exercised. (Verified once for #22: the human pressed Tab and
+Enter by hand and it worked, which the run itself could not show.)

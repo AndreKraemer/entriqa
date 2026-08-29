@@ -18,6 +18,7 @@
   "verifyFull": "node scripts/verify.mjs --full",
   "candidateExclude": [
     ".claude/",
+    "CLAUDE.md",
     "docs/",
     "README.md",
     "LICENSE.md"
