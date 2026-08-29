@@ -13,7 +13,7 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
     public string Description => "Legt den Kontakt an oder aktualisiert ihn und trägt ihn in die gewählten Listen ein.";
     public StepMode Mode => StepMode.Inline;
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField, StepNeed.ConsentField };
-    public string ConfigSchema => """{"type":"object","required":["listIds"],"properties":{"listIds":{"type":"array","items":{"type":"integer"},"title":"Brevo-Listen","format":"brevo-list"},"attribute":{"type":"string","title":"Quiz-Ergebnis in Kontakt-Attribut schreiben (optional)"},"sourceAttribute":{"type":"string","title":"Quelle (utm_source) in Attribut schreiben (optional)"}}}""";
+    public string ConfigSchema => """{"type":"object","required":["listIds"],"properties":{"listIds":{"type":"array","items":{"type":"integer"},"title":"Brevo-Listen","format":"brevo-list"}}}""";
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
     {
@@ -31,8 +31,6 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
             attributes["DOUBLE_OPT-IN"] = 1;                                   // Brevo-Standardattribut (Kategorie: 1 = Ja)
             attributes["OPT_IN_DATE"] = ctx.Submission.ConfirmedAt!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
-        if (config.GetString("attribute") is { Length: > 0 } attr && ctx.QuizResult is not null) attributes[attr] = ctx.QuizResult.Title;
-        if (config.GetString("sourceAttribute") is { Length: > 0 } src && ctx.Submission.Source is not null) attributes[src] = ctx.Submission.Source;
         attributes["LAST_FORM"] = ctx.Form.Slug;
         attributes["LAST_FORM_AT"] = time.GetUtcNow().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
