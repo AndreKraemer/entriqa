@@ -30,6 +30,9 @@ public sealed class EntriqaOptions
     public string Locales { get; set; } = "de,en";                          // languages of the website (comma separated) - the admin offers exactly these
     public string LicenseKey { get; set; } = "";                            // Entriqa production license (empty = development, the admin shows a notice)
 
+    /// <summary>The configured codes Entriqa has no complete visitor-facing texts for; the host names them at startup.</summary>
+    public IReadOnlyList<string> UnsupportedLocales => throw new NotImplementedException();
+
     private IReadOnlyList<string>? _siteLocales;
     public IReadOnlyList<string> SiteLocales =>
         _siteLocales ??= Locales.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
