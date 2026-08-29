@@ -101,14 +101,27 @@ roles field.
 /api/manage/forms         → must answer 200, not redirect to /.auth/login/aad
 ```
 
-Measured with SWA CLI 2.0.10: the login form **dropped the role**. `/.auth/me` kept returning
-`["anonymous","authenticated"]` and every manage call redirected, while the admin shell still
-loaded and rendered "Bitte zuerst anmelden …". That looks exactly like a correctly gated admin and
-cost most of an acceptance run. Same result with the roles as three lines, as `admin` alone, after
-the form's *Clear* button, and through the site proxy on 4280.
+**Fill the field with real keystrokes.** The emulator's login page persists each field to
+`localStorage` on `keyup` only, and its submit builds the cookie from *that*, never from the DOM
+(`node_modules/@azure/static-web-apps-cli/dist/public/auth.html`):
 
-If the role does not stick, set the principal the way the emulator stores it — a base64 cookie,
-not HttpOnly — in the browser console on 4281, then reload:
+```js
+form.on("keyup", "input, textarea", (event) => $(event.currentTarget).saveToLocalStorage());
+function saveCookie(formElement) {
+  const data = localStorage[hashStorageKey(formElement)];   // not the form's current values
+  document.cookie = `StaticWebAppsAuthCookie=${btoa(data)}; path=/`;
+}
+```
+
+So a field filled by script, by `insertText`-style automation, or by paste — anything that fires no
+keyup — leaves `localStorage` at its previous state, and the login then succeeds *with the old
+principal*: the page redirects, the admin shell loads, and `admin` is simply missing. That looks
+exactly like a correctly gated admin and cost most of an acceptance run. The form's *Clear* button
+does not rescue it either: it calls `saveToLocalStorage` on every field, storing the **default**
+roles.
+
+If the role still does not stick, write the principal yourself — which is precisely what
+`saveCookie` does — in the browser console on 4281, then reload:
 
 ```js
 document.cookie = "StaticWebAppsAuthCookie=" + btoa(JSON.stringify({
