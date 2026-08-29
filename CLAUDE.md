@@ -34,7 +34,10 @@ plugin. This file holds only what is specific to this project.
   the Brevo contact step (#23)`, never a Conventional-Commits prefix like `feat:`/`fix:`/
   `refactor:`. The issue goes in parentheses at the end. This holds when a tool or command
   suggests a prefix: the repository's own history is the yardstick, and a review measures
-  against it.
+  against it. **One exception**: pairmode's red-state commit `test: red tests + plan for #N
+  (<title>)` keeps its prefix — that subject is a marker read by code (`stop-gate.mjs` matches
+  `/^test: red tests \+ plan/`, `/pairmode:implement` names it as a precondition), so it is a
+  trailer that happens to sit in the subject line, not a style choice.
 
 ## Layout
 
