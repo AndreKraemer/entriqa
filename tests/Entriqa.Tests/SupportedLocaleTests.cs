@@ -27,6 +27,13 @@ public class SupportedLocaleTests
     public void GivenACatalogWithACompleteAndAnIncompleteLocale_WhenAskingForCompleteLocales_ThenOnlyTheCompleteOnesAreReturned() =>
         Assert.Equal(new[] { "de", "en", "fr" }, LocaleCatalog.CompleteLocales(Catalog(), "de").OrderBy(l => l));
 
+    // AC3: the "both catalogs" rule itself. On the shipped catalogs this is invisible - they carry the
+    // same locales, so intersecting and unioning them agree - so it is checked against catalogs that differ.
+    [Fact]
+    public void GivenALocaleOnlyOneCatalogCarries_WhenAskingWhichAreCarriedByAll_ThenItIsNotAmongThem() =>
+        Assert.Equal(new[] { "de" },
+            SupportedLocales.CarriedByAll(new[] { "de", "en" }, new[] { "de" }));
+
     // AC1: a configured code without complete texts is not accepted as a language.
     [Fact]
     public void GivenAnUnsupportedCodeInTheConfiguration_WhenReadingTheSiteLocales_ThenOnlySupportedCodesRemain()
@@ -54,18 +61,27 @@ public class SupportedLocaleTests
         Assert.Equal(new[] { "de" }, options.SiteLocales);
     }
 
-    // AC3: for every language the visitor can be served, both catalogs answer in that language -
-    // a missing key would silently render the German text next to a translated field.
+    // AC3: for every language the visitor can be served, both catalogs carry that language themselves.
+    // Asked through For() this could never fail - For() falls back to German for anything unknown and so
+    // answers for every locale ever passed. Texts() is the seam without that fallback, which is what makes
+    // this test able to go red when All claims a language one of the catalogs does not have.
     [Fact]
     public void GivenEverySupportedLocale_WhenLookingUpBothCatalogs_ThenEveryKeyHasATextInThatLocale()
     {
+        Assert.NotEmpty(SupportedLocales.All);  // otherwise the loop below would check nothing
+
         var gaps = new List<string>();
         foreach (var locale in SupportedLocales.All)
         {
-            foreach (var key in ValidationMessages.For("de").Keys)
-                if (!ValidationMessages.For(locale).ContainsKey(key)) gaps.Add($"ValidationMessages[{locale}]:{key}");
-            foreach (var key in ErrorMessages.For("de").Keys)
-                if (!ErrorMessages.For(locale).ContainsKey(key)) gaps.Add($"ErrorMessages[{locale}]:{key}");
+            Check("ValidationMessages", ValidationMessages.Texts(locale), ValidationMessages.Texts(ValidationMessages.Reference)!);
+            Check("ErrorMessages", ErrorMessages.Texts(locale), ErrorMessages.Texts(ErrorMessages.Reference)!);
+
+            void Check(string catalog, IReadOnlyDictionary<string, string>? texts, IReadOnlyDictionary<string, string> reference)
+            {
+                if (texts is null) { gaps.Add($"{catalog}[{locale}]: the catalog does not carry this locale at all"); return; }
+                foreach (var key in reference.Keys)
+                    if (!texts.ContainsKey(key)) gaps.Add($"{catalog}[{locale}]:{key}");
+            }
         }
         Assert.True(gaps.Count == 0, "Supported locales with missing texts: " + string.Join(", ", gaps));
     }

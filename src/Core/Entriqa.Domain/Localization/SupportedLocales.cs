@@ -11,6 +11,17 @@ namespace Entriqa.Domain.Localization;
 /// </summary>
 public static class SupportedLocales
 {
+    /// <summary>
+    /// The rule the guarantee rests on: a locale counts only when <em>every</em> catalog carries it.
+    /// Separate from <see cref="All"/> so it can be checked against catalogs that actually differ - as
+    /// long as the shipped ones carry the same locales, intersecting and unioning them are
+    /// indistinguishable, and the difference only shows once a language is added to one of them.
+    /// </summary>
+    public static IReadOnlyList<string> CarriedByAll(params IReadOnlyList<string>[] catalogLocales) =>
+        catalogLocales.Length == 0
+            ? Array.Empty<string>()
+            : catalogLocales.Aggregate((a, b) => (IReadOnlyList<string>)a.Intersect(b).ToList());
+
     public static IReadOnlyList<string> All { get; } =
-        ValidationMessages.Locales.Intersect(ErrorMessages.Locales).ToList();
+        CarriedByAll(ValidationMessages.Locales, ErrorMessages.Locales);
 }
