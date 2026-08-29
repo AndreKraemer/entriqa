@@ -419,8 +419,22 @@ else
     {
         _json = json;
         _model = FormModel.Parse(json);
+        ReconcileLocales();
         foreach (var s in _model.Steps) AttachSchema(s);
         SelectTexts();                                     // old field references no longer hold after parsing
+    }
+
+    /// <summary>
+    /// Drops languages the definition declares but the site cannot serve. Without this the editor
+    /// contradicts itself: the checkbox row would no longer offer such a language while the language
+    /// switch, the text inputs and the summary still showed it - and with no checkbox left there is no
+    /// way to remove it either, so every save would write it back. The stored texts stay in the JSON tab.
+    /// </summary>
+    private void ReconcileLocales()
+    {
+        if (_siteLocales is not { Count: > 0 } offered) return;
+        _model!.Locales.RemoveAll(l => !offered.Contains(l));
+        if (_model.Locales.Count == 0) _model.Locales.Add(offered[0]);
     }
 
     private void AttachSchema(StepModel step)
