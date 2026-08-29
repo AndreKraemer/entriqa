@@ -55,6 +55,9 @@ public interface IBrevoDirectoryPort
 {
     Task<IReadOnlyList<BrevoListInfo>> GetListsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<BrevoTemplateInfo>> GetTemplatesAsync(CancellationToken ct = default);
+
+    /// <summary>Reachability for the status page: one request, never the whole account (the other two page).</summary>
+    Task<bool> IsReachableAsync(CancellationToken ct = default);
 }
 
 public interface IListReportTemplatesPort

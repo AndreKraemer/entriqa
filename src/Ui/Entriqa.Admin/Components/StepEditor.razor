@@ -1,5 +1,5 @@
 @* One card per pipeline step: catalog information, condition, criticality, schema-driven configuration.
-   Formats: brevo-template/brevo-list -> dropdowns from the directory, blob -> file picker plus upload,
+   Formats: brevo-template/brevo-list -> DirectorySelect over the directory, blob -> file picker plus upload,
    rc-template -> ReportingCloud templates, enum attach -> only artifacts actually produced earlier. *@
 @using System.Text.Json.Nodes
 @inject AdminApi Api
@@ -64,24 +64,17 @@
                         </tbody>
                     </table>
                 }
-                else if (prop.Format == "brevo-template" && Directory is { BrevoConfigured: true, BrevoTemplates.Count: > 0 })
+                else if (prop.Format == "brevo-template" && Directory is { BrevoConfigured: true })
                 {
-                    <select value="@Get(prop.Name)" @onchange="e => Set(prop.Name, e.Value?.ToString())">
-                        <option value="">@T["– Vorlage wählen –"]</option>
-                        @foreach (var t in Directory.BrevoTemplates)
-                        {
-                            <option value="@t.Id" selected="@(Get(prop.Name) == t.Id.ToString())">@t.Name · #@t.Id</option>
-                        }
-                    </select>
+                    <DirectorySelect Value="@Get(prop.Name)" ValueChanged="v => Set(prop.Name, v)"
+                                     Entries="Directory.BrevoTemplates" Multi="false"
+                                     Complete="Directory.BrevoTemplatesComplete" />
                 }
-                else if (prop.Format == "brevo-list" && Directory is { BrevoConfigured: true, BrevoLists.Count: > 0 })
+                else if (prop.Format == "brevo-list" && Directory is { BrevoConfigured: true })
                 {
-                    @foreach (var l in Directory.BrevoLists)
-                    {
-                        var list = l;
-                        <label class="inline"><input type="checkbox" checked="@ListSelected(prop.Name, list.Id)"
-                               @onchange="e => ToggleList(prop.Name, list.Id, (bool)e.Value!)" /> @list.Name</label>
-                    }
+                    <DirectorySelect Value="@Get(prop.Name)" ValueChanged="v => Set(prop.Name, v)"
+                                     Entries="Directory.BrevoLists" Multi="true"
+                                     Complete="Directory.BrevoListsComplete" />
                 }
                 else if (prop.Format == "blob")
                 {
@@ -180,17 +173,6 @@
 
     private string Get(string name) => Step.ConfigText.GetValueOrDefault(name) ?? "";
     private void Set(string name, string? value) { Step.ConfigText[name] = value ?? ""; Notify(); }
-
-    private bool ListSelected(string prop, long id) =>
-        Get(prop).Split(',', StringSplitOptions.TrimEntries).Contains(id.ToString());
-
-    private void ToggleList(string prop, long id, bool on)
-    {
-        var ids = Get(prop).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
-        if (on && !ids.Contains(id.ToString())) ids.Add(id.ToString());
-        if (!on) ids.Remove(id.ToString());
-        Set(prop, string.Join(", ", ids));
-    }
 
     private IEnumerable<string> EnumOptions(StepSchemaProperty prop) =>
         prop.Name != "attach" ? prop.Enum! : prop.Enum!.Where(v => v switch

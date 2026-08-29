@@ -67,6 +67,18 @@ public sealed class EntriqaOptions
     public BrevoOptions Brevo { get; set; } = new();
     public ReportingCloudOptions ReportingCloud { get; set; } = new();
     public StorageOptions Storage { get; set; } = new();
+    public DevOptions Dev { get; set; } = new();
+}
+
+/// <summary>
+/// Local development only. Without a Brevo key there is no directory at all, so the step editor cannot be
+/// exercised - no lists to pick, no search to type in, no deleted entry to show. These settings stand in
+/// for the account. Off by default: a deployment that forgets its key gets an empty directory, not a fake one.
+/// </summary>
+public sealed class DevOptions
+{
+    public int BrevoDirectorySize { get; set; }                             // 0 = off; otherwise that many lists and templates
+    public string BrevoDirectoryFailure { get; set; } = "";                 // "lists" or "templates": that section fails to load
 }
 
 public sealed class BrevoOptions

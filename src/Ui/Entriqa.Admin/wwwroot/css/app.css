@@ -462,3 +462,18 @@ td.consent { font-size: 13px; color: var(--muted); }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Directory selection (Brevo lists and templates): chosen entries above, search, filtered options.
+   Everything interactive is a real input or button, so keyboard operation needs no extra handling. */
+.dirsel { display: flex; flex-direction: column; gap: 6px; }
+.dirsel__chosen { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 24px; }
+.dirsel__chosen .chip { display: inline-flex; align-items: center; gap: 4px; }
+.dirsel__search { max-width: 320px; }
+.dirsel__options { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto;
+                   border: 1px solid var(--border); border-radius: 6px; }
+.dirsel__options li { border-bottom: 1px solid var(--border); }
+.dirsel__options li:last-child { border-bottom: 0; }
+.dirsel__option { display: block; width: 100%; text-align: left; padding: 6px 10px; background: none;
+                  border: 0; cursor: pointer; font: inherit; color: inherit; }
+.dirsel__option:hover, .dirsel__option:focus-visible { background: var(--border); }
+.dirsel__option.is-chosen { font-weight: 600; }

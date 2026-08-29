@@ -36,7 +36,16 @@ public static class InfrastructureServiceExtensions
             string.IsNullOrEmpty(sp.GetRequiredService<IOptions<EntriqaOptions>>().Value.Brevo.ApiKey)
                 ? sp.GetRequiredService<Dev.DevMailSinkAdapter>()
                 : sp.GetRequiredService<BrevoAdapter>());
-        services.AddTransient<IBrevoDirectoryPort>(sp => sp.GetRequiredService<BrevoAdapter>());
+        services.AddSingleton<Dev.DevBrevoDirectoryAdapter>();
+        // The directory is the one Brevo port with no offline fallback, which left the step editor untestable
+        // locally. With no key and a configured dev size it serves a synthetic account instead.
+        services.AddTransient<IBrevoDirectoryPort>(sp =>
+        {
+            var o = sp.GetRequiredService<IOptions<EntriqaOptions>>().Value;
+            return string.IsNullOrEmpty(o.Brevo.ApiKey) && o.Dev.BrevoDirectorySize > 0
+                ? sp.GetRequiredService<Dev.DevBrevoDirectoryAdapter>()
+                : sp.GetRequiredService<BrevoAdapter>();
+        });
 
         services.AddHttpClient<ReportingCloudAdapter>((sp, c) =>
         {

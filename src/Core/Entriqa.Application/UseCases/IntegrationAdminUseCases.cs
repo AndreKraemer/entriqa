@@ -24,14 +24,27 @@ internal sealed class GetIntegrationDirectoryUseCase(
         var templates = new List<DirectoryEntry>();
         var rc = new List<string>();
 
-        if (!string.IsNullOrEmpty(o.Brevo.ApiKey))
+        // One try per section: a failing template call must neither hide the lists nor let the empty
+        // template list pass for "this account has none" - #22, criterion 3.
+        var listsComplete = true;
+        var templatesComplete = true;
+        // The dev directory stands in for an account without a key (see DevBrevoDirectoryAdapter), so the
+        // question is not "is a key configured" but "is a directory available".
+        var brevoAvailable = !string.IsNullOrEmpty(o.Brevo.ApiKey) || o.Dev.BrevoDirectorySize > 0;
+        if (brevoAvailable)
         {
-            try
+            try { lists.AddRange((await brevo.GetListsAsync(ct)).Select(l => new DirectoryEntry(l.Id, l.Name))); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                lists.AddRange((await brevo.GetListsAsync(ct)).Select(l => new DirectoryEntry(l.Id, l.Name)));
-                templates.AddRange((await brevo.GetTemplatesAsync(ct)).Select(t => new DirectoryEntry(t.Id, t.Name)));
+                listsComplete = false;
+                log.LogWarning(ex, "Brevo-Listen nicht vollständig geladen");
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Brevo-Verzeichnis nicht erreichbar"); }
+            try { templates.AddRange((await brevo.GetTemplatesAsync(ct)).Select(t => new DirectoryEntry(t.Id, t.Name))); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                templatesComplete = false;
+                log.LogWarning(ex, "Brevo-Vorlagen nicht vollständig geladen");
+            }
         }
         if (!string.IsNullOrEmpty(o.ReportingCloud.ApiKey))
         {
@@ -41,8 +54,9 @@ internal sealed class GetIntegrationDirectoryUseCase(
         var magnets = (await artifacts.ListAsync("leadmagnets/", ct)).Select(a => new LeadMagnetInfo(a.Path, a.Size)).ToList();
 
         return new IntegrationDirectory(
-            !string.IsNullOrEmpty(o.Brevo.ApiKey), lists, templates,
-            !string.IsNullOrEmpty(o.ReportingCloud.ApiKey), rc, magnets);
+            brevoAvailable, lists, templates,
+            !string.IsNullOrEmpty(o.ReportingCloud.ApiKey), rc, magnets,
+            listsComplete, templatesComplete);
     }
 }
 

@@ -32,7 +32,7 @@ internal sealed class GetAdminStatusUseCase(
         var brevoOk = false;
         if (!string.IsNullOrEmpty(o.Brevo.ApiKey))
         {
-            try { await brevo.GetListsAsync(ct); brevoOk = true; }
+            try { brevoOk = await brevo.IsReachableAsync(ct); }
             catch (Exception ex) when (ex is not OperationCanceledException) { brevoOk = false; }
         }
         var run = await housekeepingRun.ExecuteAsync(ct);
