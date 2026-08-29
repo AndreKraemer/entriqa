@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Localization;
 using Entriqa.Domain.Quiz;
@@ -74,6 +75,7 @@ public sealed class PublishCheckService(SubmissionPipelineService pipeline)
             if (step.SplitsPhase && ++doiCount > 1) issues.Add($"{n}: Double-Opt-In ist schon vorhanden.");
             if (st.Step == "brevo.contact" && !seenDoi) listWithoutDoi = true;
             issues.AddRange(step.CheckConfig(st.Config, form, produced).Select(x => $"{n}: {x}"));
+            issues.AddRange(MissingConfigLocales(step, st.Config, form).Select(x => $"{n}: {x}"));
             if (step.Produces is not null) produced.Add(step.Produces);
             if (step.SplitsPhase) seenDoi = true;
         }
@@ -81,6 +83,43 @@ public sealed class PublishCheckService(SubmissionPipelineService pipeline)
             issues.Add("\"Kontakt in Brevo anlegen\" ohne vorheriges Double-Opt-In: Adressen landen unbestätigt in einer Liste. Bewusste Ausnahme nur, wenn das Formular keine Marketing-Einwilligung einholt.");
 
         return issues.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Localizable configuration fields (issue #3) that carry a value but not one for every declared
+    /// language. The <c>"localizable"</c> marker in the step's own ConfigSchema is the single source of
+    /// truth, so a sixth field marked later is checked here without touching this method.
+    /// <para>
+    /// A field with nothing configured at all is not reported: that is the step's own "nothing chosen"
+    /// message to make. And a marker on a map's <c>additionalProperties</c> - reportingcloud.pdf's
+    /// per-result templates - is deliberately not handled here; only the step knows the result titles.
+    /// </para>
+    /// </summary>
+    private static List<string> MissingConfigLocales(ISubmissionStep step, JsonElement config, FormDefinition form)
+    {
+        var issues = new List<string>();
+        if (config.ValueKind != JsonValueKind.Object) return issues;
+
+        JsonDocument schema;
+        try { schema = JsonDocument.Parse(step.ConfigSchema); }
+        catch (JsonException) { return issues; }                   // a broken schema is the builder's problem to show
+
+        using (schema)
+        {
+            if (!schema.RootElement.TryGetProperty("properties", out var properties) || properties.ValueKind != JsonValueKind.Object)
+                return issues;
+            foreach (var property in properties.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.Object) continue;
+                if (!property.Value.TryGetProperty("localizable", out var marker) || marker.ValueKind != JsonValueKind.True) continue;
+                if (!config.TryGetProperty(property.Name, out var value)) continue;
+
+                var title = property.Value.GetString("title") ?? property.Name;
+                foreach (var lang in LValue.MissingLocales(value, form.EffectiveLocales))
+                    issues.Add($"{title} fehlt für Sprache '{lang}'.");
+            }
+        }
+        return issues;
     }
 
     /// <summary>Every multi-language text that has no version for the declared language (a plain string covers all).</summary>
