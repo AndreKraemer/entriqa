@@ -18,11 +18,14 @@
         {
             var chosenId = id;
             var entry = Entries.FirstOrDefault(e => e.Id == chosenId);
-            <span class="chip @(entry is null ? "chip--err" : "chip--ok")">
+            @* An unknown id means "deleted in Brevo" only when the directory actually loaded. With a failed
+               section everything is unknown, and claiming deletion would be the false statement the
+               Complete flag exists to prevent. *@
+            <span class="chip @(entry is null && Complete ? "chip--err" : entry is null ? "" : "chip--ok")">
                 @(entry?.Name ?? T.F("Unbekannt (#{0})", chosenId))
                 @if (entry is null)
                 {
-                    <span class="hint"> · @T["nicht mehr in Brevo"]</span>
+                    <span class="hint"> · @(Complete ? T["nicht mehr in Brevo"] : T["Verzeichnis nicht geladen"])</span>
                 }
                 <button type="button" class="btn btn--icon" title="@T["Entfernen"]"
                         aria-label="@T.F("{0} entfernen", entry?.Name ?? chosenId.ToString())"
@@ -46,6 +49,14 @@
             </li>
         }
     </ul>
+    @if (!Complete)
+    {
+        @* Without the directory there is nothing to pick from, so the ids have to be editable by hand -
+           otherwise an outage leaves the operator able to delete a good id but not to restore it. *@
+        <label class="hint">@T["Ids direkt eintragen (kommagetrennt)"]
+            <input type="text" value="@Value" @onchange="WriteRaw" />
+        </label>
+    }
     @if (Matches.Count == 0)
     {
         <p class="hint">@T["Keine Treffer"]</p>
@@ -89,6 +100,12 @@
         var ids = Chosen;
         ids.Remove(id);
         await Write(ids);
+    }
+
+    private async Task WriteRaw(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString() ?? "";
+        await ValueChanged.InvokeAsync(Value);
     }
 
     private async Task Write(List<long> ids)

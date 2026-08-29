@@ -42,6 +42,6 @@ public sealed class DevBrevoDirectoryAdapter(IOptions<EntriqaOptions> options) :
     private void FailIfConfigured(string section)
     {
         if (string.Equals(options.Value.Dev.BrevoDirectoryFailure, section, StringComparison.OrdinalIgnoreCase))
-            throw new HttpRequestException($"Dev-Verzeichnis: '{section}' ist absichtlich nicht erreichbar.");
+            throw new HttpRequestException($"Dev directory: '{section}' fails on purpose.");
     }
 }

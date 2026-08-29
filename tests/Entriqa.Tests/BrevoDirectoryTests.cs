@@ -8,6 +8,7 @@ using Entriqa.Application;
 using Entriqa.Application.Ports;
 using Entriqa.Application.UseCases;
 using Entriqa.Infrastructure.Brevo;
+using Entriqa.Infrastructure.Dev;
 using Xunit;
 
 namespace Entriqa.Tests;
@@ -19,19 +20,38 @@ namespace Entriqa.Tests;
 /// </summary>
 public class BrevoDirectoryTests
 {
-    /// <summary>Serves prepared response bodies in order and records what was requested.</summary>
-    private sealed class FakeHandler(params string[] pages) : HttpMessageHandler
+    /// <summary>
+    /// Models the endpoint rather than a script of pages: it slices the account by the limit and offset it
+    /// was asked for, and reports whatever total it was told to claim. Serving prepared pages by call order
+    /// instead would hide the very thing paging is about - a client that never advances its offset would
+    /// still walk through them and look correct. "Claimed" can exceed what exists, which is how a stale
+    /// count is reproduced.
+    /// </summary>
+    private sealed class FakeHandler(string arrayName, long claimedCount, int available) : HttpMessageHandler
     {
         public List<string> Requests { get; } = new();
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            Requests.Add(request.RequestUri!.PathAndQuery);
-            var body = Requests.Count <= pages.Length ? pages[Requests.Count - 1] : pages[^1];
+            var query = request.RequestUri!.Query;
+            Requests.Add(request.RequestUri.PathAndQuery);
+
+            var offset = Number(query, "offset=") ?? 0;
+            var limit = Number(query, "limit=") ?? 10;
+            var entries = Enumerable.Range(offset + 1, Math.Max(0, Math.Min(limit, available - offset)))
+                .Select(i => $$"""{"id":{{i}},"name":"Eintrag {{i.ToString(CultureInfo.InvariantCulture)}}"}""");
+
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                Content = new StringContent($$"""{"count":{{claimedCount}},"{{arrayName}}":[{{string.Join(",", entries)}}]}""",
+                    Encoding.UTF8, "application/json"),
             });
+        }
+
+        private static int? Number(string query, string key)
+        {
+            var marker = query.IndexOf(key, StringComparison.Ordinal);
+            return marker < 0 ? null : int.Parse(query[(marker + key.Length)..].Split('&')[0], CultureInfo.InvariantCulture);
         }
     }
 
@@ -43,54 +63,67 @@ public class BrevoDirectoryTests
             Options.Create(options));
     }
 
-    /// <summary>One page of the shape Brevo returns: the total in "count", the entries under their array name.</summary>
-    private static string Page(string arrayName, int count, int from, int n)
-    {
-        var entries = Enumerable.Range(from, n)
-            .Select(i => $$"""{"id":{{i}},"name":"Eintrag {{i.ToString(CultureInfo.InvariantCulture)}}"}""");
-        return $$"""{"count":{{count}},"{{arrayName}}":[{{string.Join(",", entries)}}]}""";
-    }
-
-    /// <summary>AC 1: every list of the account, however many pages that takes.</summary>
+    /// <summary>AC 1: every list of the account, however many pages that takes - and the offset must advance.</summary>
     [Fact]
     public async Task GivenMoreListsThanFitOnOnePage_WhenLoadingTheLists_ThenEveryListIsReturned()
     {
-        var handler = new FakeHandler(
-            Page("lists", 120, 1, 50),
-            Page("lists", 120, 51, 50),
-            Page("lists", 120, 101, 20));
+        var handler = new FakeHandler("lists", claimedCount: 120, available: 120);
 
         var lists = await Adapter(handler).GetListsAsync();
 
         Assert.Equal(120, lists.Count);
         Assert.Equal(120, lists.Select(l => l.Id).Distinct().Count());
+        Assert.Equal(
+            new[] { "/v3/contacts/lists?limit=50&offset=0", "/v3/contacts/lists?limit=50&offset=50", "/v3/contacts/lists?limit=50&offset=100" },
+            handler.Requests);
     }
 
-    /// <summary>AC 2: the same for templates.</summary>
+    /// <summary>AC 2: the same for templates - on the one path that already carries a query string.</summary>
     [Fact]
     public async Task GivenMoreTemplatesThanFitOnOnePage_WhenLoadingTheTemplates_ThenEveryTemplateIsReturned()
     {
-        var handler = new FakeHandler(
-            Page("templates", 75, 1, 50),
-            Page("templates", 75, 51, 25));
+        var handler = new FakeHandler("templates", claimedCount: 75, available: 75);
 
         var templates = await Adapter(handler).GetTemplatesAsync();
 
         Assert.Equal(75, templates.Count);
+        Assert.All(handler.Requests, r => Assert.Contains("?templateStatus=true&limit=50&offset=", r, StringComparison.Ordinal));
     }
 
-    /// <summary>A count that promises more than the account delivers must not spin forever.</summary>
+    /// <summary>The account total ends the walk even when every page comes back full.</summary>
     [Fact]
-    public async Task GivenACountLargerThanWhatIsDelivered_WhenLoadingTheLists_ThenPagingStopsAtTheShortPage()
+    public async Task GivenTheAccountTotalIsReachedByFullPages_WhenLoadingTheLists_ThenNoFurtherPageIsRequested()
     {
-        var handler = new FakeHandler(
-            Page("lists", 5000, 1, 50),
-            Page("lists", 5000, 51, 10));
+        var handler = new FakeHandler("lists", claimedCount: 100, available: 100);
+
+        var lists = await Adapter(handler).GetListsAsync();
+
+        Assert.Equal(100, lists.Count);
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    /// <summary>A count that promises more than the account holds must not spin the loop.</summary>
+    [Fact]
+    public async Task GivenACountLargerThanWhatIsDelivered_WhenLoadingTheLists_ThenPagingStopsAtTheEmptyPage()
+    {
+        var handler = new FakeHandler("lists", claimedCount: 5000, available: 60);
 
         var lists = await Adapter(handler).GetListsAsync();
 
         Assert.Equal(60, lists.Count);
-        Assert.True(handler.Requests.Count <= 3, $"stopped after {handler.Requests.Count} requests");
+        Assert.Equal(3, handler.Requests.Count);
+    }
+
+    /// <summary>The status page asks whether Brevo answers - one request, not the account.</summary>
+    [Fact]
+    public async Task GivenTheAdapter_WhenCheckingReachability_ThenASingleSmallRequestIsSent()
+    {
+        var handler = new FakeHandler("lists", claimedCount: 120, available: 120);
+
+        var reachable = await Adapter(handler).IsReachableAsync();
+
+        Assert.True(reachable);
+        Assert.Equal("/v3/contacts/lists?limit=1", Assert.Single(handler.Requests));
     }
 
     private static GetIntegrationDirectoryUseCase Directory(IBrevoDirectoryPort brevo)
@@ -103,13 +136,20 @@ public class BrevoDirectoryTests
             Options.Create(options), NullLogger<GetIntegrationDirectoryUseCase>.Instance);
     }
 
-    private static IBrevoDirectoryPort BrevoWithFailingTemplates()
+    private static IBrevoDirectoryPort BrevoWhere(bool listsFail)
     {
         var brevo = Substitute.For<IBrevoDirectoryPort>();
-        brevo.GetListsAsync(Arg.Any<CancellationToken>())
-            .Returns(new[] { new BrevoListInfo(7, "Newsletter") });
-        brevo.GetTemplatesAsync(Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<BrevoTemplateInfo>>(_ => throw new HttpRequestException("Brevo down"));
+        if (listsFail)
+            brevo.GetListsAsync(Arg.Any<CancellationToken>())
+                .Returns<IReadOnlyList<BrevoListInfo>>(_ => throw new HttpRequestException("Brevo down"));
+        else
+            brevo.GetListsAsync(Arg.Any<CancellationToken>()).Returns(new[] { new BrevoListInfo(7, "Newsletter") });
+
+        if (listsFail)
+            brevo.GetTemplatesAsync(Arg.Any<CancellationToken>()).Returns(new[] { new BrevoTemplateInfo(3, "Bestätigung") });
+        else
+            brevo.GetTemplatesAsync(Arg.Any<CancellationToken>())
+                .Returns<IReadOnlyList<BrevoTemplateInfo>>(_ => throw new HttpRequestException("Brevo down"));
         return brevo;
     }
 
@@ -117,7 +157,7 @@ public class BrevoDirectoryTests
     [Fact]
     public async Task GivenTheTemplateFetchFails_WhenLoadingTheDirectory_ThenTheTemplatesAreNotReportedComplete()
     {
-        var directory = await Directory(BrevoWithFailingTemplates()).ExecuteAsync();
+        var directory = await Directory(BrevoWhere(listsFail: false)).ExecuteAsync();
 
         Assert.False(directory.BrevoTemplatesComplete);
     }
@@ -126,10 +166,41 @@ public class BrevoDirectoryTests
     [Fact]
     public async Task GivenTheTemplateFetchFails_WhenLoadingTheDirectory_ThenTheListsAreStillCompleteAndReturned()
     {
-        var directory = await Directory(BrevoWithFailingTemplates()).ExecuteAsync();
+        var directory = await Directory(BrevoWhere(listsFail: false)).ExecuteAsync();
 
         Assert.Single(directory.BrevoLists);
         Assert.True(directory.BrevoListsComplete);
+    }
+
+    /// <summary>AC 3, the mirror case - the flags must be per section, not one flag wearing two hats.</summary>
+    [Fact]
+    public async Task GivenTheListFetchFails_WhenLoadingTheDirectory_ThenOnlyTheListsAreReportedIncomplete()
+    {
+        var directory = await Directory(BrevoWhere(listsFail: true)).ExecuteAsync();
+
+        Assert.False(directory.BrevoListsComplete);
+        Assert.True(directory.BrevoTemplatesComplete);
+        Assert.Single(directory.BrevoTemplates);
+    }
+
+    /// <summary>The dev directory exists to make an unreachable section observable locally - so it must be.</summary>
+    [Fact]
+    public async Task GivenTheDevDirectoryIsSetToFailTemplates_WhenLoadingTheDirectory_ThenOnlyTheTemplatesAreIncomplete()
+    {
+        var options = TestData.Options();
+        options.Dev.BrevoDirectorySize = 60;
+        options.Dev.BrevoDirectoryFailure = "templates";
+        var dev = new DevBrevoDirectoryAdapter(Options.Create(options));
+        var artifacts = Substitute.For<IListArtifactsPort>();
+        artifacts.ListAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<ArtifactInfo>());
+
+        var directory = await new GetIntegrationDirectoryUseCase(dev, Substitute.For<IListReportTemplatesPort>(), artifacts,
+            Options.Create(options), NullLogger<GetIntegrationDirectoryUseCase>.Instance).ExecuteAsync();
+
+        Assert.True(directory.BrevoConfigured);
+        Assert.Equal(60, directory.BrevoLists.Count);
+        Assert.True(directory.BrevoListsComplete);
+        Assert.False(directory.BrevoTemplatesComplete);
     }
 
     /// <summary>The status page only asks whether Brevo answers - it must not pull the whole account.</summary>

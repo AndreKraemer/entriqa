@@ -56,6 +56,15 @@ Without a Brevo API key, mails are written as clickable HTML files to
 `<TEMP>/entriqa-devmails/` (the path is printed at startup). Open them from there — this is
 also how to verify double opt-in without touching the CRM.
 
+**The Brevo directory is simulated too, and it is on by default.** With an empty key,
+`Entriqa__Dev__BrevoDirectorySize` (120 in the tracked `local.settings.json`) serves that many
+synthetic lists and templates to the step editor - otherwise there is nothing to pick from and the
+selection cannot be exercised at all. **The lists you see locally are invented**, so never read them
+as an account's real content in an acceptance report. `Entriqa__Dev__BrevoDirectoryFailure` set to
+`lists` or `templates` makes that section fail to load, which is the only way to see what an
+incompletely loaded directory looks like without breaking Brevo. Both are off in production: the
+size defaults to 0, and a deployment without a key gets an empty directory, not a fake one.
+
 Leave `Entriqa__Brevo__ApiKey` and `Entriqa__ReportingCloud__ApiKey` empty.
 `pairmode.config.json` blocks the Brevo host, `*.core.windows.net` and the Teams webhook
 hosts, and that block exists because a dev loop against live Brevo creates real contacts and

@@ -69,9 +69,11 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
 
     /// <summary>
     /// Reads every page of a Brevo collection. Brevo pages with limit/offset and reports the account total
-    /// in "count" (developers.brevo.com/reference/getlists-1). Stopping on a short page as well as on the
-    /// total keeps this correct whatever the endpoint's real maximum page size is - and a count that
-    /// promises more than the account delivers cannot spin the loop.
+    /// in "count" (developers.brevo.com/reference/getlists-1). The total decides first, so a server-side
+    /// page size below the requested one does not look like the end of the collection; a short page ends it
+    /// when there is no total, and a count that promises more than the account delivers cannot spin the loop.
+    /// Hitting the page cap throws rather than returning a truncated directory - a caller that believes it
+    /// has everything is the failure this whole change exists to prevent.
     /// </summary>
     private async Task<IReadOnlyList<T>> GetAllAsync<T>(string path, string arrayName, Func<JsonElement, T> map, CancellationToken ct)
     {
@@ -83,16 +85,20 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
         for (var page = 0; page < maxPages; page++)
         {
             using var doc = await GetJson($"{path}{separator}limit={pageSize}&offset={all.Count}", ct);
-            if (!doc.RootElement.TryGetProperty(arrayName, out var entries) || entries.ValueKind != JsonValueKind.Array) break;
+            if (!doc.RootElement.TryGetProperty(arrayName, out var entries) || entries.ValueKind != JsonValueKind.Array) return all;
 
             var fetched = 0;
             foreach (var entry in entries.EnumerateArray()) { all.Add(map(entry)); fetched++; }
-            if (fetched < pageSize) break;                               // a short page is the last one
+            if (fetched == 0) return all;
 
-            if (doc.RootElement.TryGetProperty("count", out var count)
-                && count.TryGetInt64(out var total) && all.Count >= total) break;
+            long? total = doc.RootElement.TryGetProperty("count", out var count) && count.TryGetInt64(out var value) ? value : null;
+            if (total is not null) { if (all.Count >= total) return all; }
+            else if (fetched < pageSize) return all;                     // no total: a short page is the last one
         }
-        return all;
+        // The directory use case turns any exception into "this section is not complete", which is exactly
+        // what a caller must not miss here - a truncated directory that claims to be whole is the bug.
+        throw new InvalidOperationException(
+            $"Brevo returned more than {maxPages * pageSize} entries for '{path}' - the directory was not read completely.");
     }
 
     private async Task<JsonDocument> GetJson(string url, CancellationToken ct)
