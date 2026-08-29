@@ -53,7 +53,7 @@
     {
         @* Without the directory there is nothing to pick from, so the ids have to be editable by hand -
            otherwise an outage leaves the operator able to delete a good id but not to restore it. *@
-        <label class="hint">@T["Ids direkt eintragen (kommagetrennt)"]
+        <label class="hint">@(Multi ? T["Ids direkt eintragen (kommagetrennt)"] : T["Id direkt eintragen"])
             <input type="text" value="@Value" @onchange="WriteRaw" />
         </label>
     }

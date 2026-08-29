@@ -263,6 +263,7 @@ public sealed class Ui
         ["nicht mehr in Brevo"] = "no longer in Brevo",
         ["Verzeichnis nicht geladen"] = "directory not loaded",
         ["Ids direkt eintragen (kommagetrennt)"] = "Enter ids directly (comma separated)",
+        ["Id direkt eintragen"] = "Enter the id directly",
         ["Unbekannt (#{0})"] = "Unknown (#{0})",
         ["{0} entfernen"] = "Remove {0}",
         ["{0} weitere – Suche verfeinern"] = "{0} more – narrow the search",

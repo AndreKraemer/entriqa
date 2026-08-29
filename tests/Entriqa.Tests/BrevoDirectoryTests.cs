@@ -7,6 +7,7 @@ using NSubstitute;
 using Entriqa.Application;
 using Entriqa.Application.Ports;
 using Entriqa.Application.UseCases;
+using Entriqa.Domain.Errors;
 using Entriqa.Infrastructure.Brevo;
 using Entriqa.Infrastructure.Dev;
 using Xunit;
@@ -27,7 +28,7 @@ public class BrevoDirectoryTests
     /// still walk through them and look correct. "Claimed" can exceed what exists, which is how a stale
     /// count is reproduced.
     /// </summary>
-    private sealed class FakeHandler(string arrayName, long claimedCount, int available) : HttpMessageHandler
+    private sealed class FakeHandler(string arrayName, long? claimedCount, int available) : HttpMessageHandler
     {
         public List<string> Requests { get; } = new();
 
@@ -41,9 +42,12 @@ public class BrevoDirectoryTests
             var entries = Enumerable.Range(offset + 1, Math.Max(0, Math.Min(limit, available - offset)))
                 .Select(i => $$"""{"id":{{i}},"name":"Eintrag {{i.ToString(CultureInfo.InvariantCulture)}}"}""");
 
+            // An endpoint that reports no total at all is a real case - it is what makes the short-page
+            // fallback reachable, and therefore testable.
+            var total = claimedCount is null ? "" : $$"""{"count":{{claimedCount}},""".TrimStart('{');
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent($$"""{"count":{{claimedCount}},"{{arrayName}}":[{{string.Join(",", entries)}}]}""",
+                Content = new StringContent($$"""{{{total}}"{{arrayName}}":[{{string.Join(",", entries)}}]}""",
                     Encoding.UTF8, "application/json"),
             });
         }
@@ -112,6 +116,27 @@ public class BrevoDirectoryTests
 
         Assert.Equal(60, lists.Count);
         Assert.Equal(3, handler.Requests.Count);
+    }
+
+    /// <summary>Without a total, a short page is the only thing that can end the walk.</summary>
+    [Fact]
+    public async Task GivenAnEndpointThatReportsNoTotal_WhenLoadingTheLists_ThenTheShortPageEndsTheWalk()
+    {
+        var handler = new FakeHandler("lists", claimedCount: null, available: 70);
+
+        var lists = await Adapter(handler).GetListsAsync();
+
+        Assert.Equal(70, lists.Count);
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    /// <summary>The page cap must announce itself - a truncated directory that claims to be whole is the bug.</summary>
+    [Fact]
+    public async Task GivenMoreEntriesThanThePageCapAllows_WhenLoadingTheLists_ThenItFailsInsteadOfTruncating()
+    {
+        var handler = new FakeHandler("lists", claimedCount: 10_001, available: 10_001);
+
+        await Assert.ThrowsAsync<InfrastructureException>(() => Adapter(handler).GetListsAsync());
     }
 
     /// <summary>The status page asks whether Brevo answers - one request, not the account.</summary>

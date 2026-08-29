@@ -97,7 +97,7 @@ public sealed class BrevoAdapter(HttpClient http, IOptions<EntriqaOptions> optio
         }
         // The directory use case turns any exception into "this section is not complete", which is exactly
         // what a caller must not miss here - a truncated directory that claims to be whole is the bug.
-        throw new InvalidOperationException(
+        throw new InfrastructureException(
             $"Brevo returned more than {maxPages * pageSize} entries for '{path}' - the directory was not read completely.");
     }
 
