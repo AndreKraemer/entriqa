@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Entriqa.Application.Pipeline;
 using Entriqa.Domain.Forms;
 using Xunit;
 
@@ -19,17 +20,20 @@ public class SeedLeadMagnetTests
         throw new DirectoryNotFoundException($"seed/forms not found above {AppContext.BaseDirectory}");
     }
 
-    private static IEnumerable<(string File, string Blob)> ConfiguredDownloads()
+    /// <summary>
+    /// One entry per download step <em>and language</em>: since issue #3 the blob is localizable, so a
+    /// German file that ships and an English one that does not is exactly the gap worth catching. Read
+    /// through the product's own reader rather than GetString - against the object form that would throw.
+    /// </summary>
+    private static IEnumerable<(string File, string Locale, string Blob)> ConfiguredDownloads()
     {
         var repo = Repo();
         foreach (var file in Directory.EnumerateFiles(Path.Combine(repo.FullName, "seed", "forms"), "*.json"))
         {
             var form = JsonSerializer.Deserialize<FormDefinition>(File.ReadAllText(file), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
             foreach (var step in form.Pipeline.Where(s => s.Step == "leadmagnet.link"))
-            {
-                var blob = step.Config.TryGetProperty("blob", out var p) ? p.GetString() : null;
-                yield return (Path.GetFileName(file), blob ?? "");
-            }
+                foreach (var locale in form.EffectiveLocales)
+                    yield return (Path.GetFileName(file), locale, step.Config.GetString("blob", locale) ?? "");
         }
     }
 
@@ -41,7 +45,7 @@ public class SeedLeadMagnetTests
         Assert.NotEmpty(configured);   // an empty set would make every assertion below vacuous
         var missing = configured
             .Where(d => !File.Exists(Path.Combine(repo.FullName, "seed", d.Blob.Replace('/', Path.DirectorySeparatorChar))))
-            .Select(d => $"{d.File} → {d.Blob}")
+            .Select(d => $"{d.File} ({d.Locale}) → {d.Blob}")
             .ToList();
         Assert.True(missing.Count == 0, "configured downloads without a shipped file: " + string.Join(", ", missing));
     }
@@ -55,7 +59,7 @@ public class SeedLeadMagnetTests
         Assert.NotEmpty(configured);
         var wrong = configured
             .Where(d => !d.Blob.StartsWith("leadmagnets/", StringComparison.Ordinal))
-            .Select(d => $"{d.File} → {d.Blob}")
+            .Select(d => $"{d.File} ({d.Locale}) → {d.Blob}")
             .ToList();
         Assert.True(wrong.Count == 0, "downloads outside leadmagnets/: " + string.Join(", ", wrong));
     }
