@@ -28,7 +28,10 @@ internal sealed class GetIntegrationDirectoryUseCase(
         // template list pass for "this account has none" - #22, criterion 3.
         var listsComplete = true;
         var templatesComplete = true;
-        if (!string.IsNullOrEmpty(o.Brevo.ApiKey))
+        // The dev directory stands in for an account without a key (see DevBrevoDirectoryAdapter), so the
+        // question is not "is a key configured" but "is a directory available".
+        var brevoAvailable = !string.IsNullOrEmpty(o.Brevo.ApiKey) || o.Dev.BrevoDirectorySize > 0;
+        if (brevoAvailable)
         {
             try { lists.AddRange((await brevo.GetListsAsync(ct)).Select(l => new DirectoryEntry(l.Id, l.Name))); }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -51,7 +54,7 @@ internal sealed class GetIntegrationDirectoryUseCase(
         var magnets = (await artifacts.ListAsync("leadmagnets/", ct)).Select(a => new LeadMagnetInfo(a.Path, a.Size)).ToList();
 
         return new IntegrationDirectory(
-            !string.IsNullOrEmpty(o.Brevo.ApiKey), lists, templates,
+            brevoAvailable, lists, templates,
             !string.IsNullOrEmpty(o.ReportingCloud.ApiKey), rc, magnets,
             listsComplete, templatesComplete);
     }

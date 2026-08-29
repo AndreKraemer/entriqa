@@ -17,6 +17,8 @@
     "Entriqa__Brevo__ApiKey": "",
     "Entriqa__Brevo__SenderName": "Website",
     "Entriqa__Brevo__SenderEmail": "noreply@example.org",
+    "Entriqa__Dev__BrevoDirectorySize": "120",
+    "Entriqa__Dev__BrevoDirectoryFailure": "",
     "Entriqa__ReportingCloud__ApiKey": ""
   },
   "Host": {
