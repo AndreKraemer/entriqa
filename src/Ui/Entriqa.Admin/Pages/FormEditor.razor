@@ -294,9 +294,14 @@ else
     private string? _lang;
     private int? _dragIndex, _dragOver;
 
-    /// <summary>Languages of the website (Entriqa__Locales) - plus everything the form declares already.</summary>
-    private IEnumerable<string> SiteLocales =>
-        (_siteLocales ?? new List<string> { "de", "en" }).Union(_model?.Locales ?? new List<string>());
+    /// <summary>
+    /// Languages of the website: exactly what the API offers (Entriqa__Locales, already filtered to the
+    /// ones Entriqa has complete visitor-facing texts for). Deliberately not extended by what the form
+    /// declares - a definition naming a language the visitor cannot be served in is the defect, not the
+    /// reason to keep offering it. Deliberately no hardcoded fallback either: a second list here is
+    /// exactly what makes adding a language a two-place edit.
+    /// </summary>
+    private IEnumerable<string> SiteLocales => _siteLocales ?? Enumerable.Empty<string>();
 
     private string Lang => _lang is { Length: > 0 } l && _model?.Locales.Contains(l) == true ? l : _model?.Locales[0] ?? "de";
 
@@ -385,7 +390,7 @@ else
         {
             _catalog ??= await Api.GetStepCatalogAsync();
             _directory ??= await Api.GetDirectoryAsync();
-            _siteLocales ??= (await Api.GetStatusAsync()).Locales ?? new List<string> { "de", "en" };
+            _siteLocales ??= (await Api.GetStatusAsync()).Locales ?? new List<string>();
             var draft = await Api.TryGetDraftAsync(Slug);
             string json;
             if (draft is null)
