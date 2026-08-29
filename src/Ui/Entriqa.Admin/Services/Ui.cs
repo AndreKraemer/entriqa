@@ -257,8 +257,6 @@ public sealed class Ui
         ["Webhook aufrufen"] = "Call webhook",
         ["Schickt die Einsendung als JSON an eine URL – z. B. an einen Power-Automate-Flow, der eine To-Do-Aufgabe anlegt."] = "Sends the submission as JSON to a URL – e.g. a Power Automate flow that creates a To-Do task.",
         ["Brevo-Listen"] = "Brevo lists",
-        ["Quiz-Ergebnis in Kontakt-Attribut schreiben (optional)"] = "Write quiz result into a contact attribute (optional)",
-        ["Quelle (utm_source) in Attribut schreiben (optional)"] = "Write source (utm_source) into an attribute (optional)",
         ["Brevo-Vorlage"] = "Brevo template",
         ["Mitschicken"] = "Attach",
         ["Link gültig (Stunden), nur bei reportLink"] = "Link valid (hours), reportLink only",
