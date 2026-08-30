@@ -1,3 +1,4 @@
+﻿using Entriqa.Application.Consent;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Submissions;
@@ -71,12 +72,16 @@ internal sealed class ListContactSubmissionsUseCase(IListContactSubmissionsQuery
 
 internal sealed class DeleteContactUseCase(
     IListContactSubmissionsQuery query,
-    IDeleteSubmissionAdminUseCase deleteSubmission) : IDeleteContactUseCase
+    IDeleteSubmissionAdminUseCase deleteSubmission,
+    ConsentProofService consentProofs) : IDeleteContactUseCase
 {
     public async Task<int> ExecuteAsync(string email, CancellationToken ct = default)
     {
         var items = await query.ListByEmailAsync(email, ct);
         foreach (var s in items) await deleteSubmission.ExecuteAsync(s.Id, ct);
+        // #1: on the address, not on the submissions - after the retention period there are none left,
+        //     and the proof is exactly what has to go with the erasure.
+        await consentProofs.DeleteForAsync(email, ct);
         return items.Count;
     }
 }

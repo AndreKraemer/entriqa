@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Entriqa.Application;
@@ -42,7 +42,7 @@ public class ConfirmRedirectLocalizationTests
 
         var useCase = new ConfirmSubmissionUseCase(
             getSubmission, getVersion, Substitute.For<ISaveSubmissionCommand>(), tokens,
-            new IpHasher(opts), pipeline, opts, TestData.Time);
+            new IpHasher(opts), pipeline, TestData.ConsentProofs().Service, opts, TestData.Time);
 
         return (useCase, tokens.Issue(FormTokenService.KindConfirm, submission.Id));
     }

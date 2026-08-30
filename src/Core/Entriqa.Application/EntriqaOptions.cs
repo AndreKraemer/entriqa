@@ -1,4 +1,4 @@
-using Entriqa.Domain.Localization;
+﻿using Entriqa.Domain.Localization;
 
 namespace Entriqa.Application;
 
@@ -18,6 +18,7 @@ public sealed class EntriqaOptions
     public string HousekeepingKey { get; set; } = "";                       // Secret-Header x-housekeeping-key; leer = Endpunkt deaktiviert
     public int RetentionDays { get; set; } = 180;                           // delete submissions (blobs included) after this many days
     public int UnconfirmedRetentionDays { get; set; } = 14;                 // delete unconfirmed DOI submissions after this many days
+    public int ConsentRetentionDays { get; set; }                           // 0 = consent proofs are never deleted on a timer; they end on an event (#1)
     public int SweepAfterMinutes { get; set; } = 10;                        // only pick up stalled deferred runs after this grace period
     public int AutoRetryMax { get; set; } = 3;                              // retry a failed step automatically at most this many times
     public string ConfirmPagePath { get; set; } = "/bestaetigen/";          // static page with a POST button (never a GET confirmation: link scanners!)

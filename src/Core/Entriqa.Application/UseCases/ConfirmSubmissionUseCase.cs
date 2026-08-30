@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
+using Entriqa.Application.Consent;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;
 using Entriqa.Application.Security;
@@ -19,6 +20,7 @@ internal sealed class ConfirmSubmissionUseCase(
     FormTokenService tokens,
     IpHasher ipHasher,
     SubmissionPipelineService pipeline,
+    ConsentProofService consentProofs,
     IOptions<EntriqaOptions> options,
     TimeProvider time) : IConfirmSubmissionUseCase
 {
@@ -44,6 +46,7 @@ internal sealed class ConfirmSubmissionUseCase(
                 if (fresh is null || !fresh.IsConfirmed) throw;
                 return new ConfirmResult(fresh.Slug, redirect, AlreadyConfirmed: true);
             }
+            await consentProofs.ConfirmAsync(s, ct);                        // #1: amends the proof, never creates one
         }
 
         if (s.StepRuns.Any(r => r.Status is Domain.Submissions.StepRunStatus.Pending or Domain.Submissions.StepRunStatus.Waiting))

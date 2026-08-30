@@ -1,5 +1,6 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Entriqa.Application.Consent;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;
 using Entriqa.Application.Security;
@@ -26,6 +27,7 @@ internal sealed class SubmitFormUseCase(
     FormTokenService tokens,
     IpHasher ipHasher,
     SubmissionPipelineService pipeline,
+    ConsentProofService consentProofs,
     IOptions<EntriqaOptions> options,
     TimeProvider time,
     ILogger<SubmitFormUseCase> log) : ISubmitFormUseCase
@@ -95,6 +97,7 @@ internal sealed class SubmitFormUseCase(
         };
         await AdoptUploadsAsync(def, submission, ct);
         await store.ExecuteAsync(submission, ct);
+        await consentProofs.RecordAsync(def, values, submission, ct);   // #1: the proof outlives the submission
 
         // 6. Inline steps; deferred ones stay pending and are triggered by the client with the run token.
         var deferredLeft = await pipeline.RunAsync(submission, def, published.Version, RunMode.Inline, null, ct);

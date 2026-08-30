@@ -93,3 +93,19 @@ internal sealed class RateLimitEntity : ITableEntity
     public ETag ETag { get; set; }
     public int Count { get; set; }
 }
+
+internal sealed class ConsentProofEntity : ITableEntity
+{
+    public string PartitionKey { get; set; } = default!;    // e-mail, lowercase - erasure of a contact is a point query
+    public string RowKey { get; set; } = default!;          // submission id
+    public DateTimeOffset? Timestamp { get; set; }
+    public ETag ETag { get; set; }
+    public string Email { get; set; } = "";                 // as submitted; the partition key carries the normalized form
+    public string Slug { get; set; } = "";
+    public int Version { get; set; }
+    public DateTimeOffset SubmittedAt { get; set; }
+    public string ConsentText { get; set; } = "";
+    public string? IpHash { get; set; }
+    public DateTimeOffset? ConfirmedAt { get; set; }
+    public string? ConfirmedIpHash { get; set; }
+}

@@ -1,3 +1,4 @@
+using Entriqa.Domain.Consent;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Submissions;
 
@@ -156,4 +157,40 @@ public interface ISaveFormDraftCommand
 {
     /// <summary>Creates the Forms entry or updates the draft; the status stays untouched (new = draft).</summary>
     Task ExecuteAsync(FormDefinition definition, string savedBy, CancellationToken ct = default);
+}
+
+// Consent proofs (#1). Own table, own clock: the submission expires after RetentionDays,
+// the proof outlives it and ends on an event, not on a timer.
+
+public interface IStoreConsentProofCommand
+{
+    Task ExecuteAsync(ConsentProof proof, CancellationToken ct = default);
+}
+
+public interface IConfirmConsentProofCommand
+{
+    /// <summary>Amends the proof of that submission with the double opt-in confirmation. A missing proof is a no-op.</summary>
+    Task ExecuteAsync(string submissionId, DateTimeOffset confirmedAt, string? confirmedIpHash, CancellationToken ct = default);
+}
+
+public interface IDeleteConsentProofsByEmailCommand
+{
+    /// <summary>Removes every proof of that address and returns how many there were. Independent of whether submissions still exist.</summary>
+    Task<int> ExecuteAsync(string email, CancellationToken ct = default);
+}
+
+public interface IRecordConsentDeletionCommand
+{
+    /// <summary>Audit trail of an erasure - without the plaintext address, which is exactly what was erased.</summary>
+    Task ExecuteAsync(DateTimeOffset at, string emailHash, int count, CancellationToken ct = default);
+}
+
+public interface IListExpiredConsentProofsQuery
+{
+    Task<IReadOnlyList<ConsentProof>> ExecuteAsync(DateTimeOffset olderThan, int max, CancellationToken ct = default);
+}
+
+public interface IDeleteConsentProofCommand
+{
+    Task ExecuteAsync(ConsentProof proof, CancellationToken ct = default);
 }
