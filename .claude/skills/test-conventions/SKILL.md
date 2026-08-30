@@ -30,8 +30,8 @@ The `Then` part states the behavior, never the mechanics — not `ThenCheckRetur
 | `Microsoft.Extensions.TimeProvider.Testing` | `FakeTimeProvider`; time is pinned, never `DateTimeOffset.Now` |
 | NetArchTest.Rules | the layering rules in `ArchitectureTests` |
 
-The test project references Application, Data and Infrastructure — **not Functions** (the worker
-SDK does not load in the test host). Functions' layering is enforced by project references
+The test project references Application, Data, Infrastructure and — since #11 — `Entriqa.Admin`,
+but **not Functions** (the worker SDK does not load in the test host). Functions' layering is enforced by project references
 instead; see the comment at the top of `ArchitectureTests`.
 
 ## TestData is the entry point
@@ -44,6 +44,9 @@ instead; see the comment at the top of `ArchitectureTests`.
 - `TestData.Contact()` — a complete valid `FormDefinition`; vary it with `with { … }` rather than writing a new one
 - `TestData.Quiz()` — a valid `QuizDefinition` with a jump and three results
 - `TestData.Json("""{ … }""")` — a `JsonElement` for step configuration
+- `TestData.AdminSubmissionList()` — 24 admin `SubmissionListItem`s across two forms, newest first,
+  every quick filter non-empty and long enough for a second page. Named for its layer: the domain has
+  a `SubmissionListItem` of its own
 
 A record's `with` expression is the idiom for "valid form, but one thing wrong":
 
@@ -79,9 +82,12 @@ A layering mistake fails the gate — it is not something a reviewer has to catc
 
 `Entriqa.Admin` is a Blazor WASM project, and for a long time the tests here said its assembly does
 not load in this test host. **That was never measured, and it is false.** Since #11 the test project
-references it, and its plain service types — and even Razor component types — load and run like any
-other. So logic in `Services/*.cs` gets ordinary executing tests: `SubmissionSelectionTests` is the
-example. Put the decidable part of a page *there* rather than in the markup, and it is testable.
+references it, and its plain service types load and run like any other. So logic in `Services/*.cs`
+gets ordinary executing tests: `SubmissionSelectionTests` is the example. Put the decidable part of a
+page *there* rather than in the markup, and it is testable.
+
+Component *types* load too, but nothing renders one — there is no bUnit here. Do not read this as an
+invitation to write component tests; markup still needs the source guards below.
 
 `Entriqa.Functions` is a different matter and deliberately stays unreferenced — the worker SDK does
 not load here.

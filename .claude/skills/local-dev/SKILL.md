@@ -50,6 +50,17 @@ page. It **skips** forms that already exist, so editing a seed file
 does nothing until you delete the form in the admin or wipe `dev/.azurite`. That is the usual
 reason a seed change "does not show up".
 
+**The same service also fills the inbox** (#11), and only when the store holds *no* submission at all —
+`Seed: {Count} Demo-Einsendungen angelegt` is the line to look for. It writes 18 for `kontakt` and 6 for
+`whitepaper`, newest first, so that every branch of the admin's list exists without submitting anything
+by hand: a second page, a non-empty count on each quick filter, and **exactly one deliberately failed
+run** ("Brevo antwortete mit 502 (Demo-Daten)"). That failure is seeded, not a broken environment — do
+not chase it. One `kontakt` message carries a long unbroken URL, which is there to test that the detail
+page never scrolls sideways.
+
+Deleting submissions in the admin therefore re-seeds them on the next start. Wipe `dev/.azurite` for a
+clean slate as before; there is no way to ask for an empty inbox short of editing the service.
+
 ## Mails and outbound calls
 
 Without a Brevo API key, mails are written as clickable HTML files to
