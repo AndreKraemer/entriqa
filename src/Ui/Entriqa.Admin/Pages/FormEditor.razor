@@ -473,6 +473,9 @@ else
     {
         if (on && !_model!.Locales.Contains(locale)) _model.Locales.Add(locale);
         if (!on && _model!.Locales.Count > 1) _model.Locales.Remove(locale);
+        // The steps were loaded against the old language list; without this a plain value would stop
+        // covering the language just switched on (guarded by BuilderModelLocalizationTests).
+        foreach (var step in _model!.Steps) step.ReconcileLocales(_model.Locales);
     }
 
     private void AddField()

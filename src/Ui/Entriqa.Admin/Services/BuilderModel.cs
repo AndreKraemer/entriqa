@@ -244,6 +244,26 @@ public sealed class StepModel
         }
     }
 
+    /// <summary>
+    /// The form's language list changed after this step was loaded. A language that is switched on
+    /// inherits the value the others already agree on, because a field configured once covers every
+    /// language (AC 2 of issue #3) - without this, ticking a language would rewrite every plain value
+    /// into a single-language object and the form could no longer be published. A partially translated
+    /// field leaves the new language empty, which is what the publish check is there to report.
+    /// Languages switched off keep their value, so switching one back on loses nothing.
+    /// </summary>
+    public void ReconcileLocales(IReadOnlyList<string> locales)
+    {
+        foreach (var perLocale in ConfigTextByLocale.Values)
+        {
+            var known = perLocale.Values.ToList();
+            var shared = known.Count > 0 && known.All(v => !string.IsNullOrWhiteSpace(v))
+                         && known.Distinct(StringComparer.Ordinal).Count() == 1 ? known[0] : "";
+            foreach (var locale in locales)
+                if (!perLocale.ContainsKey(locale)) perLocale[locale] = shared;
+        }
+    }
+
     private static string RawText(JsonNode? node) => node switch
     {
         null => "",

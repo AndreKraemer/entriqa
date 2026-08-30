@@ -74,6 +74,19 @@ public class StepEditorLocalizationGuardTests
         Assert.Contains("SetTemplateFor(result.Id, l, v)", branch.Value, StringComparison.Ordinal);
     }
 
+    // The steps are loaded against the language list of the moment, so the one call that keeps them in
+    // step with it is invisible from every executing test - FormEditor is a component. BuilderModelLocalizationTests
+    // proves ReconcileLocales does the right thing; this proves it is actually reached.
+    [Fact]
+    public void GivenTheFormEditor_WhenALanguageIsToggled_ThenTheStepsFollowTheNewList()
+    {
+        var source = File.ReadAllText(Path.Combine(AdminDirectory(), "Pages", "FormEditor.razor"));
+        var toggle = Regex.Match(source, @"private void ToggleLocale\(.*?\n    \}", RegexOptions.Singleline);
+        Assert.True(toggle.Success, "FormEditor.razor no longer has a ToggleLocale method - update this guard.");
+
+        Assert.Contains("ReconcileLocales(", toggle.Value, StringComparison.Ordinal);
+    }
+
     private static string AdminDirectory()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
