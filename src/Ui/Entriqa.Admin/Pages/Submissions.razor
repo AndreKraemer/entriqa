@@ -15,10 +15,10 @@ else
             <option value="">@T["Alle Formulare"]</option>
             @foreach (var f in _forms ?? new()) { <option value="@f.Slug" selected="@(Slug == f.Slug)">@f.Name</option> }
         </select>
-        @QuickButton("new", T["Neu seit letztem Besuch"], CountNew)
-        @QuickButton("todo", T["Zu bearbeiten"], Count(s => s.Handling == "open"))
-        @QuickButton("waiting", T["Wartet auf Bestätigung"], Count(s => s.State == 1))
-        @QuickButton("failed", T["Fehler"], Count(s => s.State == 2))
+        @QuickButton("new", T["Neu seit letztem Besuch"])
+        @QuickButton("todo", T["Zu bearbeiten"])
+        @QuickButton("waiting", T["Wartet auf Bestätigung"])
+        @QuickButton("failed", T["Fehler"])
         @if (Slug is not null)
         {
             <a class="btn" href="api/manage/forms/@Slug/export.csv" target="_blank">@T["CSV exportieren"]</a>
@@ -38,14 +38,14 @@ else
             @foreach (var s in Paged)
             {
                 var item = s;
-                @* role and tabindex are what make the row a control at all: a bare <tr> with an @onclick
-                   takes no focus and answers no key, so it exists for the mouse only (AC1). *@
-                <tr class="rowlink" tabindex="0" role="link" aria-label="@item.Summary"
-                    @onclick="() => Open(item.Id)" @onkeydown="e => OnRowKey(e, item.Id)">
-                    <td>@if (IsNew(item)) { <span class="new-dot" title="@T["neu seit letztem Besuch"]"></span> }</td>
+                @* The link is the control, not the row: a <tr> cannot carry role="link" without dropping the
+                   row and its cells out of the table for assistive technology. The anchor takes focus, answers
+                   Enter and can be opened in a new tab; the row's @onclick is the mouse convenience on top (AC1). *@
+                <tr class="rowlink" @onclick="() => Open(item.Id)">
+                    <td>@if (SubmissionSelection.IsNew(item, _lastVisit)) { <span class="new-dot" title="@T["neu seit letztem Besuch"]"></span> }</td>
                     <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                     @if (Slug is null) { <td class="small">@(FormName(item.Slug))</td> }
-                    <td>@item.Summary</td>
+                    <td><a href="@Shown.DetailUrl(item.Id)">@item.Summary</a></td>
                     <td><span class="@Labels.StateCss(item.State)">@T[Labels.SubmissionState(item.State)]</span></td>
                     <td>@(item.Handling == "none" ? "–" : item.Handling == "open" ? T["Offen"] : T["Erledigt"])</td>
                     <td>@(item.QuizResultId ?? "–")</td>
@@ -58,10 +58,10 @@ else
             </tbody>
         </table>
         <div class="pager">
-            <span>@T.F("{0} Einsendungen · Seite {1} von {2}", Filtered.Count, _selection.Page, Pages)</span>
+            <span>@T.F("{0} Einsendungen · Seite {1} von {2}", Filtered.Count, Shown.Page, Pages)</span>
             <span>
-                <button class="btn" disabled="@(_selection.Page <= 1)" @onclick="() => Go(_selection with { Page = _selection.Page - 1 })">@T["‹ Zurück"]</button>
-                <button class="btn" disabled="@(_selection.Page >= Pages)" @onclick="() => Go(_selection with { Page = _selection.Page + 1 })">@T["Weiter ›"]</button>
+                <button class="btn" disabled="@(Shown.Page <= 1)" @onclick="() => Go(Shown with { Page = Shown.Page - 1 })">@T["‹ Zurück"]</button>
+                <button class="btn" disabled="@(Shown.Page >= Pages)" @onclick="() => Go(Shown with { Page = Shown.Page + 1 })">@T["Weiter ›"]</button>
             </span>
         </div>
     </div>
@@ -101,26 +101,27 @@ else
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
     }
 
-    private bool IsNew(SubmissionListItem s) => _lastVisit is null || s.CreatedAt > _lastVisit;
-    private int CountNew => _data!.Items.Count(IsNew);
-    private int Count(Func<SubmissionListItem, bool> pred) => _data!.Items.Count(pred);
     private string FormName(string slug) => _forms?.FirstOrDefault(f => f.Slug == slug)?.Name ?? slug;
 
+    /// <summary>The badge counts come from the selection itself - a second copy of the filter here would be
+    /// the one nothing tests, and the counts could then disagree with what the button shows.</summary>
+    private int CountFor(string quick) => (_selection with { Quick = quick, Page = 1 }).Select(_data!.Items, _lastVisit).Count;
+
     private IReadOnlyList<SubmissionListItem> Filtered => _selection.Select(_data!.Items, _lastVisit);
-    private IReadOnlyList<SubmissionListItem> Paged => _selection.PageSlice(Filtered);
+
+    /// <summary>The selection as it can actually be shown: the address may name a page this selection has not got.</summary>
+    private SubmissionSelection Shown => _selection.Clamped(Filtered);
+
+    private IReadOnlyList<SubmissionListItem> Paged => Shown.PageSlice(Filtered);
     private int Pages => SubmissionSelection.PageCount(Filtered);
 
     private void Go(SubmissionSelection selection) => Nav.NavigateTo(selection.ListUrl());
 
-    private void Open(string id) => Nav.NavigateTo(_selection.DetailUrl(id));
+    private void Open(string id) => Nav.NavigateTo(Shown.DetailUrl(id));
 
-    private void OnRowKey(KeyboardEventArgs e, string id)
+    private RenderFragment QuickButton(string key, string label) => __builder =>
     {
-        if (e.Key is "Enter" or " ") Open(id);
-    }
-
-    private RenderFragment QuickButton(string key, string label, int count) => __builder =>
-    {
+        var count = CountFor(key);
         <button class="btn @(_selection.Quick == key ? "btn--primary" : "")"
                 @onclick="() => Go(_selection with { Quick = _selection.Quick == key ? null : key, Page = 1 })">
             @label @if (count > 0) { <span class="count">@count</span> }
