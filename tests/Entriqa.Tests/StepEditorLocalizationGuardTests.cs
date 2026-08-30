@@ -85,13 +85,17 @@ public class StepEditorLocalizationGuardTests
     {
         var source = StepEditor();
 
+        // Both tails matter. The row's language decides which value is read and written; the language
+        // *list* decides which languages exist at all, so pinning one and not the other leaves the table
+        // reading empty for every row but the first, with the whole suite green.
         var read = Regex.Match(source, @"private string TemplateFor\(.*?;", RegexOptions.Singleline);
         Assert.True(read.Success, "StepEditor.razor no longer has a TemplateFor method - update this guard.");
-        Assert.Contains("locale: locale", read.Value, StringComparison.Ordinal);
+        Assert.Contains("locale: locale, Locales)", read.Value, StringComparison.Ordinal);
 
         var write = Regex.Match(source, @"private void SetTemplateFor\(.*?\n    \}", RegexOptions.Singleline);
         Assert.True(write.Success, "StepEditor.razor no longer has a SetTemplateFor method - update this guard.");
         Assert.Contains("locale: locale", write.Value, StringComparison.Ordinal);
+        Assert.Contains("value: template, Locales)", write.Value, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -100,17 +104,20 @@ public class StepEditorLocalizationGuardTests
     /// goes stale while the editor looks fine. <c>EditorChangedBindingTests</c> only checks that call
     /// sites bind <c>Changed=</c>, never that a handler invokes it.
     /// </summary>
-    [Theory]
-    [InlineData(@"private void Set\(string name, string locale, string\? value\)")]
-    [InlineData(@"private void SetTemplateFor\(")]
-    public void GivenAPerLanguageWriter_WhenReadingIt_ThenItReportsTheChange(string signature)
+    [Fact]
+    public void GivenAPerLanguageWriter_WhenReadingIt_ThenItReportsTheChange()
     {
-        var method = Regex.Match(StepEditor(), signature + @".*?\n    \}", RegexOptions.Singleline);
-        Assert.True(method.Success, $"StepEditor.razor no longer has a method matching /{signature}/ - update this guard.");
+        // Discovered, not listed. A hand-written list of signatures fails closed when one is renamed but
+        // is blind to a writer added later - the same staleness that made AllSteps() reflective over in
+        // StepLocalizationTests. Every void method taking a locale is a per-language writer by definition.
+        var writers = Regex.Matches(StepEditor(),
+            @"private void (\w+)\([^)]*\bstring locale\b[^)]*\).*?\n    \}", RegexOptions.Singleline);
 
-        // The lookahead sits at the start of the line, not after \s*: written the other way round the
-        // regex backtracks over the indentation and matches a commented-out call anyway.
-        Assert.Matches(new Regex(@"^(?!\s*//)[^\r\n]*\bNotify\(\);", RegexOptions.Multiline), method.Value);
+        Assert.True(writers.Count > 0, "StepEditor.razor has no per-language writer any more - update this guard.");
+        foreach (var writer in writers.Cast<Match>())
+            // The lookahead sits at the start of the line, not after \s*: written the other way round the
+            // regex backtracks over the indentation and matches a commented-out call anyway.
+            Assert.Matches(new Regex(@"^(?!\s*//)[^\r\n]*\bNotify\(\);", RegexOptions.Multiline), writer.Value);
     }
 
     // AC 5 for the map whose members are localizable: with no quiz results there is nothing to put in the

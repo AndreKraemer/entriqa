@@ -112,7 +112,7 @@ public class BuilderModelLocalizationTests
     public void GivenAPlainValueAndALanguageSwitchedOn_WhenSaving_ThenTheValueStillCoversEveryLanguage()
     {
         // The story's own primary flow: a German form gains English and nobody touches the steps.
-        // Without ReconcileLocales this wrote {"de":3} and the form could no longer be published.
+        // Without AdoptLocales this wrote {"de":3} and the form could no longer be published.
         var step = Step("""{"templateId":3}""", "de");
 
         step.AdoptLocales(new[] { "de", "en" });
