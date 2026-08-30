@@ -179,14 +179,23 @@ public class ConsentProofTests
     // ---- AC 4: no consent, no proof -----------------------------------------------------------
 
     [Fact]
-    public async Task GivenAnOptionalConsentLeftUnticked_WhenTheSubmissionIsStored_ThenNoProofIsWritten()
+    public async Task GivenAnAddressAndAnOptionalConsentLeftUnticked_WhenTheProofIsRecorded_ThenNothingIsWritten()
     {
-        // ConsentText sits on every submission of a form that HAS a consent field - the tick is what counts.
-        var form = FormWith(new FieldDefinition("name", FieldTypes.Text, "Name", Required: true), Consent(required: false));
-        var (useCase, proofs, _, token) = BuildSubmit(form);
-        var values = new Dictionary<string, string> { ["name"] = "Eva" };
+        // Asked of the rule directly, not through SubmitFormUseCase: the validator rejects an address
+        // without the tick (ConsentIfEmail), so that combination never reaches the write path from
+        // outside - and a form without an address is turned away by the email precondition anyway,
+        // which would mask this rule and let a mutant survive. ConsentText is set for every submission
+        // of a form that HAS a consent field; the tick is what counts.
+        var (service, proofs) = TestData.ConsentProofs();
+        var form = FormWith(new FieldDefinition("email", FieldTypes.Email, "E-Mail"), Consent(required: false));
+        var submission = new Submission
+        {
+            Id = "kontakt:0001", Slug = "kontakt", Version = 7, CreatedAt = Start,
+            Values = new Dictionary<string, string>(), Email = "eva@example.org",
+            ConsentText = "Ich stimme zu.",
+        };
 
-        await useCase.ExecuteAsync(new SubmitFormRequest("kontakt", token, values, null, null, ClientIp));
+        await service.RecordAsync(form, new Dictionary<string, string> { ["email"] = "eva@example.org" }, submission);
 
         await proofs.Store.DidNotReceive().ExecuteAsync(Arg.Any<ConsentProof>(), Arg.Any<CancellationToken>());
     }

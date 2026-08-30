@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Entriqa.Application.Ports;
 using Entriqa.Application.Security;
+using Entriqa.Domain.Consent;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Submissions;
 
@@ -27,11 +28,29 @@ public sealed class ConsentProofService(
     ILogger<ConsentProofService> log)
 {
     /// <summary>AC 1/3/4: a proof for a ticked consent, carrying the evidence and nothing else.</summary>
-    public Task RecordAsync(FormDefinition def, IReadOnlyDictionary<string, string> values, Submission submission,
-                            CancellationToken ct = default)
+    public async Task RecordAsync(FormDefinition def, IReadOnlyDictionary<string, string> values, Submission submission,
+                                  CancellationToken ct = default)
     {
-        _ = (store, log, def, values, submission, ct);
-        return Task.CompletedTask;
+        if (!def.ConsentGiven(values)) return;
+        if (submission.Email is not { Length: > 0 } email) return;      // a proof nobody can be attributed to is not evidence
+
+        var proof = new ConsentProof
+        {
+            Email = email,
+            SubmissionId = submission.Id,
+            Slug = submission.Slug,
+            Version = submission.Version,
+            SubmittedAt = submission.CreatedAt,
+            ConsentText = submission.ConsentText ?? "",
+            IpHash = submission.IpHash,
+        };
+
+        // Never at the cost of the submission: a table timeout must not turn a valid entry into an error.
+        try { await store.ExecuteAsync(proof, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogError(ex, "Einwilligungsnachweis für {Id} konnte nicht geschrieben werden", submission.Id);
+        }
     }
 
     /// <summary>AC 2: the double opt-in confirmation amends an existing proof - it never creates one.</summary>
