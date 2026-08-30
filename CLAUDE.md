@@ -13,10 +13,11 @@ plugin. This file holds only what is specific to this project.
   documentation, specs, and GitHub issues. Tests follow Given/When/Then. The exceptions are
   texts an end user or operator reads: `hugo/content/`, the admin UI strings in
   `Ui.cs` (whose German strings double as the translation keys), `ValidationMessages`, the German
-  branch of `ErrorMessages`, the publish-check findings in `PublishCheckService` and
-  `QuizEngine.Check`, the log messages, the console output of `dev/start.mjs`, and the demo data the
-  dev seed writes in `DevSeedHostedService` — it is read in the German admin next to `seed/forms`
-  content, and a half-English inbox would be worse than either language (#11). `README.md`
+  branch of `ErrorMessages`, the publish-check findings — in `PublishCheckService`,
+  `QuizEngine.Check` and the steps' own `CheckConfig`, which the admin shows side by side — the
+  log messages, the console output of `dev/start.mjs`, and the demo data the dev seed writes in
+  `DevSeedHostedService` (read in the German admin next to `seed/forms` content, where a
+  half-English inbox would be worse than either language, #11). `README.md`
   and `LICENSE.md` stay German too — the licence because translating its terms has legal effect.
   Everything else, comments in build files included, is English. Issues #8–#23 and the German
   code comments predate the rule (see #27).
