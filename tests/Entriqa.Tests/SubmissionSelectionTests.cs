@@ -12,7 +12,7 @@ namespace Entriqa.Tests;
 public class SubmissionSelectionTests
 {
     private static IReadOnlyList<SubmissionListItem> Kontakt(SubmissionSelection selection) =>
-        selection.Select(TestData.SubmissionList(), lastVisit: null);
+        selection.Select(TestData.AdminSubmissionList(), lastVisit: null);
 
     // ---- The address carries the selection (AC2, AC6) ----
 
@@ -23,8 +23,23 @@ public class SubmissionSelectionTests
         var url = selection.DetailUrl("s07");
         var query = url[url.IndexOf('?', StringComparison.Ordinal)..];
 
-        Assert.Equal(selection, SubmissionSelection.FromQuery("kontakt", query));
+        // FromQuery(null, ...) is what the detail page does: its route has no slug segment, so the form has
+        // to come out of the query. Passing the slug in here instead would leave that leg unexercised.
+        Assert.Contains("formular=kontakt", url, StringComparison.Ordinal);
+        Assert.Equal(selection, SubmissionSelection.FromQuery(null, query));
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("?seite=0")]
+    [InlineData("?seite=-3")]
+    [InlineData("?seite=abc")]
+    public void GivenAnAddressWithNoUsablePageNumber_WhenReadingItBack_ThenTheFirstPageApplies(string query) =>
+        Assert.Equal(1, SubmissionSelection.FromQuery(null, query).Page);
+
+    [Fact]
+    public void GivenAnAddressWithAFilterTheListDoesNotOffer_WhenReadingItBack_ThenNoFilterApplies() =>
+        Assert.Null(SubmissionSelection.FromQuery(null, "?filter=erledigt").Quick);
 
     [Fact]
     public void GivenABareDetailAddressWithoutASelection_WhenReadingItBack_ThenTheDefaultSelectionApplies() =>
@@ -45,6 +60,22 @@ public class SubmissionSelectionTests
         Assert.StartsWith("einsendung/s07", new SubmissionSelection("kontakt", "todo", 2).DetailUrl("s07"),
             StringComparison.Ordinal);
 
+    [Fact]
+    public void GivenASelectionOfEighteenSubmissions_WhenCountingItsPages_ThenFifteenGoOnEachPage() =>
+        Assert.Equal(2, SubmissionSelection.PageCount(Kontakt(new SubmissionSelection("kontakt", null, 1))));
+
+    [Fact]
+    public void GivenAnEmptySelection_WhenCountingItsPages_ThenThereIsStillOne() =>
+        Assert.Equal(1, SubmissionSelection.PageCount(Array.Empty<SubmissionListItem>()));
+
+    [Fact]
+    public void GivenAnAddressNamingAPageTheSelectionHasNot_WhenBringingItIntoRange_ThenTheLastPageApplies()
+    {
+        var selection = new SubmissionSelection("kontakt", null, 99);
+
+        Assert.Equal(2, selection.Clamped(Kontakt(selection)).Page);
+    }
+
     // ---- The way back names where it leads (AC3) ----
 
     [Fact]
@@ -55,6 +86,11 @@ public class SubmissionSelectionTests
     [Fact]
     public void GivenASelectionWithoutFormOrFilter_WhenLabellingTheWayBack_ThenItNamesAllSubmissions() =>
         Assert.Equal("Zurück zu allen Einsendungen", SubmissionSelection.Default.BackLabel(new Ui(), null));
+
+    [Fact]
+    public void GivenASelectionFilteredToFailures_WhenLabellingTheWayBack_ThenItNamesThatFilter() =>
+        Assert.Equal("Zurück zu allen Einsendungen · Fehler",
+            new SubmissionSelection(null, "failed", 1).BackLabel(new Ui(), null));
 
     [Fact]
     public void GivenTheAdminIsSetToEnglish_WhenLabellingTheWayBack_ThenTheLabelIsTranslated()
@@ -69,13 +105,42 @@ public class SubmissionSelectionTests
     // ---- The selection is a filtered list in list order (AC2, AC4) ----
 
     [Fact]
-    public void GivenSubmissionsInEveryHandlingState_WhenSelectingTheOnesToWorkOn_ThenOnlyOpenOnesAreSelected() =>
-        Assert.All(Kontakt(new SubmissionSelection(null, "todo", 1)), s => Assert.Equal("open", s.Handling));
+    public void GivenSubmissionsInEveryHandlingState_WhenSelectingTheOnesToWorkOn_ThenTheOthersAreLeftOut()
+    {
+        var selected = Kontakt(new SubmissionSelection(null, "todo", 1));
+
+        Assert.All(selected, s => Assert.Equal("open", s.Handling));
+        Assert.Equal(16, selected.Count);                                  // 24 minus 2 done and 6 without handling
+        Assert.DoesNotContain(selected, s => s.Id == "s05" || s.Id == "s11");
+    }
+
+    [Fact]
+    public void GivenSubmissionsWaitingForTheirConfirmation_WhenSelectingThem_ThenTheOthersAreLeftOut()
+    {
+        var selected = Kontakt(new SubmissionSelection(null, "waiting", 1));
+
+        Assert.All(selected, s => Assert.Equal(1, s.State));
+        Assert.Equal(6, selected.Count);
+    }
+
+    [Fact]
+    public void GivenSubmissionsThatFailed_WhenSelectingThem_ThenTheOthersAreLeftOut()
+    {
+        var selected = Kontakt(new SubmissionSelection(null, "failed", 1));
+
+        Assert.All(selected, s => Assert.Equal(2, s.State));
+        Assert.Equal(6, selected.Count);
+    }
+
+    [Fact]
+    public void GivenAStoreThatWasNeverVisited_WhenSelectingWhatIsNew_ThenEverythingIsNew() =>
+        Assert.Equal(TestData.AdminSubmissionList().Count,
+            new SubmissionSelection(null, "new", 1).Select(TestData.AdminSubmissionList(), lastVisit: null).Count);
 
     [Fact]
     public void GivenSubmissionsAndALastVisit_WhenSelectingTheNewOnes_ThenOnlyThoseAfterTheVisitAreSelected()
     {
-        var all = TestData.SubmissionList();
+        var all = TestData.AdminSubmissionList();
         var lastVisit = all[5].CreatedAt;
 
         var selected = new SubmissionSelection(null, "new", 1).Select(all, lastVisit);
@@ -85,8 +150,25 @@ public class SubmissionSelectionTests
     }
 
     [Fact]
-    public void GivenASelectionOnOneForm_WhenWalkingIt_ThenNoSubmissionOfAnotherFormIsReached() =>
-        Assert.All(Kontakt(new SubmissionSelection("kontakt", null, 1)), s => Assert.Equal("kontakt", s.Slug));
+    public void GivenASelectionOnOneForm_WhenWalkingIt_ThenNoSubmissionOfAnotherFormIsReached()
+    {
+        var selected = Kontakt(new SubmissionSelection("kontakt", null, 1));
+
+        Assert.All(selected, s => Assert.Equal("kontakt", s.Slug));
+        Assert.Equal(18, selected.Count);
+    }
+
+    [Fact]
+    public void GivenASubmissionThatIsNotInTheSelection_WhenAskingAboutIt_ThenItHasNoPlaceAndNoNeighbours()
+    {
+        var selection = new SubmissionSelection("kontakt", "todo", 2);
+        var items = Kontakt(selection);
+
+        Assert.Equal(0, SubmissionSelection.PositionOf(items, "s05"));      // filtered out: handling "done"
+        Assert.Null(SubmissionSelection.Next(items, "s05"));
+        Assert.Null(SubmissionSelection.Previous(items, "s05"));
+        Assert.Equal(2, selection.AtPageContaining(items, "s05").Page);     // stays in range instead of guessing
+    }
 
     // ---- Walking the neighbours (AC4) ----
 

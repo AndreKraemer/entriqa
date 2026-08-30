@@ -25,9 +25,14 @@ internal static class TestData
 
     /// <summary>
     /// A submissions list the way the admin receives it (#11): newest first, two forms, every quick
-    /// filter non-empty, and the "kontakt" selection long enough to span two pages of 15.
+    /// filter non-empty, and the "kontakt" selection long enough to span two pages of 15 - with and
+    /// without the "todo" filter, which has to remove something or the tests that walk it walk
+    /// an unfiltered list under a name that claims otherwise.
+    ///
+    /// Named for the layer: Entriqa.Admin and Entriqa.Domain both have a SubmissionListItem, and this
+    /// is the admin's.
     /// </summary>
-    public static List<SubmissionListItem> SubmissionList() =>
+    public static List<SubmissionListItem> AdminSubmissionList() =>
         Enumerable.Range(0, 24).Select(i => new SubmissionListItem(
             Id: $"s{i:00}",
             Slug: i < 18 ? "kontakt" : "whitepaper",
@@ -36,7 +41,7 @@ internal static class TestData
             Email: $"p{i:00}@example.org",
             Summary: $"Person {i:00}",
             State: i % 4,
-            Handling: i < 20 ? "open" : i < 22 ? "done" : "none",
+            Handling: i >= 18 ? "none" : i is 5 or 11 ? "done" : "open",
             QuizResultId: null)).ToList();
 
     public static FormDefinition Contact() => new(
