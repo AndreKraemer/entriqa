@@ -322,6 +322,23 @@ public class StepLocalizationTests
         Assert.Contains(Check().Check(form), i => i.Contains("Datei", StringComparison.Ordinal) && i.Contains("'en'", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void GivenALocalizableFieldThatIsBlankInEveryLanguage_WhenCheckingBeforePublish_ThenOnlyTheStepsOwnMessageIsGiven()
+    {
+        var form = TestData.Contact() with
+        {
+            Locales = new[] { "de", "en" },
+            Pipeline = new[] { new StepDefinition("s1", "leadmagnet.link", "always", Value("""{"blob":{"de":"","en":""}}""")) },
+        };
+
+        var issues = Check().Check(form);
+
+        // Nothing is configured at all, so this is the step's message to make. Naming both languages on
+        // top of it would only bury it - the duplication MissingLocales deliberately avoids.
+        Assert.Contains(issues, i => i.Contains("keine Datei", StringComparison.Ordinal));
+        Assert.DoesNotContain(issues, i => i.Contains("Sprache", StringComparison.Ordinal));
+    }
+
     // ---------------------------------------------------------------- the publish check (AC 6)
 
     private static PublishCheckService Check()

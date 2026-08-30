@@ -33,7 +33,8 @@ plugin. This file holds only what is specific to this project.
   relaxes `CA1707` because its `Given_When_Then` naming needs underscores.
 - **`dotnet test` does not build the whole solution** — only what the test project depends on.
   The gate therefore builds `Entriqa.slnx` first, or broken code slips through - `Entriqa.Functions`
-  is referenced by nothing the tests load. The admin is referenced since #11 and is built along.
+  and `Entriqa.KeyTool` are referenced by nothing the tests load. The admin is referenced
+  since #11 and is built along.
 - **Commit subjects are plain imperative sentences** — `Drop the quiz and source attributes from
   the Brevo contact step (#23)`, never a Conventional-Commits prefix like `feat:`/`fix:`/
   `refactor:`. The issue goes in parentheses at the end. This holds when a tool or command

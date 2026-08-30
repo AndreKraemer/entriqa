@@ -115,7 +115,7 @@ public class BuilderModelLocalizationTests
         // Without ReconcileLocales this wrote {"de":3} and the form could no longer be published.
         var step = Step("""{"templateId":3}""", "de");
 
-        step.ReconcileLocales(new[] { "de", "en" });
+        step.AdoptLocales(new[] { "de", "en" });
 
         Assert.Equal("3", step.ConfigTextByLocale["templateId"]["en"]);   // the editor shows it, too
         Assert.Equal("""{"templateId":3}""", Saved(step, "de", "en"));
@@ -128,9 +128,24 @@ public class BuilderModelLocalizationTests
         // letting the publish check ask for it.
         var step = Step("""{"templateId":{"de":3,"en":9}}""", "de", "en");
 
-        step.ReconcileLocales(new[] { "de", "en", "fr" });
+        step.AdoptLocales(new[] { "de", "en", "fr" });
 
         Assert.Equal("", step.ConfigTextByLocale["templateId"]["fr"]);
+        // And the languages that already had one keep it. Without the "only if absent" guard the shared
+        // value - blank, because de and en disagree - would be written over every language instead, so a
+        // single toggle would wipe every per-language value on every step.
+        Assert.Equal("""{"templateId":{"de":3,"en":9}}""", Saved(step, "de", "en", "fr"));
+    }
+
+    [Fact]
+    public void GivenALanguageSwitchedOffAgain_WhenAdoptingTheShorterList_ThenNothingIsOverwritten()
+    {
+        // AdoptLocales runs on the off path too, so it has to be harmless when the list only shrinks.
+        var step = Step("""{"templateId":{"de":3,"en":9}}""", "de", "en");
+
+        step.AdoptLocales(new[] { "de" });
+
+        Assert.Equal("9", step.ConfigTextByLocale["templateId"]["en"]);
     }
 
     [Fact]
@@ -141,6 +156,74 @@ public class BuilderModelLocalizationTests
 
         Assert.Equal("""{"templateId":{"de":3,"en":9}}""", Saved(step, "de"));
     }
+
+    // --- the map whose members carry the languages (reportingcloud.pdf's per-result templates) ----
+
+    [Fact]
+    public void GivenAPlainMemberInAMap_WhenReadingItPerLanguage_ThenEveryLanguageShowsIt()
+    {
+        var step = Step("""{"templates":{"legacy":"a.docx"}}""", "de", "en");
+
+        Assert.Equal("a.docx", step.MemberFor("templates", "legacy", "de", DeEn));
+        Assert.Equal("a.docx", step.MemberFor("templates", "legacy", "en", DeEn));
+    }
+
+    [Fact]
+    public void GivenAMemberWithAValuePerLanguage_WhenReadingIt_ThenEachLanguageGetsItsOwn()
+    {
+        var step = Step("""{"templates":{"legacy":{"de":"de.docx","en":"en.docx"}}}""", "de", "en");
+
+        Assert.Equal("de.docx", step.MemberFor("templates", "legacy", "de", DeEn));
+        Assert.Equal("en.docx", step.MemberFor("templates", "legacy", "en", DeEn));
+    }
+
+    [Fact]
+    public void GivenAPlainMember_WhenSettingOneLanguage_ThenOnlyThatLanguageChanges()
+    {
+        var step = Step("""{"templates":{"legacy":"a.docx"}}""", "de", "en");
+
+        step.SetMemberFor("templates", "legacy", "en", "b.docx", DeEn);
+
+        Assert.Equal("""{"templates":{"legacy":{"de":"a.docx","en":"b.docx"}}}""", Saved(step, "de", "en"));
+    }
+
+    [Fact]
+    public void GivenAMemberWhoseLanguagesAgree_WhenSaving_ThenItCollapsesBackToAPlainValue()
+    {
+        // The normalisation regression Compose exists to prevent: without it every save would rewrite
+        // {"legacy":"a.docx"} into {"legacy":{"de":"a.docx","en":"a.docx"}}.
+        var step = Step("""{"templates":{"legacy":{"de":"a.docx","en":"b.docx"}}}""", "de", "en");
+
+        step.SetMemberFor("templates", "legacy", "en", "a.docx", DeEn);
+
+        Assert.Equal("""{"templates":{"legacy":"a.docx"}}""", Saved(step, "de", "en"));
+    }
+
+    [Fact]
+    public void GivenAMemberClearedInEveryLanguage_WhenSaving_ThenTheMemberIsDropped()
+    {
+        // Not "keeps the stale one": clearing the picker has to remove the template, or the step would
+        // go on merging a document the operator believes they removed.
+        var step = Step("""{"templates":{"legacy":"a.docx","modern":"m.docx"}}""", "de", "en");
+
+        step.SetMemberFor("templates", "legacy", "de", "", DeEn);
+        step.SetMemberFor("templates", "legacy", "en", "", DeEn);
+
+        Assert.Equal("""{"templates":{"modern":"m.docx"}}""", Saved(step, "de", "en"));
+    }
+
+    [Fact]
+    public void GivenAMapTheOperatorLeftUnparseable_WhenSettingAMember_ThenTheEditorStartsAFreshMap()
+    {
+        var step = Step("""{"templateId":3}""", "de", "en");
+        step.ConfigText["templates"] = "{ not json";
+
+        step.SetMemberFor("templates", "legacy", "de", "a.docx", DeEn);
+
+        Assert.Equal("a.docx", step.MemberFor("templates", "legacy", "de", DeEn));
+    }
+
+    private static readonly string[] DeEn = { "de", "en" };
 
     // --- unknown properties and ordinary fields --------------------------------------------------
 

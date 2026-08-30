@@ -252,7 +252,7 @@ public sealed class StepModel
     /// field leaves the new language empty, which is what the publish check is there to report.
     /// Languages switched off keep their value, so switching one back on loses nothing.
     /// </summary>
-    public void ReconcileLocales(IReadOnlyList<string> locales)
+    public void AdoptLocales(IReadOnlyList<string> locales)
     {
         foreach (var perLocale in ConfigTextByLocale.Values)
         {
@@ -262,6 +262,38 @@ public sealed class StepModel
             foreach (var locale in locales)
                 if (!perLocale.ContainsKey(locale)) perLocale[locale] = shared;
         }
+    }
+
+    /// <summary>
+    /// One member of a map whose members are localizable - reportingcloud.pdf's template per quiz result.
+    /// The result is the outer dimension and the template inside it carries the languages, so the stored
+    /// shape is {resultId: {locale: template}}, or {resultId: template} while every language agrees.
+    /// </summary>
+    public string MemberFor(string name, string member, string locale, IReadOnlyList<string> locales)
+    {
+        var map = MemberMap(name);
+        return LValue.Decompose(map[member], locales).GetValueOrDefault(locale) is JsonNode v ? v.GetValue<string>() : "";
+    }
+
+    /// <summary>Writes one member for one language, collapsing it back to a plain value when every
+    /// language agrees and dropping the member entirely when no language has one left.</summary>
+    public void SetMemberFor(string name, string member, string locale, string? value, IReadOnlyList<string> locales)
+    {
+        var map = MemberMap(name);
+        var perLocale = LValue.Decompose(map[member], locales);
+        perLocale[locale] = string.IsNullOrWhiteSpace(value) ? null : JsonValue.Create(value);
+        if (LValue.Compose(perLocale, locales) is { } composed) map[member] = composed;
+        else map.Remove(member);
+        ConfigText[name] = map.ToJsonString();
+    }
+
+    /// <summary>The map as it currently stands in the raw text. Unparseable text is treated as an empty
+    /// map - the operator is editing through the picker, and the alternative is to throw at them.</summary>
+    private JsonObject MemberMap(string name)
+    {
+        try { return JsonNode.Parse(ConfigText.GetValueOrDefault(name) ?? "")?.AsObject() ?? new JsonObject(); }
+        catch (JsonException) { return new JsonObject(); }
+        catch (InvalidOperationException) { return new JsonObject(); }   // valid JSON, but not an object
     }
 
     private static string RawText(JsonNode? node) => node switch

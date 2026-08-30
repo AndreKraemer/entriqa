@@ -172,28 +172,12 @@
         _ => v,
     };
 
-    // The result is the outer dimension and the template inside it is localizable, so the map is
-    // {resultId: {locale: template}} - or {resultId: template} while every language agrees.
-    private string TemplateFor(string resultId, string locale)
-    {
-        try
-        {
-            var obj = JsonNode.Parse(Get("templates"))?.AsObject();
-            return LValue.Decompose(obj?[resultId], Locales).GetValueOrDefault(locale)?.GetValue<string>() ?? "";
-        }
-        catch { return ""; }
-    }
+    private string TemplateFor(string resultId, string locale) => Step.MemberFor("templates", resultId, locale, Locales);
 
     private void SetTemplateFor(string resultId, string locale, string? template)
     {
-        JsonObject obj;
-        try { obj = JsonNode.Parse(Get("templates"))?.AsObject() ?? new JsonObject(); }
-        catch { obj = new JsonObject(); }
-        var perLocale = LValue.Decompose(obj[resultId], Locales);
-        perLocale[locale] = string.IsNullOrEmpty(template) ? null : JsonValue.Create(template);
-        if (LValue.Compose(perLocale, Locales) is { } value) obj[resultId] = value;
-        else obj.Remove(resultId);
-        Set("templates", obj.ToJsonString());
+        Step.SetMemberFor("templates", resultId, locale, template, Locales);
+        Notify();
     }
 
     /// <summary>

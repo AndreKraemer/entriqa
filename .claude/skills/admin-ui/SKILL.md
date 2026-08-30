@@ -7,10 +7,13 @@ description: How the Blazor admin is built — German strings as translation key
 
 `src/Ui/Entriqa.Admin`, served at `/admin`. Pages, Components, Services — no further ceremony.
 
-It references `Entriqa.Domain`, so a domain change can break it. Since the projects moved into
-the standard layout it is part of `Entriqa.slnx`, and the gate builds the whole solution before
-running the tests — `dotnet test` on its own only builds what the test project depends on,
-which used to let admin breakage through unnoticed.
+It references `Entriqa.Domain`, so a domain change can break it. It is part of `Entriqa.slnx`, and
+since #3 the test project references it too: its plain model classes — `BuilderModel`'s
+`FormModel`/`StepModel`/`StepSchema`/`LTextModel` — run in the test host like any other code, and
+`BuilderModelLocalizationTests` exercises them directly. Only the Razor **components** cannot be
+rendered here; those are guarded by reading their source (`EditorChangedBindingTests`,
+`StepEditorLocalizationGuardTests`). Logic worth testing therefore belongs in the model, not in a
+`.razor` `@code` block — that is where #3 hid two round-trip defects a source guard could not see.
 
 ## The trap: German strings are the translation keys
 
