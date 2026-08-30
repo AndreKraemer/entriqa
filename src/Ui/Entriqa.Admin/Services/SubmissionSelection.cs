@@ -16,28 +16,32 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
 {
     public const int PerPage = 15;
 
+    /// <summary>The quick filters the list offers. An address naming anything else has no filter at all.</summary>
+    public static readonly IReadOnlySet<string> QuickFilters =
+        new HashSet<string>(StringComparer.Ordinal) { "new", "todo", "waiting", "failed" };
+
     /// <summary>All forms, no quick filter, page one - what a bare address means (AC3, AC4).</summary>
     public static SubmissionSelection Default => new(null, null, 1);
 
     /// <summary>
     /// Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").
     /// The list passes the slug of its route, the detail page passes null and lets "formular" supply it -
-    /// the detail route has no slug segment to read. A page that is missing, unparsable or below one falls
-    /// back to the first: an address is something people edit and share, and it must survive that (AC6).
+    /// the detail route has no slug segment to read. An address is something people edit and share, so it
+    /// must survive that (AC6): a page that is missing, unparsable or below one falls back to the first,
+    /// and a filter the list does not offer is no filter - otherwise the address would claim a narrowing
+    /// that neither the list nor the back label applies.
     /// </summary>
     public static SubmissionSelection FromQuery(string? slug, string query)
     {
         var q = HttpUtility.ParseQueryString(query);
         var page = int.TryParse(q["seite"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 1 ? n : 1;
-        return new SubmissionSelection(slug ?? Set(q["formular"]), Set(q["filter"]), page);
+        var quick = Set(q["filter"]) is { } f && QuickFilters.Contains(f) ? f : null;
+        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page);
     }
-
-    /// <summary>The query part of an address; empty when nothing but the defaults is set.</summary>
-    public string ToQuery() => Query(withForm: false);
 
     /// <summary>The list address this selection returns to - the form stays the route segment it is today.</summary>
     public string ListUrl() =>
-        "einsendungen" + (Slug is null ? "" : "/" + Uri.EscapeDataString(Slug)) + ToQuery();
+        "einsendungen" + (Slug is null ? "" : "/" + Uri.EscapeDataString(Slug)) + Query(withForm: false);
 
     /// <summary>
     /// The detail address of one submission, carrying this selection with it. The form travels in the query
@@ -87,13 +91,21 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
         all.Where(s => Slug is null || s.Slug == Slug)
            .Where(s => Quick switch
            {
-               "new" => lastVisit is null || s.CreatedAt > lastVisit,
+               "new" => IsNew(s, lastVisit),
                "todo" => s.Handling == "open",
                "waiting" => s.State == 1,
                "failed" => s.State == 2,
                _ => true,
            })
            .ToList();
+
+    /// <summary>
+    /// Arrived since the reader last looked. One definition for the marker on the row and for the "new"
+    /// filter: two of them drift, and the list then dots rows the filter does not show. A store that has
+    /// never been visited counts everything as new.
+    /// </summary>
+    public static bool IsNew(SubmissionListItem item, DateTimeOffset? lastVisit) =>
+        lastVisit is null || item.CreatedAt > lastVisit;
 
     /// <summary>The slice of the selection this page shows.</summary>
     public IReadOnlyList<SubmissionListItem> PageSlice(IReadOnlyList<SubmissionListItem> selection) =>
@@ -111,8 +123,17 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
     public SubmissionSelection AtPageContaining(IReadOnlyList<SubmissionListItem> selection, string id)
     {
         var index = IndexOf(selection, id);
-        return index < 0 ? this : this with { Page = index / PerPage + 1 };
+        return index < 0 ? Clamped(selection) : this with { Page = index / PerPage + 1 };
     }
+
+    /// <summary>
+    /// The same selection on a page that exists. An address can name a page the selection does not have -
+    /// hand-edited, shared after the filter moved on, or carried back from a submission that is no longer
+    /// in it. Without this the list shows an empty page numbered past its own end, and the only way out is
+    /// the back button.
+    /// </summary>
+    public SubmissionSelection Clamped(IReadOnlyList<SubmissionListItem> selection) =>
+        this with { Page = Math.Clamp(Page, 1, PageCount(selection)) };
 
     private static int IndexOf(IReadOnlyList<SubmissionListItem> selection, string id)
     {

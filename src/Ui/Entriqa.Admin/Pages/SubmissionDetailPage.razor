@@ -7,7 +7,7 @@
     <a class="btn" href="@BackUrl">@Back.BackLabel(T, FormName)</a>
     @if (Position > 0)
     {
-        <span class="hint">@T.F("{0} von {1}", Position, _items.Count)</span>
+        <span class="hint">@T.F("{0} von {1}", Position, Items.Count)</span>
         <button class="btn" disabled="@(Previous is null)" title="@T["Vorherige Einsendung"]"
                 aria-label="@T["Vorherige Einsendung"]" @onclick="() => Open(Previous)">‹</button>
         <button class="btn" disabled="@(Next is null)" title="@T["Nächste Einsendung"]"
@@ -17,13 +17,14 @@
 
 <h1>@T["Einsendung"]</h1>
 @if (_error is not null) { <p class="error">@_error</p> }
-<SubmissionDetailPanel Id="@Id" OnDeleted="GoBack" />
+<SubmissionDetailPanel Id="@Id" OnDeleted="GoBack" OnChanged="Load" />
 
 @code {
     [Parameter] public string Id { get; set; } = "";
 
     private SubmissionSelection _selection = SubmissionSelection.Default;
-    private IReadOnlyList<SubmissionListItem> _items = Array.Empty<SubmissionListItem>();
+    private List<SubmissionListItem> _all = new();
+    private DateTimeOffset? _lastVisit;
     private List<FormListItem>? _forms;
     private string? _error;
     private string? _loadedSlug;
@@ -32,8 +33,10 @@
     protected override async Task OnParametersSetAsync()
     {
         _selection = SubmissionSelection.FromQuery(null, new Uri(Nav.Uri).Query);
-        // The neighbours come from the same list the reader was looking at, so the detail page loads it
-        // once per form and then walks it in memory - turning to the next submission costs no request.
+        // Only the form decides what the endpoint returns, so the list is fetched once per form and then
+        // walked in memory - turning to the next submission costs no request. The quick filter is applied
+        // per render instead of cached: it can change without the form changing (browser history, a shared
+        // address), and a cached membership would leave the arrows walking the previous selection.
         if (_loaded && _loadedSlug == _selection.Slug) return;
         _loaded = true;
         _loadedSlug = _selection.Slug;
@@ -46,28 +49,33 @@
         {
             _forms ??= await Api.ListFormsAsync();
             var recent = await Api.ListRecentAsync(_selection.Slug);
-            _items = _selection.Select(recent.Items, recent.LastVisitAt);
+            _all = recent.Items;
+            _lastVisit = recent.LastVisitAt;
             _error = null;
         }
         catch (Exception ex)
         {
             // The submission itself is loaded by the panel and still shows; only walking and the page of
             // the way back are lost, so this must not replace the whole page with an error.
-            _items = Array.Empty<SubmissionListItem>();
+            _all = new();
             _error = Errors.Friendly(ex, T);
         }
     }
 
-    private string? FormName => _forms?.FirstOrDefault(f => f.Slug == _selection.Slug)?.Name;
+    private IReadOnlyList<SubmissionListItem> Items => _selection.Select(_all, _lastVisit);
+
+    /// <summary>The form's name, or its slug when the list of forms is not (yet) there or no longer has it -
+    /// the label must never claim a wider selection than the link beneath it actually leads to (AC3).</summary>
+    private string? FormName => _forms?.FirstOrDefault(f => f.Slug == _selection.Slug)?.Name ?? _selection.Slug;
 
     /// <summary>The selection as the way back needs it: on the page holding what is on screen (AC2).</summary>
-    private SubmissionSelection Back => _selection.AtPageContaining(_items, Id);
+    private SubmissionSelection Back => _selection.AtPageContaining(Items, Id);
 
     private string BackUrl => Back.ListUrl();
 
-    private int Position => SubmissionSelection.PositionOf(_items, Id);
-    private string? Previous => SubmissionSelection.Previous(_items, Id);
-    private string? Next => SubmissionSelection.Next(_items, Id);
+    private int Position => SubmissionSelection.PositionOf(Items, Id);
+    private string? Previous => SubmissionSelection.Previous(Items, Id);
+    private string? Next => SubmissionSelection.Next(Items, Id);
 
     private void Open(string? id)
     {
