@@ -65,7 +65,15 @@ clean slate as before; there is no way to ask for an empty inbox short of editin
 
 Without a Brevo API key, mails are written as clickable HTML files to
 `<TEMP>/entriqa-devmails/` (the path is printed at startup). Open them from there — this is
-also how to verify double opt-in without touching the CRM.
+also how to verify double opt-in without touching the CRM. **The file name carries the Brevo
+template id** (`…-template6-someone_example.org.html`), which is how you tell which template a
+step actually chose.
+
+**Contact upserts land in the same folder, in `contacts.log`** — one line per contact with the
+list ids and the attributes: `acceptance-en@example.org  Listen: [8]  {"SPRACHE":"en",…}`. So CRM
+routing *is* observable locally, without ever calling Brevo. Issue #3 twice declared the opposite
+("the endpoint is blocked, so that branch stays unit-level only") and the acceptance run disproved
+it; the claim was wrong because this line was missing here, not because the evidence was.
 
 **The Brevo directory is simulated too, and it is on by default.** With an empty key,
 `Entriqa__Dev__BrevoDirectorySize` (120 in the tracked `local.settings.json`) serves that many

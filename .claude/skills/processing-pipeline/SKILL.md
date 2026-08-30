@@ -81,6 +81,29 @@ Read configuration **only** through the `StepConfig` extensions (`GetString`, `G
 `GetIntList`, `GetStringMap`). They return null or empty for the wrong `ValueKind` instead of
 throwing, which is what lets `CheckConfig` report rather than crash.
 
+**A field whose result reaches the visitor takes a value per language** (#3). Mark it
+`"localizable": true` in the `ConfigSchema` and read it through the `(name, locale)` overloads —
+`config.GetInt("templateId", ctx.Submission.Locale)`. The stored value is a plain scalar, which
+applies to every language, or `{locale: value}`; `LValue` in the domain holds that rule and its
+`LText`-identical fallback to the first entry present. Marked leaves are never object-typed, which
+is what makes an object unambiguously a locale map.
+
+Two traps, both of which have already cost a defect:
+
+- **The 2-arg overloads are wrong for a marked field**, not merely less convenient. Against the
+  object form they return null/empty, so `CheckConfig` reports "nothing configured" and
+  `ExecuteAsync` dereferences null. Move both the execution *and* the check when you mark a field.
+- **A map whose *members* are localizable** — `reportingcloud.pdf`'s per-result `templates` — marks
+  `additionalProperties`, not the property. Read the map with `GetRaw` (resolving the map itself
+  would hand back an arbitrary member) and each member through `GetStringMap(name, locale)`.
+
+The marker is also what drives the publish check: `PublishCheckService.MissingConfigLocales` refuses
+any marked field that carries a value but not one for every declared language, naming step, field
+and language. A step that needs a message of its own — because only it knows what the keys mean —
+writes it in `CheckConfig`, as `reportingcloud.pdf` does per quiz result.
+
+The builder-side duplication of the collapse rule is tracked in #44.
+
 `ConfigSchema` is JSON Schema and drives the builder UI. `MailParams` are the `{{ params.… }}`
 placeholders the admin shows as help for the mail template — declare them or nobody can wire
 the template up.

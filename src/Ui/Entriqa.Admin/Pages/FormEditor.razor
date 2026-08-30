@@ -160,6 +160,7 @@ else
                 }
                 <StepEditor Step="step" Descriptor="DescriptorOf(step.Key)" Directory="_directory"
                             ProducedBefore="ProducedBefore(index)" QuizResults="QuizRefs" FormFields="FieldRefs"
+                            Locales="_model.Locales"
                             OnRemove="() => _model.Steps.RemoveAt(index)"
                             OnMove="delta => Move(_model.Steps, index, delta)" Changed="StateHasChanged" />
             }
@@ -441,7 +442,7 @@ else
     {
         var d = DescriptorOf(step.Key);
         step.Schema = d is null ? null : StepSchema.Parse(d.ConfigSchema);
-        if (step.Schema is not null) step.LoadConfigText(step.Schema);
+        if (step.Schema is not null) step.LoadConfigText(step.Schema, _model!.Locales);
     }
 
     private StepDescriptorDto? DescriptorOf(string key) => _catalog?.FirstOrDefault(d => d.Key == key);
@@ -472,6 +473,9 @@ else
     {
         if (on && !_model!.Locales.Contains(locale)) _model.Locales.Add(locale);
         if (!on && _model!.Locales.Count > 1) _model.Locales.Remove(locale);
+        // The steps were loaded against the old language list; without this a plain value would stop
+        // covering the language just switched on (guarded by BuilderModelLocalizationTests).
+        foreach (var step in _model!.Steps) step.AdoptLocales(_model.Locales);
     }
 
     private void AddField()

@@ -13,10 +13,11 @@ plugin. This file holds only what is specific to this project.
   documentation, specs, and GitHub issues. Tests follow Given/When/Then. The exceptions are
   texts an end user or operator reads: `hugo/content/`, the admin UI strings in
   `Ui.cs` (whose German strings double as the translation keys), `ValidationMessages`, the German
-  branch of `ErrorMessages`, the publish-check findings in `PublishCheckService` and
-  `QuizEngine.Check`, the log messages, the console output of `dev/start.mjs`, and the demo data the
-  dev seed writes in `DevSeedHostedService` — it is read in the German admin next to `seed/forms`
-  content, and a half-English inbox would be worse than either language (#11). `README.md`
+  branch of `ErrorMessages`, the publish-check findings — in `PublishCheckService`,
+  `QuizEngine.Check` and the steps' own `CheckConfig`, which the admin shows side by side — the
+  log messages, the console output of `dev/start.mjs`, and the demo data the dev seed writes in
+  `DevSeedHostedService` (read in the German admin next to `seed/forms` content, where a
+  half-English inbox would be worse than either language, #11). `README.md`
   and `LICENSE.md` stay German too — the licence because translating its terms has legal effect.
   Everything else, comments in build files included, is English. Issues #8–#23 and the German
   code comments predate the rule (see #27).
@@ -32,7 +33,8 @@ plugin. This file holds only what is specific to this project.
   relaxes `CA1707` because its `Given_When_Then` naming needs underscores.
 - **`dotnet test` does not build the whole solution** — only what the test project depends on.
   The gate therefore builds `Entriqa.slnx` first, or broken code slips through - `Entriqa.Functions`
-  is referenced by nothing the tests load. The admin is referenced since #11 and is built along.
+  and `Entriqa.KeyTool` are referenced by nothing the tests load. The admin is referenced
+  since #11 and is built along.
 - **Commit subjects are plain imperative sentences** — `Drop the quiz and source attributes from
   the Brevo contact step (#23)`, never a Conventional-Commits prefix like `feat:`/`fix:`/
   `refactor:`. The issue goes in parentheses at the end. This holds when a tool or command

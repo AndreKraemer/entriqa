@@ -13,11 +13,11 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
     public string Description => "Legt den Kontakt an oder aktualisiert ihn und trägt ihn in die gewählten Listen ein.";
     public StepMode Mode => StepMode.Inline;
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField, StepNeed.ConsentField };
-    public string ConfigSchema => """{"type":"object","required":["listIds"],"properties":{"listIds":{"type":"array","items":{"type":"integer"},"title":"Brevo-Listen","format":"brevo-list"}}}""";
+    public string ConfigSchema => """{"type":"object","required":["listIds"],"properties":{"listIds":{"type":"array","items":{"type":"integer"},"title":"Brevo-Listen","format":"brevo-list","localizable":true}}}""";
 
     public IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore)
     {
-        if (config.GetIntList("listIds").Count == 0) yield return "keine Brevo-Liste gewählt.";
+        if (config.GetIntList("listIds", form.DefaultLocale).Count == 0) yield return "keine Brevo-Liste gewählt.";
     }
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
@@ -34,7 +34,7 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
         attributes["LAST_FORM"] = ctx.Form.Slug;
         attributes["LAST_FORM_AT"] = time.GetUtcNow().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-        ctx.Submission.BrevoContactId = await contacts.UpsertAsync(ctx.Email!, config.GetIntList("listIds"), attributes, ct);
+        ctx.Submission.BrevoContactId = await contacts.UpsertAsync(ctx.Email!, config.GetIntList("listIds", ctx.Submission.Locale), attributes, ct);
         return StepResult.Ok;
     }
 

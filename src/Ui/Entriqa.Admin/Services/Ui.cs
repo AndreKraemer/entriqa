@@ -232,6 +232,7 @@ public sealed class Ui
         ["– Vorlage wählen –"] = "– choose template –",
         ["– Datei wählen –"] = "– choose file –",
         ["lädt hoch …"] = "uploading …",
+        ["Erst wählbar, wenn das Quiz Ergebnisse hat."] = "Only selectable once the quiz has results.",
         ["Kein vorheriger Schritt erzeugt etwas zum Mitschicken."] = "No previous step produces anything to attach.",
         ["nichts"] = "nothing",
         ["Download-Link"] = "Download link",
