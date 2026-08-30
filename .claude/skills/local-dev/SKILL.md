@@ -241,10 +241,21 @@ report rather than reporting it as verified. `samples/site/static/staticwebapp.c
 proxies emulate — `/admin/*` and `/api/manage/*` require the `admin` role, `/f/*` rewrites to
 the DOI page.
 
-**The in-app browser cannot activate a control with the keyboard.** Tab moves focus and typing
-works, but Enter and Space on a focused `<button>` do nothing — measured against a plain
-`<button type="button">` injected into the page, which records no click either. So a criterion about
-keyboard operation is **undrivable** there: drive a real browser, or write in the report that the
+**A keyboard criterion needs a human. Both browsers fail it, for opposite reasons — do not spend a
+round rediscovering this.**
+
+*The in-app browser reaches the app but delivers no keys.* Tab moves focus and typing works, but Enter
+and Space on a focused control do nothing. Measured twice: against a plain `<button type="button">`
+(#22) and against a plain `<a href="#target">` (#11), both injected into the page — the anchor recorded
+`keydown` events `[]` and zero clicks, and the hash never changed. It is not the app.
+
+*Chrome delivers keys but cannot reach the app.* `dev/start.mjs` binds every port to `127.0.0.1`, and
+Chrome resolves `localhost` to `::1`; `127.0.0.1` is refused as well. A throwaway server bound to
+`*:8899` answered `curl` and was still `ERR_CONNECTION_REFUSED` in Chrome, so the browser sits in a
+different network context from the dev server — not a port or an address-family problem, and not
+fixable by changing the binding.
+
+So: ask the human to press Tab and Enter and attribute it to them in the report, or write that the
 criterion is unverified and why. Do not infer it from a working mouse click — that is how a keyboard
-criterion gets ticked without ever being exercised. (Verified once for #22: the human pressed Tab and
-Enter by hand and it worked, which the run itself could not show.)
+criterion gets ticked without ever being exercised. (Done for #22 and again for #11; both times the
+human confirmed it works and the run itself could not show it.)

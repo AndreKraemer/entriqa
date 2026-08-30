@@ -64,8 +64,7 @@ public sealed class DevSeedHostedService(
     ///
     /// The demo values below are German, like the content of seed/forms/*.json: they are read in the
     /// admin's German interface, next to Labels.SubmissionState, and a half-English inbox would be worse
-    /// than either language. CLAUDE.md's exception list does not name the dev seed, so this is a deliberate
-    /// reading of the rule rather than a licence - see the open question raised on issue #11.
+    /// than either language. CLAUDE.md's exception list names this file for that reason (#11).
     /// </summary>
     private async Task SeedSubmissionsAsync(CancellationToken ct)
     {
