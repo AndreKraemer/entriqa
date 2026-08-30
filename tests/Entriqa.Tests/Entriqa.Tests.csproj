@@ -6,6 +6,9 @@
     <ProjectReference Include="..\..\src\Core\Entriqa.Application\Entriqa.Application.csproj" />
     <ProjectReference Include="..\..\src\Core\Entriqa.Data\Entriqa.Data.csproj" />
     <ProjectReference Include="..\..\src\Core\Entriqa.Infrastructure\Entriqa.Infrastructure.csproj" />
+    <!-- The admin is a Blazor WASM project, but its assembly loads in this test host like any other:
+         the selection logic of #11 is executed here rather than scanned as source. -->
+    <ProjectReference Include="..\..\src\Ui\Entriqa.Admin\Entriqa.Admin.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

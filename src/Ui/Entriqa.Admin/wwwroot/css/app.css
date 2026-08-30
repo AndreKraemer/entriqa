@@ -383,14 +383,11 @@ td.consent { font-size: 13px; color: var(--muted); }
 }
 
 /* ---------- Einsendungen ---------- */
-.subs-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
-@media (max-width: 1100px) { .subs-grid { grid-template-columns: 1fr; } }
-.detail-panel {
-    position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto;
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 14px 16px; box-shadow: var(--shadow-card);
-}
-.detail-panel .card { border: none; box-shadow: none; padding: 0; }
+/* The submission has a page of its own - the narrow column beside the list is gone. */
+/* Values and quiz answers come from forms: one unbroken URL or a long label must not stretch the page.
+   A fixed table layout plus a break inside the word keeps them in their column. */
+.values { table-layout: fixed; width: 100%; }
+.values td { overflow-wrap: anywhere; }
 .count { background: rgba(9, 31, 53, .1); border-radius: 999px; padding: 0 7px; font-size: 11.5px; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .btn--primary .count { background: rgba(255, 255, 255, .25); }
 .pager { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 13px; color: var(--muted); }

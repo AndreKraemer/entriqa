@@ -1,7 +1,9 @@
 @page "/einsendungen"
 @page "/einsendungen/{Slug}"
 @inject AdminApi Api
+@inject NavigationManager Nav
 @inject Ui T
+@implements IDisposable
 
 <h1>@T["Einsendungen"]</h1>
 
@@ -14,10 +16,10 @@ else
             <option value="">@T["Alle Formulare"]</option>
             @foreach (var f in _forms ?? new()) { <option value="@f.Slug" selected="@(Slug == f.Slug)">@f.Name</option> }
         </select>
-        @QuickButton("new", T["Neu seit letztem Besuch"], CountNew)
-        @QuickButton("todo", T["Zu bearbeiten"], Count(s => s.Handling == "open"))
-        @QuickButton("waiting", T["Wartet auf Bestätigung"], Count(s => s.State == 1))
-        @QuickButton("failed", T["Fehler"], Count(s => s.State == 2))
+        @QuickButton("new", T["Neu seit letztem Besuch"])
+        @QuickButton("todo", T["Zu bearbeiten"])
+        @QuickButton("waiting", T["Wartet auf Bestätigung"])
+        @QuickButton("failed", T["Fehler"])
         @if (Slug is not null)
         {
             <a class="btn" href="api/manage/forms/@Slug/export.csv" target="_blank">@T["CSV exportieren"]</a>
@@ -28,47 +30,42 @@ else
         </span>
     </div>
 
-    <div class="subs-grid">
-        <div class="table-scroll">
-            <table>
-                <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Quiz"]</th></tr></thead>
-                <tbody>
-                @foreach (var s in Paged)
-                {
-                    var item = s;
-                    <tr class="rowlink @(item.Id == _selectedId ? "row--sel" : "")" @onclick="() => _selectedId = item.Id">
-                        <td>@if (IsNew(item)) { <span class="new-dot" title="@T["neu seit letztem Besuch"]"></span> }</td>
-                        <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                        @if (Slug is null) { <td class="small">@(FormName(item.Slug))</td> }
-                        <td>@item.Summary</td>
-                        <td><span class="@Labels.StateCss(item.State)">@T[Labels.SubmissionState(item.State)]</span></td>
-                        <td>@(item.Handling == "none" ? "–" : item.Handling == "open" ? T["Offen"] : T["Erledigt"])</td>
-                        <td>@(item.QuizResultId ?? "–")</td>
-                    </tr>
-                }
-                @if (!Paged.Any())
-                {
-                    <tr><td colspan="7" class="hint" style="text-align:center;padding:1.5rem">@T["Nichts in dieser Auswahl."]</td></tr>
-                }
-                </tbody>
-            </table>
-            <div class="pager">
-                <span>@T.F("{0} Einsendungen · Seite {1} von {2}", Filtered.Count, _page, Pages)</span>
-                <span>
-                    <button class="btn" disabled="@(_page <= 1)" @onclick="() => _page--">@T["‹ Zurück"]</button>
-                    <button class="btn" disabled="@(_page >= Pages)" @onclick="() => _page++">@T["Weiter ›"]</button>
-                </span>
-            </div>
-        </div>
-        <div class="detail-panel">
-            @if (_selectedId is null)
+    <p class="hint">@T["Einsendung anklicken, um Angaben und Verarbeitungsschritte zu sehen. Der blaue Punkt markiert, was seit deinem letzten Besuch dazugekommen ist."]</p>
+
+    <div class="table-scroll">
+        <table>
+            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Quiz"]</th></tr></thead>
+            <tbody>
+            @foreach (var s in Paged)
             {
-                <div class="card"><p class="hint">@T["Einsendung anklicken, um Angaben und Verarbeitungsschritte zu sehen. Der blaue Punkt markiert, was seit deinem letzten Besuch dazugekommen ist."]</p></div>
+                var item = s;
+                @* The link is the control, not the row: a <tr> cannot carry role="link" without dropping the
+                   row and its cells out of the table for assistive technology. The anchor takes focus, answers
+                   Enter and can be opened in a new tab; the row's @onclick is the mouse convenience on top (AC1). *@
+                <tr class="rowlink" @onclick="() => Open(item.Id)">
+                    <td>@if (SubmissionSelection.IsNew(item, _lastVisit)) { <span class="new-dot" title="@T["neu seit letztem Besuch"]"></span> }</td>
+                    <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                    @if (Slug is null) { <td class="small">@(FormName(item.Slug))</td> }
+                    @* The link handles its own click - including ctrl/cmd/shift, where the browser opens a new
+                       tab. Without stopping it here the row would navigate this tab as well. *@
+                    <td @onclick:stopPropagation="true"><a href="@Shown.DetailUrl(item.Id)">@item.Summary</a></td>
+                    <td><span class="@Labels.StateCss(item.State)">@T[Labels.SubmissionState(item.State)]</span></td>
+                    <td>@(item.Handling == "none" ? "–" : item.Handling == "open" ? T["Offen"] : T["Erledigt"])</td>
+                    <td>@(item.QuizResultId ?? "–")</td>
+                </tr>
             }
-            else
+            @if (!Paged.Any())
             {
-                <SubmissionDetailPanel Id="@_selectedId" OnDeleted="OnDeleted" OnChanged="Refresh" />
+                <tr><td colspan="7" class="hint" style="text-align:center;padding:1.5rem">@T["Nichts in dieser Auswahl."]</td></tr>
             }
+            </tbody>
+        </table>
+        <div class="pager">
+            <span>@T.F("{0} Einsendungen · Seite {1} von {2}", Filtered.Count, Shown.Page, Pages)</span>
+            <span>
+                <button class="btn" disabled="@(Shown.Page <= 1)" @onclick="() => Go(Shown with { Page = Shown.Page - 1 })">@T["‹ Zurück"]</button>
+                <button class="btn" disabled="@(Shown.Page >= Pages)" @onclick="() => Go(Shown with { Page = Shown.Page + 1 })">@T["Weiter ›"]</button>
+            </span>
         </div>
     </div>
 }
@@ -79,14 +76,41 @@ else
     private RecentSubmissions? _data;
     private List<FormListItem>? _forms;
     private DateTimeOffset? _lastVisit;
-    private string? _error, _selectedId, _quick;
-    private int _page = 1;
-    private const int PerPage = 15;
+    private string? _error;
+    private string _path = "";
 
-    protected override async Task OnParametersSetAsync()
+    /// <summary>Form, quick filter and page - read from the address, never held here. That is what lets the
+    /// detail page hand the same selection back when the reader returns (AC2).</summary>
+    private SubmissionSelection _selection = SubmissionSelection.Default;
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    protected override Task OnParametersSetAsync() => ApplyAddress();
+
+    /// <summary>
+    /// The router re-renders on a path change and OnParametersSetAsync follows it. It stays silent when
+    /// only the query changes - which is every quick filter and every page turn here, since the form is
+    /// the route and the rest is the query. Without this the address moves and the list does not, and the
+    /// row links keep pointing at the selection the reader has already left.
+    /// </summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _selectedId = null; _quick = null; _page = 1;
-        await Refresh();
+        if (new Uri(e.Location).AbsolutePath != _path) return;      // path change: the router has it
+        _ = InvokeAsync(async () => { await ApplyAddress(); StateHasChanged(); });
+    }
+
+    private async Task ApplyAddress()
+    {
+        var uri = new Uri(Nav.Uri);
+        _path = uri.AbsolutePath;
+        var selection = SubmissionSelection.FromQuery(Slug, uri.Query);
+        // Only the form decides what the endpoint returns; filtering and paging happen on what is already
+        // here, so switching a filter or turning a page must not cost a round trip.
+        var reload = _data is null || selection.Slug != _selection.Slug;
+        _selection = selection;
+        if (reload) await Refresh();
     }
 
     private async Task Refresh()
@@ -94,54 +118,50 @@ else
         try
         {
             _forms ??= await Api.ListFormsAsync();
-            _data = await Api.ListRecentAsync(Slug);
+            _data = await Api.ListRecentAsync(_selection.Slug);
             _lastVisit = _data.LastVisitAt;
             _error = null;
         }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
     }
 
-    private bool IsNew(SubmissionListItem s) => _lastVisit is null || s.CreatedAt > _lastVisit;
-    private int CountNew => _data!.Items.Count(IsNew);
-    private int Count(Func<SubmissionListItem, bool> pred) => _data!.Items.Count(pred);
     private string FormName(string slug) => _forms?.FirstOrDefault(f => f.Slug == slug)?.Name ?? slug;
 
-    private List<SubmissionListItem> Filtered => _data!.Items.Where(s => _quick switch
-    {
-        "new" => IsNew(s),
-        "todo" => s.Handling == "open",
-        "waiting" => s.State == 1,
-        "failed" => s.State == 2,
-        _ => true,
-    }).ToList();
+    /// <summary>The badge counts come from the selection itself - a second copy of the filter here would be
+    /// the one nothing tests, and the counts could then disagree with what the button shows.</summary>
+    private int CountFor(string quick) => (_selection with { Quick = quick, Page = 1 }).Select(_data!.Items, _lastVisit).Count;
 
-    private IEnumerable<SubmissionListItem> Paged => Filtered.Skip((_page - 1) * PerPage).Take(PerPage);
-    private int Pages => Math.Max(1, (Filtered.Count + PerPage - 1) / PerPage);
+    private IReadOnlyList<SubmissionListItem> Filtered => _selection.Select(_data!.Items, _lastVisit);
 
-    private RenderFragment QuickButton(string key, string label, int count) => __builder =>
+    /// <summary>The selection as it can actually be shown: the address may name a page this selection has not got.</summary>
+    private SubmissionSelection Shown => _selection.Clamped(Filtered);
+
+    private IReadOnlyList<SubmissionListItem> Paged => Shown.PageSlice(Filtered);
+    private int Pages => SubmissionSelection.PageCount(Filtered);
+
+    private void Go(SubmissionSelection selection) => Nav.NavigateTo(selection.ListUrl());
+
+    private void Open(string id) => Nav.NavigateTo(Shown.DetailUrl(id));
+
+    private RenderFragment QuickButton(string key, string label) => __builder =>
     {
-        <button class="btn @(_quick == key ? "btn--primary" : "")"
-                @onclick="() => { _quick = _quick == key ? null : key; _page = 1; }">
+        var count = CountFor(key);
+        <button class="btn @(_selection.Quick == key ? "btn--primary" : "")"
+                @onclick="() => Go(_selection with { Quick = _selection.Quick == key ? null : key, Page = 1 })">
             @label @if (count > 0) { <span class="count">@count</span> }
         </button>
     };
 
-    private async Task OnSlugChange(ChangeEventArgs e)
-    {
-        Slug = e.Value?.ToString() is { Length: > 0 } s ? s : null;
-        _selectedId = null; _quick = null; _page = 1;
-        await Refresh();
-    }
+    private void OnSlugChange(ChangeEventArgs e) =>
+        Go(new SubmissionSelection(e.Value?.ToString() is { Length: > 0 } s ? s : null, null, 1));
 
     private async Task MarkVisited()
     {
-        try { _lastVisit = await Api.MarkVisitedAsync(); if (_quick == "new") _quick = null; }
+        try
+        {
+            _lastVisit = await Api.MarkVisitedAsync();
+            if (_selection.Quick == "new") Go(_selection with { Quick = null, Page = 1 });
+        }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
-    }
-
-    private async Task OnDeleted()
-    {
-        _selectedId = null;
-        await Refresh();
     }
 }

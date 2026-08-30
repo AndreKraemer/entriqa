@@ -30,8 +30,8 @@ The `Then` part states the behavior, never the mechanics — not `ThenCheckRetur
 | `Microsoft.Extensions.TimeProvider.Testing` | `FakeTimeProvider`; time is pinned, never `DateTimeOffset.Now` |
 | NetArchTest.Rules | the layering rules in `ArchitectureTests` |
 
-The test project references Application, Data and Infrastructure — **not Functions** (the worker
-SDK does not load in the test host). Functions' layering is enforced by project references
+The test project references Application, Data, Infrastructure and — since #11 — `Entriqa.Admin`,
+but **not Functions** (the worker SDK does not load in the test host). Functions' layering is enforced by project references
 instead; see the comment at the top of `ArchitectureTests`.
 
 ## TestData is the entry point
@@ -44,6 +44,9 @@ instead; see the comment at the top of `ArchitectureTests`.
 - `TestData.Contact()` — a complete valid `FormDefinition`; vary it with `with { … }` rather than writing a new one
 - `TestData.Quiz()` — a valid `QuizDefinition` with a jump and three results
 - `TestData.Json("""{ … }""")` — a `JsonElement` for step configuration
+- `TestData.AdminSubmissionList()` — 24 admin `SubmissionListItem`s across two forms, newest first,
+  every quick filter non-empty and long enough for a second page. Named for its layer: the domain has
+  a `SubmissionListItem` of its own
 
 A record's `with` expression is the idiom for "valid form, but one thing wrong":
 
@@ -75,14 +78,34 @@ Dependencies point inwards only: Domain depends on nothing, Application not on D
 Infrastructure, Data not on Infrastructure, and entity types stay internal to the Data layer.
 A layering mistake fails the gate — it is not something a reviewer has to catch.
 
-## Code the test host cannot load still gets a guard
+## The admin *does* load — measure before you conclude it cannot
 
-`Entriqa.Admin` is not referenced by the test project and `Entriqa.Functions` deliberately is not
-either, so a Razor component and the composition root have no executing test. That is a reason to
-read their **sources**, not a reason to write "acceptance-only". `EditorChangedBindingTests` and
-`AdminTranslationKeyTests` do exactly that, and `LocaleSourceGuardTests` follows them: resolve the
+`Entriqa.Admin` is a Blazor WASM project, and for a long time the tests here said its assembly does
+not load in this test host. **That was never measured, and it is false.** Since #11 the test project
+references it, and its plain service types load and run like any other. So logic in `Services/*.cs`
+gets ordinary executing tests: `SubmissionSelectionTests` is the example. Put the decidable part of a
+page *there* rather than in the markup, and it is testable.
+
+Component *types* load too, but nothing renders one — there is no bUnit here. Do not read this as an
+invitation to write component tests; markup still needs the source guards below.
+
+`Entriqa.Functions` is a different matter and deliberately stays unreferenced — the worker SDK does
+not load here.
+
+## What only lives in markup still gets a source guard
+
+Some things have no runtime surface even with the admin referenced: whether a row takes focus,
+whether a component binds a `Changed` callback, whether a dictionary initialiser lists a key twice
+(at runtime the later entry has simply won). Read the **source** for those — it is not a reason to
+write "acceptance-only". `EditorChangedBindingTests`, `AdminTranslationKeyTests` and
+`SubmissionListRowTests` do exactly that, and `LocaleSourceGuardTests` follows them: resolve the
 directory upwards from `AppContext.BaseDirectory`, pull out the member you care about with a regex,
 and assert what must and must not be in it.
+
+**Find the end of a Razor tag outside quotes.** An event handler in the tag is a lambda, so a scan
+to the first `>` stops inside `() => Open(…)` and silently drops every attribute written after it —
+the guard then passes while reading half a tag. `EditorChangedBindingTests` and
+`SubmissionListRowTests` both track the quote state instead.
 
 The pull is what makes it a guard rather than a grep — scanning the whole file matches the string
 anywhere, including in a comment. Anchor patterns that can be commented out (`^\s*services\.Add…`
@@ -90,9 +113,10 @@ with `RegexOptions.Multiline`), and fail loudly when the member is gone (`Assert
 "… no longer has X — update this guard.")`) rather than passing on an empty match.
 
 It is weaker than executing the code and it does not replace the acceptance gate: it catches the
-regression, not the defect. But "the admin does not load in the test host" has twice been the
-premise of a conclusion that nothing could be guarded, and twice the review found a mutation that
-restored the pre-fix behaviour with the whole suite green.
+regression, not the defect. But "the admin does not load in the test host" has three times been the
+premise of a conclusion that nothing could be guarded — twice the review found a mutation that
+restored the pre-fix behaviour with the whole suite green, and the third time the premise itself
+turned out to be wrong.
 
 ## A double answers the request, it does not replay a script
 

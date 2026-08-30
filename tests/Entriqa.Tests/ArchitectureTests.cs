@@ -70,8 +70,8 @@ public class ArchitectureTests
 
     /// <summary>
     /// Reads the project file rather than the assembly. That catches a reference which has been
-    /// added but not used yet - invisible to the IL rules above - and it works for Entriqa.Admin,
-    /// whose WASM assembly does not load in this test host. The element count is asserted too, so
+    /// added but not used yet - invisible to the IL rules above, which see a dependency only once a
+    /// type is actually used. The element count is asserted too, so
     /// a reference written in a shape the pattern does not match fails loudly instead of silently
     /// dropping out of the set.
     /// </summary>
