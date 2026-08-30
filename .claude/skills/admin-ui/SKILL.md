@@ -94,6 +94,38 @@ base class's entry; child elements (`__result-title`) need an entry of their own
 `hugo/assets/css/forms.css` styles only a subset — it deliberately provides structure, not looks,
 so the page's own CSS wins. Do not add cosmetic rules there.
 
+## The second trap: state in the address does not re-render on its own
+
+The router re-renders a page when the **path** changes and stays silent when only the **query** does.
+`Submissions.razor` keeps the form in the route and the quick filter and the page in the query, so every
+filter button and every page turn is a query-only navigation. Without an explicit subscription the
+address moves and the page does not — and the row links go on pointing at the selection the reader has
+already left, which is what makes it look like a rendering problem when it is not.
+
+```razor
+@implements IDisposable
+@code {
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (new Uri(e.Location).AbsolutePath != _path) return;   // path change: the router has it
+        _ = InvokeAsync(async () => { await ApplyAddress(); StateHasChanged(); });
+    }
+}
+```
+
+`SubmissionAddressReactionTests` guards both pages, and it is a source scan because **nothing else can
+reach this**: 186 unit tests were green while the quick filters and the pager were dead, and three
+review lenses did not see it either — no test host renders these components. Anything you move into the
+address has to be driven in the running admin before it counts. It cost an acceptance round in #11, and
+#12 (search, time range) and #13 (assignee) each add more query state to the same page.
+
+`[SupplyParameterFromQuery]` reads better than the subscription and may well work; whether it re-runs on
+a query-only navigation is exactly the framework behaviour that failed here, so it is not worth the
+retest unless someone drives it.
+
 ## Working on it
 
 The admin runs at `http://localhost:4281` behind the SWA auth emulator; port 5100 bypasses that
