@@ -1,4 +1,4 @@
-using Azure;
+﻿using Azure;
 using Azure.Data.Tables;
 
 namespace Entriqa.Data.Entities;
@@ -64,7 +64,8 @@ internal sealed class AdminStateEntity : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
     public DateTimeOffset LastVisitAt { get; set; }
-    public string? Note { get; set; }                        // housekeeping row: summary of the last run
+    public string? Note { get; set; }                        // housekeeping row: summary of the last run; consentdeletion row: the hashed address (#1)
+    public int? Count { get; set; }                          // consentdeletion row: how many proofs the erasure removed (#1)
 }
 
 internal sealed class NonceEntity : ITableEntity
