@@ -12,8 +12,8 @@ namespace Entriqa.Application.Consent;
 /// Writes, amends and ends the consent proof (#1). The one place that knows when a proof comes into
 /// existence, what it may carry and what ends it - the use cases only call in at their events.
 ///
-/// SKELETON: every method is a deliberate no-op until the implementation commit. The red tests on
-/// the issue assert against the ports below and fail because nothing reaches them yet.
+/// The proof has its own clock: the submission dies with RetentionDays, the proof is ended by an
+/// event - the GDPR erasure of the contact - and only by a timer where one is deliberately configured.
 /// </summary>
 public sealed class ConsentProofService(
     IStoreConsentProofCommand store,
@@ -83,9 +83,18 @@ public sealed class ConsentProofService(
     }
 
     /// <summary>AC 5/8: nothing happens at the default of ConsentRetentionDays = 0.</summary>
-    public Task<int> PurgeExpiredAsync(DateTimeOffset now, CancellationToken ct = default)
+    public async Task<int> PurgeExpiredAsync(DateTimeOffset now, CancellationToken ct = default)
     {
-        _ = (listExpired, delete, options, now, ct);
-        return Task.FromResult(0);
+        // The unlimited default is the point, not an oversight: the duty to prove a consent runs for
+        // as long as the consent is used, and Entriqa does not know when a contact leaves the CRM.
+        // A site that does know may put a clock on it - nobody else gets one.
+        var days = options.Value.ConsentRetentionDays;
+        if (days <= 0) return 0;
+
+        var expired = await listExpired.ExecuteAsync(now.AddDays(-days), 500, ct);
+        foreach (var proof in expired) await delete.ExecuteAsync(proof, ct);
+        if (expired.Count > 0)
+            log.LogInformation("Housekeeping: {Count} Einwilligungsnachweise nach {Days} Tagen gelöscht", expired.Count, days);
+        return expired.Count;
     }
 }
