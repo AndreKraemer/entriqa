@@ -27,11 +27,10 @@ public sealed class ReportingCloudPdfStep(IMergeDocumentPort merge, IStoreArtifa
                 yield return $"Vorlage fehlt für Ergebnis '{r.Title}'.";
             // The per-result map is the outer dimension; each template inside it is localizable, so a
             // translated quiz needs one per result AND language. PublishCheckService cannot report this
-            // one generically - only the step knows the result titles.
-            // Read "templates" raw, never through Localized: the map itself is not a locale map, only its
-            // members are - resolving it would hand back whichever result happens to come first.
-            if (config.ValueKind == JsonValueKind.Object && config.TryGetProperty("templates", out var templates)
-                && templates.ValueKind == JsonValueKind.Object)
+            // generically - only the step knows the result titles. GetRaw rather than a resolving reader:
+            // the map itself is not a locale map, so resolving it would hand back an arbitrary result.
+            var templates = config.GetRaw("templates");
+            if (templates.ValueKind == JsonValueKind.Object)
                 foreach (var r in form.Quiz.Results)
                 {
                     if (!templates.TryGetProperty(r.Id, out var forResult)) continue;

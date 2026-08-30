@@ -4,8 +4,9 @@ using Xunit;
 namespace Entriqa.Tests;
 
 /// <summary>
-/// AC 4 and AC 5 of #3 live entirely in a Razor component, which does not load in this test host. That
-/// is a reason to read its source, not a reason to leave it unguarded - see the pattern in
+/// AC 4 and AC 5 of #3 live in a Razor component, which cannot be rendered in this test host - unlike the
+/// admin's plain model classes, which <c>BuilderModelLocalizationTests</c> executes directly. That is a
+/// reason to read the component's source, not to leave it unguarded; see the pattern in
 /// <c>LocaleSourceGuardTests</c> and <c>EditorChangedBindingTests</c>. Both defects here are invisible
 /// from the outside: the step editor still renders, the operator just gets one control where the form
 /// declares two languages, or a raw JSON textarea where AC 5 forbids one.
@@ -66,12 +67,24 @@ public class StepEditorLocalizationGuardTests
     [Fact]
     public void GivenTheQuizPdfTemplateTable_WhenReadingIt_ThenEachResultOffersATemplatePerLanguage()
     {
-        var branch = Regex.Match(StepEditor(), @"@if \(prop\.Name == ""templates"".*?</table>", RegexOptions.Singleline);
+        var branch = Regex.Match(StepEditor(), @"@if \(prop\.LocalizableItems && QuizResults\.Count.*?</table>", RegexOptions.Singleline);
         Assert.True(branch.Success, "StepEditor.razor no longer has the per-result templates table - update this guard.");
 
         Assert.Contains("foreach (var loc in Locales)", branch.Value, StringComparison.Ordinal);
         Assert.Contains("TemplateFor(result.Id, l)", branch.Value, StringComparison.Ordinal);
         Assert.Contains("SetTemplateFor(result.Id, l, v)", branch.Value, StringComparison.Ordinal);
+    }
+
+    // AC 5 for the map whose members are localizable: with no quiz results there is nothing to put in the
+    // table, and the old fall-through handed the operator the raw {"legacy":{"de":…}} object in a textarea.
+    [Fact]
+    public void GivenAMapOfLocalizableMembersAndNoQuizResults_WhenReadingTheEditor_ThenItOffersAHintNotRawJson()
+    {
+        var branch = Regex.Match(StepEditor(), @"else if \(prop\.LocalizableItems\)\s*\{.*?\n                \}", RegexOptions.Singleline);
+        Assert.True(branch.Success, "StepEditor.razor no longer has an 'else if (prop.LocalizableItems)' branch - update this guard.");
+
+        Assert.DoesNotContain("textarea", branch.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("Control(", branch.Value, StringComparison.Ordinal);
     }
 
     // The steps are loaded against the language list of the moment, so the one call that keeps them in

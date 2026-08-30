@@ -52,7 +52,7 @@
             var prop = p;
             <div class="config-row">
                 <label class="ltext-label">@T[prop.Title] @(schema.Required.Contains(prop.Name) ? "*" : "")</label>
-                @if (prop.Name == "templates" && prop.Type == "object" && QuizResults.Count > 0)
+                @if (prop.LocalizableItems && QuizResults.Count > 0)
                 {
                     <table>
                         <tbody>
@@ -87,6 +87,12 @@
                             @Control(prop, Get(prop.Name, l), v => Set(prop.Name, l, v))
                         </div>
                     }
+                }
+                else if (prop.LocalizableItems)
+                {
+                    @* Its members carry a value per language, so the raw object must never be offered
+                       for typing (AC 5) - and without quiz results there is nothing to configure yet. *@
+                    <p class="hint">@T["Erst wählbar, wenn das Quiz Ergebnisse hat."]</p>
                 }
                 else
                 {

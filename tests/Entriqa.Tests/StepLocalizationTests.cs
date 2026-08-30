@@ -6,6 +6,7 @@ using NSubstitute;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Pipeline.Steps;
 using Entriqa.Application.Ports;
+using Entriqa.Application.Security;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Quiz;
 using Entriqa.Domain.Submissions;
@@ -22,24 +23,27 @@ public class StepLocalizationTests
 {
     // ---------------------------------------------------------------- the marked fields (AC 7, AC 5)
 
-    /// <summary>Every step in the catalog, so a marker on a step nobody localizes is caught too.</summary>
-    private static ISubmissionStep[] AllSteps()
-    {
-        var mail = Substitute.For<ISendTransactionalMailPort>();
-        var webhook = Substitute.For<IPostWebhookPort>();
-        return new ISubmissionStep[]
-        {
-            new NotifyMailStep(mail),
-            new DoiRequestStep(mail, TestData.Tokens()),
-            new BrevoContactStep(Substitute.For<IUpsertBrevoContactPort>(), TestData.Time),
-            new BrevoCompanyStep(Substitute.For<IUpsertBrevoCompanyPort>()),
-            new BrevoMailStep(mail, Substitute.For<IStoreArtifactPort>(), Substitute.For<ICreateDownloadLinkPort>()),
-            new LeadMagnetLinkStep(Substitute.For<ICreateDownloadLinkPort>()),
-            new ReportingCloudPdfStep(Substitute.For<IMergeDocumentPort>(), Substitute.For<IStoreArtifactPort>(), TestData.Time),
-            new TeamsNotifyStep(webhook),
-            new WebhookCallStep(webhook),
-        };
-    }
+    /// <summary>
+    /// Every step the assembly defines, discovered the way DI does rather than listed here: AC 7 is an
+    /// invariant over the whole catalog, and a tenth step marking its webhook URL localizable has to fail
+    /// it. A hand-kept list would simply not see that step.
+    /// </summary>
+    private static ISubmissionStep[] AllSteps() =>
+        typeof(ISubmissionStep).Assembly.GetTypes()
+            .Where(t => t is { IsAbstract: false, IsInterface: false } && typeof(ISubmissionStep).IsAssignableFrom(t))
+            .Select(Instantiate)
+            .ToArray();
+
+    /// <summary>Real instances, not substitutes: the steps are sealed and their schemas are ordinary
+    /// property implementations, so a mock would hand back null for every one of them.</summary>
+    private static ISubmissionStep Instantiate(Type step) =>
+        (ISubmissionStep)Activator.CreateInstance(step,
+            step.GetConstructors().Single().GetParameters().Select(p => Argument(p.ParameterType)).ToArray())!;
+
+    private static object Argument(Type type) =>
+        type == typeof(TimeProvider) ? TestData.Time
+        : type == typeof(FormTokenService) ? TestData.Tokens()          // sealed, so not substitutable
+        : Substitute.For(new[] { type }, Array.Empty<object>());
 
     /// <summary>
     /// Where a step schema marks a localizable leaf, and the JSON type of that leaf. The marker sits on the
@@ -254,7 +258,68 @@ public class StepLocalizationTests
             },
         };
 
-        Assert.DoesNotContain(Check().Check(form), i => i.Contains("Sprache", StringComparison.Ordinal));
+        // Not "no message mentioning a language": the regression this guards - a plain value no longer
+        // being read - surfaces as "keine Brevo-Liste gewählt.", which a language filter would let past.
+        Assert.Equal(Array.Empty<string>(), Check().Check(form));
+    }
+
+    [Fact]
+    public async Task GivenASingleListAndAFormInTwoLanguages_WhenTheStepRunsForEachOfThem_ThenTheSameListsAreUsed()
+    {
+        var contacts = Substitute.For<IUpsertBrevoContactPort>();
+        var step = new BrevoContactStep(contacts, TestData.Time);
+        var config = Value("""{"listIds":[7]}""");
+
+        await step.ExecuteAsync(Context("de"), config, default);
+        await step.ExecuteAsync(Context("en"), config, default);
+
+        await contacts.Received(2).UpsertAsync("a@b.de", Arg.Is<IReadOnlyList<int>>(l => l.SequenceEqual(new[] { 7 })),
+            Arg.Any<Dictionary<string, object?>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GivenASingleFileAndAFormInTwoLanguages_WhenTheStepRunsForEachOfThem_ThenTheSameFileIsLinked()
+    {
+        var links = Substitute.For<ICreateDownloadLinkPort>();
+        links.CreateAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(new Uri("https://example.org/download"));
+        var step = new LeadMagnetLinkStep(links);
+        var config = Value("""{"blob":"leadmagnets/wp.pdf"}""");
+
+        await step.ExecuteAsync(Context("de"), config, default);
+        await step.ExecuteAsync(Context("en"), config, default);
+
+        await links.Received(2).CreateAsync("leadmagnets/wp.pdf", Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
+    }
+
+    // ---------------------------------------------------------------- a blank is not a value
+
+    [Fact]
+    public void GivenALanguageWhoseValueIsBlank_WhenCheckingCoverage_ThenItCountsAsMissing()
+    {
+        // The builder drops blanks on save, but the JSON tab and the admin API write a definition
+        // straight through - and an empty blob reaches the storage as a request for a link to "".
+        Assert.Equal(new[] { "de" }, LValue.MissingLocales(Value("""{"de":"","en":"x"}"""), DeEn));
+        Assert.Equal(new[] { "de" }, LValue.MissingLocales(Value("""{"de":[],"en":[8]}"""), DeEn));
+        Assert.False(LValue.Covers(Value("""{"de":"  ","en":"x"}"""), "de"));
+    }
+
+    [Fact]
+    public void GivenALanguageWhoseValueIsBlank_WhenResolvingForIt_ThenALanguageThatHasOneIsUsed()
+    {
+        Assert.Equal("x", LValue.Resolve(Value("""{"de":"","en":"x"}"""), "de").GetString());
+    }
+
+    [Fact]
+    public void GivenALocalizableFieldThatIsBlankForOneLanguage_WhenCheckingBeforePublish_ThenItIsRefused()
+    {
+        var form = TestData.Contact() with
+        {
+            Locales = new[] { "de", "en" },
+            Pipeline = new[] { new StepDefinition("s1", "leadmagnet.link", "always", Value("""{"blob":{"de":"leadmagnets/a.pdf","en":""}}""")) },
+        };
+
+        Assert.Contains(Check().Check(form), i => i.Contains("Datei", StringComparison.Ordinal) && i.Contains("'en'", StringComparison.Ordinal));
     }
 
     // ---------------------------------------------------------------- the publish check (AC 6)

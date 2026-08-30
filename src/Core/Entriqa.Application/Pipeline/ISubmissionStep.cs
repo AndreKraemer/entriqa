@@ -102,7 +102,15 @@ public static class StepConfig
         return map;
     }
 
-    /// <summary>The raw value of a localizable property, already reduced to one language.</summary>
-    public static JsonElement Localized(this JsonElement e, string name, string? locale)
-        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var p) ? LValue.Resolve(p, locale) : default;
+    /// <summary>
+    /// A property as it is stored, without resolving anything - for a map whose <em>members</em> are the
+    /// localizable leaves, where resolving the map itself would hand back an arbitrary member. Returns
+    /// <see cref="JsonValueKind.Undefined"/> when the property is absent.
+    /// </summary>
+    public static JsonElement GetRaw(this JsonElement e, string name)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var p) ? p : default;
+
+    /// <summary>The value of a localizable property, reduced to one language.</summary>
+    private static JsonElement Localized(JsonElement e, string name, string? locale)
+        => LValue.Resolve(GetRaw(e, name), locale);
 }

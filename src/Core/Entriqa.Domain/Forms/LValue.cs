@@ -20,19 +20,31 @@ namespace Entriqa.Domain.Forms;
 /// </summary>
 public static class LValue
 {
+    /// <summary>
+    /// Nothing configured. An empty string or an empty list counts as nothing, not as a value: the
+    /// publish check would otherwise accept {"de": "", "en": "x"} as covering both languages and the
+    /// step would ask the storage for a download link to "". The builder drops blanks on save, but the
+    /// JSON tab and the admin API write a definition directly.
+    /// </summary>
+    private static bool IsBlank(JsonElement value) =>
+        value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+        || (value.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(value.GetString()))
+        || (value.ValueKind == JsonValueKind.Array && value.GetArrayLength() == 0);
+
     /// <summary>Nothing configured - as opposed to a value that merely lacks one language.</summary>
     private static bool IsEmpty(JsonElement value) =>
-        value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
-        || (value.ValueKind == JsonValueKind.Object && !value.EnumerateObject().Any());
+        IsBlank(value)
+        || (value.ValueKind == JsonValueKind.Object && value.EnumerateObject().All(p => IsBlank(p.Value)));
 
     /// <summary>The value for that language; fallback: the first entry present, exactly as <see cref="LText.Resolve"/>.</summary>
     public static JsonElement Resolve(JsonElement value, string? lang)
     {
         if (value.ValueKind != JsonValueKind.Object) return value;         // a plain value applies to every language
-        if (lang is not null && value.TryGetProperty(lang, out var mine)) return mine;
+        if (lang is not null && value.TryGetProperty(lang, out var mine) && !IsBlank(mine)) return mine;
         // Falling back beats failing: a step that sends the German template still delivers, while one that
         // throws blocks the pipeline. PublishCheckService is what stops this happening on purpose.
-        foreach (var first in value.EnumerateObject()) return first.Value;
+        foreach (var first in value.EnumerateObject())
+            if (!IsBlank(first.Value)) return first.Value;
         return default;
     }
 
@@ -41,7 +53,7 @@ public static class LValue
     {
         if (IsEmpty(value)) return false;
         if (value.ValueKind != JsonValueKind.Object) return true;
-        return value.TryGetProperty(lang, out var v) && v.ValueKind != JsonValueKind.Null;
+        return value.TryGetProperty(lang, out var v) && !IsBlank(v);
     }
 
     /// <summary>
