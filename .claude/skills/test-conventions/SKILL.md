@@ -115,6 +115,14 @@ anywhere, including in a comment. Anchor patterns that can be commented out (`^\
 with `RegexOptions.Multiline`), and fail loudly when the member is gone (`Assert.True(match.Success,
 "… no longer has X — update this guard.")`) rather than passing on an empty match.
 
+**A guard written after the code it guards has never been red.** Passing on the first run says
+nothing — it is the expected outcome whether the guard works or not. Before trusting one, apply the
+change it claims to catch, watch the suite fail, and revert. Two guards in #3 passed on first write
+and could not fail at all; four more had holes that only mutation exposed. Run the mutation through
+a path you have seen report a known-red case correctly: a harness that swallows the result reports
+every mutant as surviving, which reads as a useless guard and is not. That happened twice in #3,
+both times costing a round of chasing a guard that was fine.
+
 It is weaker than executing the code and it does not replace the acceptance gate: it catches the
 regression, not the defect. But "the admin does not load in the test host" has four times been the
 premise of a conclusion that nothing could be guarded — twice the review found a mutation that

@@ -85,8 +85,10 @@ Deliberate deviations from the standard, as complete as it is currently known:
 | Start the local environment | `npm run dev` |
 | Build the sample site alone | `npm run sample:build` |
 
-The fast gate builds `Entriqa.slnx` in Debug, runs all tests against that build, and checks the
-`eq-*` class reference against `forms.js` (`scripts/check-eq-classes.mjs`). It does **not** build
+The fast gate builds `Entriqa.slnx` in Debug, runs all tests against that build, checks the
+`eq-*` class reference against `forms.js` (`scripts/check-eq-classes.mjs`), and refuses a tracked
+file that still carries a merge conflict (`scripts/check-conflict-markers.mjs` — only C# fails to
+compile on one, so a leftover marker in Markdown, JSON or a `.razor` template would otherwise ship). It does **not** build
 the sample site — that needs Hugo and Go, which the release workflow does not have; run
 `npm run sample:build` by hand after touching `hugo/` or `samples/site/`. The full gate does the
 same in Release and additionally runs the two publishes that `release.yml` performs on a tag
