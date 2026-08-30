@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -401,7 +402,35 @@ public class ConsentProofTests
 
         await proofs.RecordDeletion.Received(1).ExecuteAsync(
             TestData.Time.GetUtcNow(), expectedHash, 2, Arg.Any<CancellationToken>());
-        Assert.DoesNotContain("eva", expectedHash, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GivenTheProofTableIsUnreachable_WhenTheDoubleOptInIsConfirmed_ThenTheConfirmationStillSucceeds()
+    {
+        // The other half of the non-critical stance: the visitor clicked a link in a mail and must
+        // see a confirmation, whatever the proof table is doing.
+        var (useCase, proofs, _, token, _) = BuildConfirm();
+        proofs.Confirm.ExecuteAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new TimeoutException("Tabelle nicht erreichbar"));
+
+        var result = await useCase.ExecuteAsync(token, ClientIp);
+
+        Assert.Equal("kontakt", result.Slug);
+    }
+
+    [Fact]
+    public async Task GivenTheAuditRowCannotBeWritten_WhenTheContactIsDeleted_ThenTheErasureStillReportsWhatItRemoved()
+    {
+        // The proofs are gone by the time the row is written; losing the row must not report the
+        // erasure itself as failed.
+        var query = Substitute.For<IListContactSubmissionsQuery>();
+        query.ListByEmailAsync("eva@example.org", Arg.Any<CancellationToken>()).Returns(Array.Empty<SubmissionListItem>());
+        var (service, proofs) = TestData.ConsentProofs();
+        proofs.DeleteByEmail.ExecuteAsync("eva@example.org", Arg.Any<CancellationToken>()).Returns(3);
+        proofs.RecordDeletion.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new TimeoutException("Tabelle nicht erreichbar"));
+
+        Assert.Equal(3, await service.DeleteForAsync("eva@example.org"));
     }
 
     [Fact]
@@ -410,5 +439,29 @@ public class ConsentProofTests
         // The one rule the storage key and the erasure audit hash share. If they ever disagree, a
         // contact's proofs are stored under one key and its erasure recorded under another.
         Assert.Equal(ConsentProof.KeyOf("eva@example.org"), ConsentProof.KeyOf("  Eva@Example.ORG "));
+    }
+
+    [Fact]
+    public void GivenThePartitionKey_WhenReadingItsSource_ThenItNormalizesThroughTheSharedRule()
+    {
+        // Entriqa.Data has no InternalsVisibleTo, so PartitionOf cannot be called from here - and the
+        // rule it must not stop delegating to is invisible from the outside: writes and the erasure
+        // both go through PartitionOf, so if it normalized differently every proof would simply be
+        // filed under the submitter's casing and become unreachable the moment the admin types
+        // another. Guarded by reading the source, the way LocaleSourceGuardTests does.
+        var source = File.ReadAllText(Path.Combine(RepositoryDirectory(), "src", "Core", "Entriqa.Data",
+                                                   "Mapping", "ConsentProofMapper.cs"));
+        var member = Regex.Match(source, @"public static string PartitionOf\(string email\).*?\n    \}", RegexOptions.Singleline);
+        Assert.True(member.Success, "ConsentProofMapper no longer has a PartitionOf member - update this guard.");
+
+        Assert.Contains("ConsentProof.KeyOf(", member.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToLowerInvariant", member.Value, StringComparison.Ordinal);   // not a second copy of the rule
+    }
+
+    private static string RepositoryDirectory()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+            if (Directory.Exists(Path.Combine(dir.FullName, "src", "Core", "Entriqa.Data"))) return dir.FullName;
+        throw new DirectoryNotFoundException("Repository root not found above " + AppContext.BaseDirectory + ".");
     }
 }

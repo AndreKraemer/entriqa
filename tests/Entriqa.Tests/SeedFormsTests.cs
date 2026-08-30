@@ -127,6 +127,9 @@ public class SeedFormsTests
         var consent = Assert.Single(fields, f => f.Type == FieldTypes.Consent);
         Assert.False(email.Required);
         Assert.False(consent.Required);
+        // collectEmail forces the address through the validator without touching Required, which
+        // would close the unticked-consent route while the two asserts above stay green.
+        Assert.Equal("optional", Load("selbsttest.json").Quiz!.CollectEmail);
     }
 
     [Fact]
