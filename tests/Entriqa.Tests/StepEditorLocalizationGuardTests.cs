@@ -107,13 +107,19 @@ public class StepEditorLocalizationGuardTests
     [Fact]
     public void GivenAPerLanguageWriter_WhenReadingIt_ThenItReportsTheChange()
     {
-        // Discovered, not listed. A hand-written list of signatures fails closed when one is renamed but
-        // is blind to a writer added later - the same staleness that made AllSteps() reflective over in
-        // StepLocalizationTests. Every void method taking a locale is a per-language writer by definition.
+        // Discovery plus an expected set, the pairing GivenTheStepCatalog_… uses over the step catalog:
+        // discovery sees a writer added later, the set sees one renamed or removed - including a locale
+        // parameter spelled differently, which discovery alone cannot notice because it matches on that
+        // very name. Both directions fail closed.
+        // The body alternation is load-bearing: an expression-bodied writer has no "\n    }" of its own,
+        // so a lazy terminator runs into the next method and the writer borrows *its* Notify(). That made
+        // the guard positional - it caught the same insertion in one place in the file and missed it in
+        // another.
         var writers = Regex.Matches(StepEditor(),
-            @"private void (\w+)\([^)]*\bstring locale\b[^)]*\).*?\n    \}", RegexOptions.Singleline);
+            @"private void (\w+)\([^)]*\bstring locale\b[^)]*\)\s*(?:=>.*?;|\{.*?\n    \})", RegexOptions.Singleline);
 
-        Assert.True(writers.Count > 0, "StepEditor.razor has no per-language writer any more - update this guard.");
+        Assert.Equal(new[] { "Set", "SetTemplateFor" },
+            writers.Cast<Match>().Select(m => m.Groups[1].Value).OrderBy(x => x, StringComparer.Ordinal));
         foreach (var writer in writers.Cast<Match>())
             // The lookahead sits at the start of the line, not after \s*: written the other way round the
             // regex backtracks over the indentation and matches a commented-out call anyway.
