@@ -102,7 +102,7 @@ public sealed class DevSeedHostedService(
             {
                 var expired = Demo(kontakt, 99, index++, now.AddDays(-(options.Value.RetentionDays + 5)));
                 await storeSubmission.ExecuteAsync(expired, ct);
-                await consentProofs.RecordAsync(kontakt.Definition.Localize("de"), expired.Values, expired, ct);
+                await consentProofs.RecordAsync(kontakt.Definition.Localize("de"), expired, ct);
                 log.LogInformation("Seed: abgelaufene Demo-Einsendung {Id} mit Einwilligungsnachweis angelegt", expired.Id);
             }
             catch (Exception ex) { log.LogWarning(ex, "Abgelaufene Demo-Einsendung übersprungen"); }

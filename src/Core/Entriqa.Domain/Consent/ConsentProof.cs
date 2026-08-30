@@ -15,6 +15,13 @@ public sealed class ConsentProof
     public required DateTimeOffset SubmittedAt { get; init; }
     public required string ConsentText { get; init; }      // the exact wording the visitor agreed to
     public string? IpHash { get; init; }
-    public DateTimeOffset? ConfirmedAt { get; set; }
-    public string? ConfirmedIpHash { get; set; }
+    public DateTimeOffset? ConfirmedAt { get; init; }
+    public string? ConfirmedIpHash { get; init; }
+
+    /// <summary>
+    /// How an address is compared and filed. Addresses match case-insensitively, so everything that
+    /// has to find the same proof again - the storage key and the erasure audit hash - normalizes here
+    /// and nowhere else. The table-key sanitation sits on top of this, in the data layer.
+    /// </summary>
+    public static string KeyOf(string email) => email.Trim().ToLowerInvariant();
 }

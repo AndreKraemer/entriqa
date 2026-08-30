@@ -28,10 +28,11 @@ public sealed class ConsentProofService(
     ILogger<ConsentProofService> log)
 {
     /// <summary>AC 1/3/4: a proof for a ticked consent, carrying the evidence and nothing else.</summary>
-    public async Task RecordAsync(FormDefinition def, IReadOnlyDictionary<string, string> values, Submission submission,
-                                  CancellationToken ct = default)
+    public async Task RecordAsync(FormDefinition def, Submission submission, CancellationToken ct = default)
     {
-        if (!def.ConsentGiven(values)) return;
+        // Read from the submission, never from a second dictionary: the rule has to be evaluated
+        // against exactly the values that were stored, or the proof can disagree with what it proves.
+        if (!def.ConsentGiven(submission.Values)) return;
         if (submission.Email is not { Length: > 0 } email) return;      // a proof nobody can be attributed to is not evidence
 
         var proof = new ConsentProof
@@ -76,8 +77,20 @@ public sealed class ConsentProofService(
 
         // Recorded even when nothing was found, and without the plaintext address. A missing row
         // would otherwise be ambiguous between "never had a proof" and "the erasure never ran" -
-        // and the point of this row is to answer that question years later.
-        await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(email) ?? "", count, ct);
+        // and the point of this row is to answer that question years later. Which is also why the
+        // hash is taken over the normalized address: deletion matches case-insensitively, so a row
+        // filed under the casing the admin happened to pass could never be found again.
+        // The row is only as unguessable as EntriqaOptions.IpHashSalt - addresses are enumerable.
+        try
+        {
+            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "", count, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The proofs are already gone at this point; losing the audit row must not report the
+            // erasure itself as failed, but it is the one failure here worth an error.
+            log.LogError(ex, "Löschvermerk für {Count} Einwilligungsnachweise konnte nicht geschrieben werden", count);
+        }
         log.LogInformation("Einwilligungsnachweise gelöscht: {Count}", count);
         return count;
     }

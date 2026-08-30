@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using Entriqa.Application.Consent;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;

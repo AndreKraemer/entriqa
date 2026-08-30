@@ -136,13 +136,25 @@ public class ConsentProofTests
     [Fact]
     public async Task GivenAFormWithATickedConsent_WhenTheSubmissionIsStored_ThenAProofCarriesTheEvidenceOfThatConsent()
     {
-        var (useCase, proofs, clock, token) = BuildSubmit(TestData.Contact());
+        // Bilingual consent text submitted with Lang "en": "im Wortlaut" means the wording this
+        // visitor saw, not the one the default locale would have shown. A monolingual fixture cannot
+        // tell the two apart, and this repository has shipped that class of defect twice (#41, #49).
+        var bilingual = TestData.Contact() with
+        {
+            Locales = new[] { "de", "en" },
+            Fields = TestData.Contact().Fields
+                .Select(f => f.Type == FieldTypes.Consent
+                    ? f with { Text = new LText(new Dictionary<string, string> { ["de"] = "Ich stimme zu.", ["en"] = "I agree." }) }
+                    : f)
+                .ToList(),
+        };
+        var (useCase, proofs, clock, token) = BuildSubmit(bilingual);
         var values = new Dictionary<string, string>
         {
             ["name"] = "Eva", ["email"] = "eva@example.org", ["msg"] = "Hallo", ["consent"] = "true",
         };
 
-        var result = await useCase.ExecuteAsync(new SubmitFormRequest("kontakt", token, values, null, null, ClientIp));
+        var result = await useCase.ExecuteAsync(new SubmitFormRequest("kontakt", token, values, null, null, ClientIp, "en"));
 
         await proofs.Store.Received(1).ExecuteAsync(Arg.Any<ConsentProof>(), Arg.Any<CancellationToken>());
         var written = (ConsentProof)proofs.Store.ReceivedCalls().Single().GetArguments()[0]!;
@@ -151,9 +163,49 @@ public class ConsentProofTests
         Assert.Equal("kontakt", written.Slug);
         Assert.Equal(7, written.Version);
         Assert.Equal(clock.GetUtcNow(), written.SubmittedAt);
-        Assert.Equal("Ich stimme zu.", written.ConsentText);
+        Assert.Equal("I agree.", written.ConsentText);
         Assert.Equal(new IpHasher(Options.Create(TestData.Options())).Hash(ClientIp), written.IpHash);
         Assert.Null(written.ConfirmedAt);
+    }
+
+    [Fact]
+    public async Task GivenASubmissionOlderThanTheClock_WhenTheProofIsRecorded_ThenItCarriesTheSubmissionTimeNotTheWriteTime()
+    {
+        // AC 1 says Einsendungszeitpunkt. In the use-case harness the two coincide, so time.GetUtcNow()
+        // would pass there - and SubmittedAt is the field the retention purge of AC 8 filters on, and
+        // the dev seed writes a proof for a submission back-dated past RetentionDays.
+        var clock = new FakeTimeProvider(Start);
+        var (service, proofs) = TestData.ConsentProofs(clock);
+        var submitted = Start.AddDays(-200);
+        var submission = new Submission
+        {
+            Id = "kontakt:0001", Slug = "kontakt", Version = 7, CreatedAt = submitted,
+            Values = new Dictionary<string, string> { ["consent"] = "true" },
+            Email = "eva@example.org", ConsentText = "Ich stimme zu.",
+        };
+
+        await service.RecordAsync(FormWith(Consent(required: true)), submission);
+
+        var written = (ConsentProof)proofs.Store.ReceivedCalls().Single().GetArguments()[0]!;
+        Assert.Equal(submitted, written.SubmittedAt);
+    }
+
+    [Fact]
+    public async Task GivenTheProofTableIsUnreachable_WhenTheSubmissionIsStored_ThenTheSubmissionStillSucceeds()
+    {
+        // The deliberate interpretation the issue does not state: a table timeout must not cost a
+        // conversion. Without this, neutering both catch filters leaves the whole suite green.
+        var (useCase, proofs, _, token) = BuildSubmit(TestData.Contact());
+        proofs.Store.ExecuteAsync(Arg.Any<ConsentProof>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new TimeoutException("Tabelle nicht erreichbar"));
+        var values = new Dictionary<string, string>
+        {
+            ["name"] = "Eva", ["email"] = "eva@example.org", ["msg"] = "Hallo", ["consent"] = "true",
+        };
+
+        var result = await useCase.ExecuteAsync(new SubmitFormRequest("kontakt", token, values, null, null, ClientIp));
+
+        Assert.StartsWith("kontakt:", result.SubmissionId, StringComparison.Ordinal);
     }
 
     // ---- AC 3: the proof carries nothing else -------------------------------------------------
@@ -191,11 +243,11 @@ public class ConsentProofTests
         var submission = new Submission
         {
             Id = "kontakt:0001", Slug = "kontakt", Version = 7, CreatedAt = Start,
-            Values = new Dictionary<string, string>(), Email = "eva@example.org",
-            ConsentText = "Ich stimme zu.",
+            Values = new Dictionary<string, string> { ["email"] = "eva@example.org" },
+            Email = "eva@example.org", ConsentText = "Ich stimme zu.",
         };
 
-        await service.RecordAsync(form, new Dictionary<string, string> { ["email"] = "eva@example.org" }, submission);
+        await service.RecordAsync(form, submission);
 
         await proofs.Store.DidNotReceive().ExecuteAsync(Arg.Any<ConsentProof>(), Arg.Any<CancellationToken>());
     }
@@ -234,6 +286,27 @@ public class ConsentProofTests
         await useCase.ExecuteAsync(token, ClientIp);
 
         await proofs.Confirm.Received(1).ExecuteAsync(submission.Id, clock.GetUtcNow(), expectedHash, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GivenAConfirmationRecordedEarlier_WhenTheProofIsAmended_ThenItCarriesTheClickTimeNotTheWriteTime()
+    {
+        // AC 2 says Bestätigungszeitpunkt. Inside ConfirmSubmissionUseCase the click and the write
+        // share one clock tick, so time.GetUtcNow() passes there - the housekeeping sweep that picks
+        // up a stalled run hours later is where the two come apart.
+        var clock = new FakeTimeProvider(Start);
+        var (service, proofs) = TestData.ConsentProofs(clock);
+        var clickedAt = Start.AddHours(-3);
+        var submission = new Submission
+        {
+            Id = "kontakt:0001", Slug = "kontakt", Version = 7, CreatedAt = Start.AddHours(-4),
+            Values = new Dictionary<string, string>(), Email = "eva@example.org",
+            ConfirmedAt = clickedAt, ConfirmedIpHash = "abc123",
+        };
+
+        await service.ConfirmAsync(submission);
+
+        await proofs.Confirm.Received(1).ExecuteAsync(submission.Id, clickedAt, "abc123", Arg.Any<CancellationToken>());
     }
 
     // ---- AC 5 + 6: the housekeeping cannot reach the proof --------------------------------------
@@ -304,23 +377,38 @@ public class ConsentProofTests
         await useCase.ExecuteAsync("eva@example.org");
 
         await proofs.DeleteByEmail.Received(1).ExecuteAsync("eva@example.org", Arg.Any<CancellationToken>());
+
+        // Recorded even though nothing was found: a missing row would be ambiguous between "never
+        // had a proof" and "the erasure never ran", which is the question the row exists to answer.
+        await proofs.RecordDeletion.Received(1).ExecuteAsync(
+            TestData.Time.GetUtcNow(), Arg.Any<string>(), 0, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GivenDeletedProofs_WhenTheContactIsDeleted_ThenTheErasureIsRecordedWithoutThePlaintextAddress()
     {
-        const string email = "eva@example.org";
+        // Mixed case on purpose: deletion matches case-insensitively, so a row filed under the casing
+        // the admin happened to pass could never be found again from the normalized address.
+        const string asTyped = "Eva@Example.org";
         var query = Substitute.For<IListContactSubmissionsQuery>();
-        query.ListByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(Array.Empty<SubmissionListItem>());
+        query.ListByEmailAsync(asTyped, Arg.Any<CancellationToken>()).Returns(Array.Empty<SubmissionListItem>());
         var (service, proofs) = TestData.ConsentProofs();
-        proofs.DeleteByEmail.ExecuteAsync(email, Arg.Any<CancellationToken>()).Returns(2);
+        proofs.DeleteByEmail.ExecuteAsync(asTyped, Arg.Any<CancellationToken>()).Returns(2);
         var useCase = new DeleteContactUseCase(query, Substitute.For<IDeleteSubmissionAdminUseCase>(), service);
+        var expectedHash = new IpHasher(Options.Create(TestData.Options())).Hash("eva@example.org")!;
 
-        await useCase.ExecuteAsync(email);
+        await useCase.ExecuteAsync(asTyped);
 
         await proofs.RecordDeletion.Received(1).ExecuteAsync(
-            TestData.Time.GetUtcNow(),
-            Arg.Is<string>(h => h.Length > 0 && !h.Contains(email, StringComparison.OrdinalIgnoreCase)),
-            2, Arg.Any<CancellationToken>());
+            TestData.Time.GetUtcNow(), expectedHash, 2, Arg.Any<CancellationToken>());
+        Assert.DoesNotContain("eva", expectedHash, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GivenAddressesDifferingOnlyInCaseAndPadding_WhenTheyAreKeyed_ThenTheyResolveToTheSameKey()
+    {
+        // The one rule the storage key and the erasure audit hash share. If they ever disagree, a
+        // contact's proofs are stored under one key and its erasure recorded under another.
+        Assert.Equal(ConsentProof.KeyOf("eva@example.org"), ConsentProof.KeyOf("  Eva@Example.ORG "));
     }
 }

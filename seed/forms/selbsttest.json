@@ -14,8 +14,8 @@
     { "id": "consent", "type": "consent",
       "label": { "de": "Einwilligung", "en": "Consent" },
       "text": {
-        "de": "Ich möchte die Auswertung per E-Mail erhalten und bin mit der Verarbeitung meiner Adresse einverstanden.",
-        "en": "I would like to receive the result by email and agree to my address being processed."
+        "de": "Ich bin einverstanden, dass meine Adresse zur Bearbeitung meines Selbsttests verarbeitet wird.",
+        "en": "I agree to my address being processed so that my self-check can be dealt with."
       } }
   ],
   "quiz": {

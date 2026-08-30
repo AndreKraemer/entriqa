@@ -1,4 +1,4 @@
-﻿using Entriqa.Application.Consent;
+using Entriqa.Application.Consent;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Submissions;

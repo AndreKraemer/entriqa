@@ -14,7 +14,7 @@ internal static class ConsentProofMapper
 
     public static string PartitionOf(string email)
     {
-        var key = email.Trim().ToLowerInvariant();
+        var key = ConsentProof.KeyOf(email);
         return string.Create(key.Length, key, (span, source) =>
         {
             for (var i = 0; i < source.Length; i++)

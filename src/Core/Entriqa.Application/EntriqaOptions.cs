@@ -1,4 +1,4 @@
-﻿using Entriqa.Domain.Localization;
+using Entriqa.Domain.Localization;
 
 namespace Entriqa.Application;
 

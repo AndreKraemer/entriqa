@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Entriqa.Domain.Validation;
 
 namespace Entriqa.Domain.Forms;
