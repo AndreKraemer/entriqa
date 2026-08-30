@@ -81,13 +81,12 @@ A layering mistake fails the gate — it is not something a reviewer has to catc
 ## The admin *does* load — measure before you conclude it cannot
 
 `Entriqa.Admin` is a Blazor WASM project, and for a long time the tests here said its assembly does
-not load in this test host. **That was never measured, and it is false** — the belief survived three
-stories, and it cost #3 a defect that four source guards could not see: the builder round trip that
-rewrote every saved value had no test because nobody tried to write one. Since #11 the test project
-references the admin, and its plain service types load and run like any other. So logic in
-`Services/*.cs` gets ordinary executing tests: `SubmissionSelectionTests` and
-`BuilderModelLocalizationTests` are the examples. Put the decidable part of a page *there* rather
-than in the markup, and it is testable.
+not load in this test host. **That was never measured, and it is false** — it cost #3 a defect that
+four source guards could not see: the builder round trip that rewrote every saved value had no test
+because nobody tried to write one. Since #11 the test project references the admin, and its plain
+service types load and run like any other. So logic in `Services/*.cs` gets ordinary executing
+tests: `SubmissionSelectionTests` and `BuilderModelLocalizationTests` are the examples. Put the
+decidable part of a page *there* rather than in the markup, and it is testable.
 
 Component *types* load too, but nothing renders one — there is no bUnit here. Do not read this as an
 invitation to write component tests; markup still needs the source guards below.
@@ -102,9 +101,9 @@ whether a component binds a `Changed` callback, whether a handler reports its ch
 dictionary initialiser lists a key twice (at runtime the later entry has simply won). Read the
 **source** for those — it is not a reason to write "acceptance-only". `EditorChangedBindingTests`,
 `AdminTranslationKeyTests`, `SubmissionListRowTests` and `StepEditorLocalizationGuardTests` do
-exactly that, and `LocaleSourceGuardTests` follows them: resolve the
-directory upwards from `AppContext.BaseDirectory`, pull out the member you care about with a regex,
-and assert what must and must not be in it.
+exactly that, and `LocaleSourceGuardTests` follows them: resolve the directory upwards from
+`AppContext.BaseDirectory`, pull out the member you care about with a regex, and assert what must
+and must not be in it.
 
 **Find the end of a Razor tag outside quotes.** An event handler in the tag is a lambda, so a scan
 to the first `>` stops inside `() => Open(…)` and silently drops every attribute written after it —
@@ -117,10 +116,10 @@ with `RegexOptions.Multiline`), and fail loudly when the member is gone (`Assert
 "… no longer has X — update this guard.")`) rather than passing on an empty match.
 
 It is weaker than executing the code and it does not replace the acceptance gate: it catches the
-regression, not the defect. But "the admin does not load in the test host" has three times been the
+regression, not the defect. But "the admin does not load in the test host" has four times been the
 premise of a conclusion that nothing could be guarded — twice the review found a mutation that
-restored the pre-fix behaviour with the whole suite green, and the third time the premise itself
-turned out to be wrong.
+restored the pre-fix behaviour with the whole suite green, once (#3) it hid a round-trip defect from
+four source guards, and the fourth time the premise itself turned out to be wrong.
 
 ## A double answers the request, it does not replay a script
 
