@@ -60,7 +60,7 @@ public sealed class AdminFunctions(
         principal.RequireRole(req, "admin");
         var email = req.Query["email"].FirstOrDefault() ?? "";
         if (email.Length == 0) return new BadRequestResult();
-        return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, ct) });
+        return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, principal.UserName(req), ct) });
     }
 
     /// <summary>Time-limited download link to a visitor upload (a value of one submission).</summary>

@@ -22,6 +22,7 @@ public sealed class ConsentProofService(
     IRecordConsentDeletionCommand recordDeletion,
     IListExpiredConsentProofsQuery listExpired,
     IDeleteConsentProofCommand delete,
+    IListConsentProofsByEmailQuery listByEmail,
     IpHasher hasher,
     IOptions<EntriqaOptions> options,
     TimeProvider time,
@@ -68,8 +69,22 @@ public sealed class ConsentProofService(
         }
     }
 
+    /// <summary>#2 AC 1: every proof of one address, for the admin's search.</summary>
+    public Task<IReadOnlyList<ConsentProof>> ListForAsync(string email, CancellationToken ct = default)
+    {
+        _ = listByEmail;                                    // the port this will read - skeleton, no body yet (#2)
+        throw new NotImplementedException("#2");
+    }
+
+    /// <summary>
+    /// #2 AC 3: one revoked consent, removed on its own - the surgical instrument next to the
+    /// contact-wide erasure below. Records the same audit row, plus which proof it was.
+    /// </summary>
+    public Task<bool> DeleteOneAsync(string email, string submissionId, string by, CancellationToken ct = default)
+        => throw new NotImplementedException("#2");
+
     /// <summary>AC 7: GDPR erasure of a contact, plus the audit trail of that erasure.</summary>
-    public async Task<int> DeleteForAsync(string email, CancellationToken ct = default)
+    public async Task<int> DeleteForAsync(string email, string by, CancellationToken ct = default)
     {
         // On the address, not on the submissions: after the retention period the contact has none
         // left, and the proof is exactly what the erasure has to reach.
@@ -83,7 +98,10 @@ public sealed class ConsentProofService(
         // The row is only as unguessable as EntriqaOptions.IpHashSalt - addresses are enumerable.
         try
         {
-            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "", count, ct);
+            // No submission id: a contact-wide erasure removes whatever was there, and the count is
+            // the whole answer. A single deletion (#2) names its proof instead.
+            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "",
+                                              count, by, null, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

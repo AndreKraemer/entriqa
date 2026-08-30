@@ -375,14 +375,14 @@ public class ConsentProofTests
         var (service, proofs) = TestData.ConsentProofs();
         var useCase = new DeleteContactUseCase(query, Substitute.For<IDeleteSubmissionAdminUseCase>(), service);
 
-        await useCase.ExecuteAsync("eva@example.org");
+        await useCase.ExecuteAsync("eva@example.org", "kim@admin.example");
 
         await proofs.DeleteByEmail.Received(1).ExecuteAsync("eva@example.org", Arg.Any<CancellationToken>());
 
         // Recorded even though nothing was found: a missing row would be ambiguous between "never
         // had a proof" and "the erasure never ran", which is the question the row exists to answer.
         await proofs.RecordDeletion.Received(1).ExecuteAsync(
-            TestData.Time.GetUtcNow(), Arg.Any<string>(), 0, Arg.Any<CancellationToken>());
+            TestData.Time.GetUtcNow(), Arg.Any<string>(), 0, "kim@admin.example", Arg.Is<string?>(x => x == null), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -398,10 +398,12 @@ public class ConsentProofTests
         var useCase = new DeleteContactUseCase(query, Substitute.For<IDeleteSubmissionAdminUseCase>(), service);
         var expectedHash = new IpHasher(Options.Create(TestData.Options())).Hash("eva@example.org")!;
 
-        await useCase.ExecuteAsync(asTyped);
+        await useCase.ExecuteAsync(asTyped, "kim@admin.example");
 
+        // #2: and it names the admin who triggered it. A contact-wide erasure passes no submission id -
+        //     it removes whatever was there, and the count is the whole answer.
         await proofs.RecordDeletion.Received(1).ExecuteAsync(
-            TestData.Time.GetUtcNow(), expectedHash, 2, Arg.Any<CancellationToken>());
+            TestData.Time.GetUtcNow(), expectedHash, 2, "kim@admin.example", Arg.Is<string?>(x => x == null), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -427,10 +429,11 @@ public class ConsentProofTests
         query.ListByEmailAsync("eva@example.org", Arg.Any<CancellationToken>()).Returns(Array.Empty<SubmissionListItem>());
         var (service, proofs) = TestData.ConsentProofs();
         proofs.DeleteByEmail.ExecuteAsync("eva@example.org", Arg.Any<CancellationToken>()).Returns(3);
-        proofs.RecordDeletion.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        proofs.RecordDeletion.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<int>(),
+                                           Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(_ => throw new TimeoutException("Tabelle nicht erreichbar"));
 
-        Assert.Equal(3, await service.DeleteForAsync("eva@example.org"));
+        Assert.Equal(3, await service.DeleteForAsync("eva@example.org", "kim@admin.example"));
     }
 
     [Fact]

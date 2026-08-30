@@ -23,3 +23,16 @@ internal sealed class ListExpiredConsentProofsQuery(TableStorage storage) : ILis
         return result;
     }
 }
+
+/// <summary>
+/// The admin's search (#2). A point query, not a scan: the partition key IS the normalized address,
+/// which is also what makes the search case-insensitive without a second rule.
+/// </summary>
+internal sealed class ListConsentProofsByEmailQuery(TableStorage storage) : IListConsentProofsByEmailQuery
+{
+    public Task<IReadOnlyList<ConsentProof>> ExecuteAsync(string email, CancellationToken ct = default)
+    {
+        _ = storage;                                        // skeleton, no body yet (#2)
+        throw new NotImplementedException("#2");
+    }
+}

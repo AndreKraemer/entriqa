@@ -1,0 +1,35 @@
+@page "/einwilligungen"
+@inject AdminApi Api
+@inject IJSRuntime Js
+@inject Ui T
+
+@* Skeleton for #2. The address field and the found-branch are here so the page has a spine; the
+   no-consent state, the per-row delete, its confirmation and the re-search after a delete are the
+   implementation, and the story's guards are red until they exist. *@
+
+<h1>@T["Einwilligungen"]</h1>
+
+<div class="filters">
+    <input placeholder="@T["E-Mail"]" style="min-width:280px" @bind="_address" />
+    <button class="btn" @onclick="Search">@T["Suchen"]</button>
+</div>
+
+@if (_result.State == ConsentSearchState.Found)
+{
+    <ul>@foreach (var p in _result.Proofs) { <li>@p.Slug</li> }</ul>
+}
+
+@code {
+    private ConsentSearchResult _result = ConsentSearch.Idle();
+    private string _address = "";
+
+    private Task Search()
+    {
+        throw new NotImplementedException("#2");
+    }
+
+    private Task DeleteProof(ConsentProofView proof)
+    {
+        throw new NotImplementedException("#2");
+    }
+}

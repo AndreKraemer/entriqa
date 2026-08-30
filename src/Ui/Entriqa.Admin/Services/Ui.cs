@@ -448,6 +448,8 @@ public sealed class Ui
 
         // Kontakte-Sicht
         ["Kontakte"] = "Contacts",
+        ["Einwilligungen"] = "Consents",
+        ["Suchen"] = "Search",
         ["Firmen"] = "Companies",
         ["Firma"] = "Company",
         ["Wer hat je etwas eingesendet – aggregiert aus den Einsendungen. Die Aufbewahrungsfrist begrenzt die Historie; der dauerhafte Kontakt-Zustand lebt in Brevo."] =

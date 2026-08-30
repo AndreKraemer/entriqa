@@ -75,13 +75,14 @@ internal sealed class DeleteContactUseCase(
     IDeleteSubmissionAdminUseCase deleteSubmission,
     ConsentProofService consentProofs) : IDeleteContactUseCase
 {
-    public async Task<int> ExecuteAsync(string email, CancellationToken ct = default)
+    public async Task<int> ExecuteAsync(string email, string by, CancellationToken ct = default)
     {
         var items = await query.ListByEmailAsync(email, ct);
         foreach (var s in items) await deleteSubmission.ExecuteAsync(s.Id, ct);
         // #1: on the address, not on the submissions - after the retention period there are none left,
         //     and the proof is exactly what has to go with the erasure.
-        await consentProofs.DeleteForAsync(email, ct);
+        // #2: the audit row names the admin who triggered it, here as well as for a single proof.
+        await consentProofs.DeleteForAsync(email, by, ct);
         return items.Count;
     }
 }

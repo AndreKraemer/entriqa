@@ -66,6 +66,8 @@ internal sealed class AdminStateEntity : ITableEntity
     public DateTimeOffset LastVisitAt { get; set; }
     public string? Note { get; set; }                        // housekeeping row: summary of the last run; consentdeletion row: the hashed address (#1)
     public int? Count { get; set; }                          // consentdeletion row: how many proofs the erasure removed (#1)
+    public string? By { get; set; }                          // consentdeletion row: the admin account that triggered it (#2)
+    public string? SubmissionId { get; set; }                // consentdeletion row: the single proof that was removed, null for a contact-wide erasure (#2)
 }
 
 internal sealed class NonceEntity : ITableEntity

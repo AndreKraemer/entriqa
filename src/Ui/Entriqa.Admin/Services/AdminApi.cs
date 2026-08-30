@@ -193,6 +193,10 @@ public static class Errors
 public sealed record FormListItem(string Slug, string Name, string Type, string Status, int PublishedVersion, DateTimeOffset UpdatedAt);
 public sealed record ContactSummary(string Email, string? Name, string? Company, int Count,
     DateTimeOffset FirstAt, DateTimeOffset LastAt, string? BrevoContactId, List<string> Slugs);
+/// <summary>One consent proof as the admin reads it (#2) - the wording as it was ticked, never the form's current text.</summary>
+public sealed record ConsentProofView(string Email, string SubmissionId, string Slug, int Version,
+    DateTimeOffset SubmittedAt, DateTimeOffset? ConfirmedAt, string ConsentText,
+    string? IpHash, string? ConfirmedIpHash);
 public sealed record StepDescriptorDto(string Key, string Name, string Description, string Mode, bool SplitsPhase,
     List<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault,
     List<MailParamDto>? MailParams = null);
