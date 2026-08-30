@@ -9,7 +9,15 @@
   },
   "submitLabel": { "de": "Auswerten", "en": "Evaluate" },
   "handling": false,
-  "fields": [],
+  "fields": [
+    { "id": "email", "type": "email", "label": { "de": "E-Mail (optional)", "en": "Email (optional)" } },
+    { "id": "consent", "type": "consent",
+      "label": { "de": "Einwilligung", "en": "Consent" },
+      "text": {
+        "de": "Ich möchte die Auswertung per E-Mail erhalten und bin mit der Verarbeitung meiner Adresse einverstanden.",
+        "en": "I would like to receive the result by email and agree to my address being processed."
+      } }
+  ],
   "quiz": {
     "scoring": "sum",
     "collectEmail": "optional",

@@ -3,6 +3,9 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Entriqa.Application;
+using Entriqa.Application.Consent;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Forms;
@@ -25,6 +28,8 @@ public sealed class DevSeedHostedService(
     IListRecentSubmissionsQuery recent,
     IStoreSubmissionCommand storeSubmission,
     SubmissionPipelineService pipeline,
+    ConsentProofService consentProofs,
+    IOptions<EntriqaOptions> options,
     TimeProvider time,
     ILogger<DevSeedHostedService> log) : IHostedService
 {
@@ -86,6 +91,23 @@ public sealed class DevSeedHostedService(
                 catch (Exception ex) { log.LogWarning(ex, "Demo-Einsendung {Slug} #{Index} übersprungen", slug, i); }
             }
         }
+
+        // One submission already past RetentionDays, together with its consent proof (#1). A housekeeping
+        // run deletes the submission and has to leave the proof standing - without this pair the storage
+        // inspection the criterion is accepted on has nothing to inspect. The proof goes through
+        // ConsentProofService, so the seed cannot drift away from the rule that decides when one exists.
+        if (await getPublished.ExecuteAsync("kontakt", ct) is { } kontakt)
+        {
+            try
+            {
+                var expired = Demo(kontakt, 99, index++, now.AddDays(-(options.Value.RetentionDays + 5)));
+                await storeSubmission.ExecuteAsync(expired, ct);
+                await consentProofs.RecordAsync(kontakt.Definition.Localize("de"), expired.Values, expired, ct);
+                log.LogInformation("Seed: abgelaufene Demo-Einsendung {Id} mit Einwilligungsnachweis angelegt", expired.Id);
+            }
+            catch (Exception ex) { log.LogWarning(ex, "Abgelaufene Demo-Einsendung übersprungen"); }
+        }
+
         log.LogInformation("Seed: {Count} Demo-Einsendungen angelegt", index);
     }
 
