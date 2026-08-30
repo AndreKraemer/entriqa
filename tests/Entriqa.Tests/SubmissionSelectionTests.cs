@@ -41,6 +41,19 @@ public class SubmissionSelectionTests
     public void GivenAnAddressWithAFilterTheListDoesNotOffer_WhenReadingItBack_ThenNoFilterApplies() =>
         Assert.Null(SubmissionSelection.FromQuery(null, "?filter=erledigt").Quick);
 
+    /// <summary>The whitelist has to let every filter the list offers through - narrowing it silently drops
+    /// a bookmarked selection, which looks exactly like the address being read correctly.</summary>
+    [Theory]
+    [InlineData("new")]
+    [InlineData("todo")]
+    [InlineData("waiting")]
+    [InlineData("failed")]
+    public void GivenAnAddressWithAFilterTheListOffers_WhenReadingItBack_ThenThatFilterSurvives(string quick)
+    {
+        Assert.Contains(quick, SubmissionSelection.QuickFilters);
+        Assert.Equal(quick, SubmissionSelection.FromQuery(null, $"?filter={quick}").Quick);
+    }
+
     [Fact]
     public void GivenABareDetailAddressWithoutASelection_WhenReadingItBack_ThenTheDefaultSelectionApplies() =>
         Assert.Equal(SubmissionSelection.Default, SubmissionSelection.FromQuery(null, ""));
@@ -86,6 +99,13 @@ public class SubmissionSelectionTests
     [Fact]
     public void GivenASelectionWithoutFormOrFilter_WhenLabellingTheWayBack_ThenItNamesAllSubmissions() =>
         Assert.Equal("Zurück zu allen Einsendungen", SubmissionSelection.Default.BackLabel(new Ui(), null));
+
+    /// <summary>AC3: the label must not widen the selection just because the form's display name is not to
+    /// hand - the link underneath still leads to that one form.</summary>
+    [Fact]
+    public void GivenASelectionOnAFormWhoseNameIsUnknown_WhenLabellingTheWayBack_ThenItNamesTheFormItself() =>
+        Assert.Equal("Zurück zu kontakt · Zu bearbeiten",
+            new SubmissionSelection("kontakt", "todo", 1).BackLabel(new Ui(), null));
 
     [Fact]
     public void GivenASelectionFilteredToFailures_WhenLabellingTheWayBack_ThenItNamesThatFilter() =>
@@ -161,13 +181,15 @@ public class SubmissionSelectionTests
     [Fact]
     public void GivenASubmissionThatIsNotInTheSelection_WhenAskingAboutIt_ThenItHasNoPlaceAndNoNeighbours()
     {
-        var selection = new SubmissionSelection("kontakt", "todo", 2);
+        // Page 99 so that "stays in range" is distinguishable from "left alone" - the case the fallback exists
+        // for is precisely an address carried back from a submission the selection no longer holds.
+        var selection = new SubmissionSelection("kontakt", "todo", 99);
         var items = Kontakt(selection);
 
         Assert.Equal(0, SubmissionSelection.PositionOf(items, "s05"));      // filtered out: handling "done"
         Assert.Null(SubmissionSelection.Next(items, "s05"));
         Assert.Null(SubmissionSelection.Previous(items, "s05"));
-        Assert.Equal(2, selection.AtPageContaining(items, "s05").Page);     // stays in range instead of guessing
+        Assert.Equal(2, selection.AtPageContaining(items, "s05").Page);     // 16 open kontakt rows -> 2 pages
     }
 
     // ---- Walking the neighbours (AC4) ----

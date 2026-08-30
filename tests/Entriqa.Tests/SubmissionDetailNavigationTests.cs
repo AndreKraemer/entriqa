@@ -4,30 +4,22 @@ namespace Entriqa.Tests;
 
 /// <summary>
 /// Issue #11, AC5: at the first and the last submission of a selection the respective direction must not be
-/// triggerable. SubmissionSelectionTests proves that Next and Previous have no answer there; that the arrows
-/// are actually bound to it lives in the markup and has no runtime surface, so removing either binding leaves
-/// the whole suite green while both ends become clickable. This reads the two tags.
+/// triggerable. SubmissionSelectionTests proves that Next and Previous have no answer there; that each arrow
+/// is bound to its own direction lives in the markup and has no runtime surface. Both halves are asserted on
+/// the same tag - apart, they are satisfied by a page whose two arrows walk the wrong way round.
 /// </summary>
 public class SubmissionDetailNavigationTests
 {
     [Theory]
     [InlineData("Previous")]
     [InlineData("Next")]
-    public void GivenTheDetailPage_WhenInspectingItsArrows_ThenEachIsDisabledWhereItsDirectionEnds(string direction)
+    public void GivenTheDetailPage_WhenInspectingItsArrows_ThenEachIsDisabledWhereItsOwnDirectionEnds(string direction)
     {
-        var markup = File.ReadAllText(Path.Combine(AdminDirectory(), "Pages", "SubmissionDetailPage.razor"));
+        var markup = AdminMarkup.Read("Pages", "SubmissionDetailPage.razor");
 
-        Assert.Contains($"disabled=\"@({direction} is null)\"", markup, StringComparison.Ordinal);
-        Assert.Contains($"@onclick=\"() => Open({direction})\"", markup, StringComparison.Ordinal);
-    }
+        var button = Assert.Single(AdminMarkup.Tags(markup, "<button"),
+            tag => tag.Contains($"Open({direction})", StringComparison.Ordinal));
 
-    private static string AdminDirectory()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var admin = Path.Combine(dir.FullName, "src", "Ui", "Entriqa.Admin");
-            if (Directory.Exists(admin)) return admin;
-        }
-        throw new DirectoryNotFoundException($"Entriqa.Admin not found above {AppContext.BaseDirectory}");
+        Assert.Contains($"disabled=\"@({direction} is null)\"", button, StringComparison.Ordinal);
     }
 }

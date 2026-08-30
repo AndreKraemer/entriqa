@@ -19,7 +19,16 @@ public class SubmissionListRowTests
 
     [Fact]
     public void GivenTheSubmissionsList_WhenInspectingItsRows_ThenTheyCarryALinkToTheDetailAddress() =>
-        Assert.Contains("<a href=\"@Shown.DetailUrl(", RowBlock(), StringComparison.Ordinal);
+        Assert.Contains("<a href=\"@Shown.DetailUrl(item.Id)\"", RowBlock(), StringComparison.Ordinal);
+
+    /// <summary>
+    /// The cell holding the link keeps the click to itself. Otherwise a ctrl/cmd/shift-click opens the new
+    /// tab the browser is asked for *and* navigates the current one through the row's own handler - which
+    /// would quietly take back the "opens in a new tab" that is half the reason for the anchor.
+    /// </summary>
+    [Fact]
+    public void GivenTheSubmissionsList_WhenTheLinkIsClicked_ThenTheRowDoesNotNavigateAsWell() =>
+        Assert.Contains("<td @onclick:stopPropagation=\"true\"><a href=", RowBlock(), StringComparison.Ordinal);
 
     /// <summary>
     /// The row must not present itself as anything but a row. role="link" on a &lt;tr&gt; is invalid
@@ -32,8 +41,7 @@ public class SubmissionListRowTests
         Assert.DoesNotContain("tabindex=", RowTag(), StringComparison.Ordinal);
     }
 
-    private static string Markup() =>
-        File.ReadAllText(Path.Combine(AdminDirectory(), "Pages", "Submissions.razor"));
+    private static string Markup() => AdminMarkup.Read("Pages", "Submissions.razor");
 
     /// <summary>Everything from the opening row tag to its &lt;/tr&gt; - the cells included.</summary>
     private static string RowBlock()
@@ -45,23 +53,10 @@ public class SubmissionListRowTests
         return markup[start..end];
     }
 
-    /// <summary>
-    /// The opening tag of the clickable row with its attributes. The closing &gt; is searched for outside
-    /// quotes, exactly as EditorChangedBindingTests does: an event handler in the tag is a lambda, so a
-    /// naive scan to the first &gt; stops inside <c>() =&gt; Open(…)</c> and silently drops every attribute
-    /// written after it - which would let a guard pass while reading half a tag.
-    /// </summary>
     private static string RowTag()
     {
         var markup = Markup();
-        var start = RowStart(markup);
-        var quoted = false;
-        for (var i = start; i < markup.Length; i++)
-        {
-            if (markup[i] == '"') quoted = !quoted;
-            else if (markup[i] == '>' && !quoted) return markup[start..(i + 1)];
-        }
-        throw new InvalidOperationException("the clickable row's opening tag is not closed - update this guard.");
+        return AdminMarkup.Tags(markup[RowStart(markup)..], "<tr").First();
     }
 
     private static int RowStart(string markup)
@@ -69,15 +64,5 @@ public class SubmissionListRowTests
         var start = markup.IndexOf("<tr class=\"rowlink", StringComparison.Ordinal);
         Assert.True(start >= 0, "Submissions.razor no longer has a row carrying the rowlink class - update this guard.");
         return start;
-    }
-
-    private static string AdminDirectory()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var admin = Path.Combine(dir.FullName, "src", "Ui", "Entriqa.Admin");
-            if (Directory.Exists(admin)) return admin;
-        }
-        throw new DirectoryNotFoundException($"Entriqa.Admin not found above {AppContext.BaseDirectory}");
     }
 }

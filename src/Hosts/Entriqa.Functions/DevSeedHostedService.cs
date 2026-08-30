@@ -61,6 +61,11 @@ public sealed class DevSeedHostedService(
     /// The shape is chosen so that each branch of the list exists: "kontakt" is long enough for a second
     /// page (18 &gt; 15 per page), every quick filter is non-empty, and exactly one submission has failed -
     /// so the "Fehler" selection holds a single entry and both walking directions are dead at once.
+    ///
+    /// The demo values below are German, like the content of seed/forms/*.json: they are read in the
+    /// admin's German interface, next to Labels.SubmissionState, and a half-English inbox would be worse
+    /// than either language. CLAUDE.md's exception list does not name the dev seed, so this is a deliberate
+    /// reading of the rule rather than a licence - see the open question raised on issue #11.
     /// </summary>
     private async Task SeedSubmissionsAsync(CancellationToken ct)
     {

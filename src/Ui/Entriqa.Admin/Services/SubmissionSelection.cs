@@ -64,10 +64,14 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
     /// Names the selection the back link returns to (AC3). The form name is data and stays untranslated;
     /// everything around it is interface language. Without a form the label says "all submissions" rather
     /// than naming the form picker, because that is where the link actually leads.
+    ///
+    /// A form whose name the caller cannot resolve - the list of forms not loaded yet, or a slug it no
+    /// longer has - falls back to the slug, never to "all submissions": the label must not claim a wider
+    /// selection than the link beneath it leads to.
     /// </summary>
     public string BackLabel(Ui t, string? formName)
     {
-        var target = formName ?? t["allen Einsendungen"];
+        var target = formName ?? Slug ?? t["allen Einsendungen"];
         return QuickLabel(t) is { } quick ? t.F("Zurück zu {0} · {1}", target, quick) : t.F("Zurück zu {0}", target);
     }
 

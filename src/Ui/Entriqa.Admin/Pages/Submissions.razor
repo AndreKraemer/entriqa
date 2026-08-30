@@ -45,7 +45,9 @@ else
                     <td>@if (SubmissionSelection.IsNew(item, _lastVisit)) { <span class="new-dot" title="@T["neu seit letztem Besuch"]"></span> }</td>
                     <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                     @if (Slug is null) { <td class="small">@(FormName(item.Slug))</td> }
-                    <td><a href="@Shown.DetailUrl(item.Id)">@item.Summary</a></td>
+                    @* The link handles its own click - including ctrl/cmd/shift, where the browser opens a new
+                       tab. Without stopping it here the row would navigate this tab as well. *@
+                    <td @onclick:stopPropagation="true"><a href="@Shown.DetailUrl(item.Id)">@item.Summary</a></td>
                     <td><span class="@Labels.StateCss(item.State)">@T[Labels.SubmissionState(item.State)]</span></td>
                     <td>@(item.Handling == "none" ? "–" : item.Handling == "open" ? T["Offen"] : T["Erledigt"])</td>
                     <td>@(item.QuizResultId ?? "–")</td>

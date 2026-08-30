@@ -64,9 +64,8 @@
 
     private IReadOnlyList<SubmissionListItem> Items => _selection.Select(_all, _lastVisit);
 
-    /// <summary>The form's name, or its slug when the list of forms is not (yet) there or no longer has it -
-    /// the label must never claim a wider selection than the link beneath it actually leads to (AC3).</summary>
-    private string? FormName => _forms?.FirstOrDefault(f => f.Slug == _selection.Slug)?.Name ?? _selection.Slug;
+    /// <summary>The form's display name if it is known; BackLabel falls back to the slug itself.</summary>
+    private string? FormName => _forms?.FirstOrDefault(f => f.Slug == _selection.Slug)?.Name;
 
     /// <summary>The selection as the way back needs it: on the page holding what is on screen (AC2).</summary>
     private SubmissionSelection Back => _selection.AtPageContaining(Items, Id);
