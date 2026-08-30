@@ -25,6 +25,9 @@ const steps = [
   ["Tests", "dotnet", ["test", "Entriqa.slnx", "-c", config, "--nologo", "--no-build"]],
   // forms.js is a Hugo asset with no .NET test host, so the class contract needs a script.
   ["eq-* class contract", process.execPath, [join(root, "scripts", "check-eq-classes.mjs")]],
+  // Only C# fails to compile on a leftover conflict marker; Markdown, JSON, .razor and seed files
+  // build green with one in them, so a half-finished resolution looks exactly like a finished one.
+  ["Merge conflict markers", process.execPath, [join(root, "scripts", "check-conflict-markers.mjs")]],
 ];
 
 if (full) {
