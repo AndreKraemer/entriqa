@@ -145,7 +145,10 @@ public class BuilderModelLocalizationTests
 
         step.AdoptLocales(new[] { "de" });
 
-        Assert.Equal("9", step.ConfigTextByLocale["templateId"]["en"]);
+        Assert.Equal("9", step.ConfigTextByLocale["templateId"]["en"]);   // the pruning half
+        // …and the declared language keeps its own value rather than being written over with the
+        // shared one, which is blank here because de and en disagree.
+        Assert.Equal("3", step.ConfigTextByLocale["templateId"]["de"]);
     }
 
     [Fact]

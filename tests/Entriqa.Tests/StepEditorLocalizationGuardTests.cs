@@ -75,6 +75,44 @@ public class StepEditorLocalizationGuardTests
         Assert.Contains("SetTemplateFor(prop.Name, result.Id, l, v)", branch.Value, StringComparison.Ordinal);
     }
 
+    // Moving the round trip onto StepModel left the argument wiring behind, and that wiring is where the
+    // language dimension actually enters the model - the model tests pass a locale themselves, so they
+    // cannot see a component that always passes the first one. Notify() is guarded here for the same
+    // reason: SetMemberFor writes ConfigText directly, so unlike the old Set(...) it does not report the
+    // change itself, and EditorChangedBindingTests only checks that call sites bind Changed=.
+    [Fact]
+    public void GivenTheTemplatePickersDelegation_WhenReadingIt_ThenItForwardsTheLanguageAndReportsTheChange()
+    {
+        var source = StepEditor();
+
+        var read = Regex.Match(source, @"private string TemplateFor\(.*?;", RegexOptions.Singleline);
+        Assert.True(read.Success, "StepEditor.razor no longer has a TemplateFor method - update this guard.");
+        Assert.Contains("locale: locale", read.Value, StringComparison.Ordinal);
+
+        var write = Regex.Match(source, @"private void SetTemplateFor\(.*?\n    \}", RegexOptions.Singleline);
+        Assert.True(write.Success, "StepEditor.razor no longer has a SetTemplateFor method - update this guard.");
+        Assert.Contains("locale: locale", write.Value, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Both per-language writers changed shape in #3: they write the model directly instead of going
+    /// through the old <c>Set(name, value)</c>, so each has to report the change itself or the preview
+    /// goes stale while the editor looks fine. <c>EditorChangedBindingTests</c> only checks that call
+    /// sites bind <c>Changed=</c>, never that a handler invokes it.
+    /// </summary>
+    [Theory]
+    [InlineData(@"private void Set\(string name, string locale, string\? value\)")]
+    [InlineData(@"private void SetTemplateFor\(")]
+    public void GivenAPerLanguageWriter_WhenReadingIt_ThenItReportsTheChange(string signature)
+    {
+        var method = Regex.Match(StepEditor(), signature + @".*?\n    \}", RegexOptions.Singleline);
+        Assert.True(method.Success, $"StepEditor.razor no longer has a method matching /{signature}/ - update this guard.");
+
+        // The lookahead sits at the start of the line, not after \s*: written the other way round the
+        // regex backtracks over the indentation and matches a commented-out call anyway.
+        Assert.Matches(new Regex(@"^(?!\s*//)[^\r\n]*\bNotify\(\);", RegexOptions.Multiline), method.Value);
+    }
+
     // AC 5 for the map whose members are localizable: with no quiz results there is nothing to put in the
     // table, and the old fall-through handed the operator the raw {"legacy":{"de":…}} object in a textarea.
     [Fact]
