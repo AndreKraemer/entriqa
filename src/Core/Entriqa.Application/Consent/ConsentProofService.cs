@@ -68,10 +68,18 @@ public sealed class ConsentProofService(
     }
 
     /// <summary>AC 7: GDPR erasure of a contact, plus the audit trail of that erasure.</summary>
-    public Task<int> DeleteForAsync(string email, CancellationToken ct = default)
+    public async Task<int> DeleteForAsync(string email, CancellationToken ct = default)
     {
-        _ = (deleteByEmail, recordDeletion, hasher, time, email, ct);
-        return Task.FromResult(0);
+        // On the address, not on the submissions: after the retention period the contact has none
+        // left, and the proof is exactly what the erasure has to reach.
+        var count = await deleteByEmail.ExecuteAsync(email, ct);
+
+        // Recorded even when nothing was found, and without the plaintext address. A missing row
+        // would otherwise be ambiguous between "never had a proof" and "the erasure never ran" -
+        // and the point of this row is to answer that question years later.
+        await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(email) ?? "", count, ct);
+        log.LogInformation("Einwilligungsnachweise gelöscht: {Count}", count);
+        return count;
     }
 
     /// <summary>AC 5/8: nothing happens at the default of ConsentRetentionDays = 0.</summary>
