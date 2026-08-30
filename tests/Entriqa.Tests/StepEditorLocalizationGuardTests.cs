@@ -71,8 +71,8 @@ public class StepEditorLocalizationGuardTests
         Assert.True(branch.Success, "StepEditor.razor no longer has the per-result templates table - update this guard.");
 
         Assert.Contains("foreach (var loc in Locales)", branch.Value, StringComparison.Ordinal);
-        Assert.Contains("TemplateFor(result.Id, l)", branch.Value, StringComparison.Ordinal);
-        Assert.Contains("SetTemplateFor(result.Id, l, v)", branch.Value, StringComparison.Ordinal);
+        Assert.Contains("TemplateFor(prop.Name, result.Id, l)", branch.Value, StringComparison.Ordinal);
+        Assert.Contains("SetTemplateFor(prop.Name, result.Id, l, v)", branch.Value, StringComparison.Ordinal);
     }
 
     // AC 5 for the map whose members are localizable: with no quiz results there is nothing to put in the

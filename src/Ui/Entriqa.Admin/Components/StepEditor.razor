@@ -67,7 +67,7 @@
                                         var l = loc;
                                         <div class="ltext-row">
                                             @if (Locales.Count > 1) { <span class="ltext-locale">@l</span> }
-                                            @RcTemplateSelect(TemplateFor(result.Id, l), v => SetTemplateFor(result.Id, l, v))
+                                            @RcTemplateSelect(TemplateFor(prop.Name, result.Id, l), v => SetTemplateFor(prop.Name, result.Id, l, v))
                                         </div>
                                     }
                                 </td>
@@ -172,11 +172,14 @@
         _ => v,
     };
 
-    private string TemplateFor(string resultId, string locale) => Step.MemberFor("templates", resultId, locale, Locales);
+    // The table is chosen by the LocalizableItems marker, so these must not name the property either -
+    // a second step marking additionalProperties would otherwise edit a property it does not have.
+    private string TemplateFor(string name, string resultId, string locale) =>
+        Step.MemberFor(name, member: resultId, locale: locale, Locales);
 
-    private void SetTemplateFor(string resultId, string locale, string? template)
+    private void SetTemplateFor(string name, string resultId, string locale, string? template)
     {
-        Step.SetMemberFor("templates", resultId, locale, template, Locales);
+        Step.SetMemberFor(name, member: resultId, locale: locale, value: template, Locales);
         Notify();
     }
 

@@ -272,7 +272,12 @@ public sealed class StepModel
     public string MemberFor(string name, string member, string locale, IReadOnlyList<string> locales)
     {
         var map = MemberMap(name);
-        return LValue.Decompose(map[member], locales).GetValueOrDefault(locale) is JsonNode v ? v.GetValue<string>() : "";
+        // A member that is not a string - a number, or a nested object - reads as empty rather than
+        // throwing: this runs inside the render tree, and a definition written through the JSON tab or
+        // the admin API would otherwise take the whole pipeline tab down, which is also the only place
+        // the operator could repair it.
+        return LValue.Decompose(map[member], locales).GetValueOrDefault(locale) is JsonValue v
+               && v.TryGetValue<string>(out var text) ? text : "";
     }
 
     /// <summary>Writes one member for one language, collapsing it back to a plain value when every

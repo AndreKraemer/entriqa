@@ -46,6 +46,10 @@ it back. Two things about that round trip:
   again when saving — if every locale carries the same value it is written back as a plain
   string, not `{de: …, en: …}`. Both forms are valid input (`LText`), so a diff that flips
   between them is normalisation, not a change.
+  **The two halves diverge when a language is switched on:** a step's plain configuration values
+  follow it (`StepModel.AdoptLocales`, #3), plain *texts* do not — they become `{de: …}` for fields
+  nobody edited, and the publish check then asks for the translation. That is a defect, not a
+  design; #44 decides and fixes it.
 - **The quiz is passed through unchanged** by the builder model and edited in the JSON tab plus
   `Components/QuizEditor.razor`.
 

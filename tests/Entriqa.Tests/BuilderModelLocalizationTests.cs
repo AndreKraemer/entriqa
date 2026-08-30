@@ -223,6 +223,18 @@ public class BuilderModelLocalizationTests
         Assert.Equal("a.docx", step.MemberFor("templates", "legacy", "de", DeEn));
     }
 
+    [Fact]
+    public void GivenAMapMemberThatIsNotAText_WhenReadingIt_ThenItReadsAsEmptyInsteadOfThrowing()
+    {
+        // MemberFor runs inside the render tree. A definition written through the JSON tab or the admin
+        // API can carry anything here, and throwing would take down the very tab that could repair it.
+        var step = Step("""{"templateId":3}""", "de", "en");
+        step.ConfigText["templates"] = """{"legacy":3,"modern":{"nested":"x"}}""";
+
+        Assert.Equal("", step.MemberFor("templates", "legacy", "de", DeEn));
+        Assert.Equal("", step.MemberFor("templates", "modern", "de", DeEn));
+    }
+
     private static readonly string[] DeEn = { "de", "en" };
 
     // --- unknown properties and ordinary fields --------------------------------------------------
