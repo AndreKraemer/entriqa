@@ -2,6 +2,7 @@
 @inject AdminApi Api
 @inject NavigationManager Nav
 @inject Ui T
+@implements IDisposable
 
 <div class="filters">
     <a class="btn" href="@BackUrl">@Back.BackLabel(T, FormName)</a>
@@ -29,10 +30,27 @@
     private string? _error;
     private string? _loadedSlug;
     private bool _loaded;
+    private string _path = "";
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    /// <summary>As on the list: the router answers a path change, nothing answers a query-only one. Here
+    /// that is a filter changing while the submission stays the same - browser history, a shared address.</summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _selection = SubmissionSelection.FromQuery(null, new Uri(Nav.Uri).Query);
+        if (new Uri(e.Location).AbsolutePath != _path) return;
+        _ = InvokeAsync(async () => { await ApplyAddress(); StateHasChanged(); });
+    }
+
+    protected override Task OnParametersSetAsync() => ApplyAddress();
+
+    private async Task ApplyAddress()
+    {
+        var uri = new Uri(Nav.Uri);
+        _path = uri.AbsolutePath;
+        _selection = SubmissionSelection.FromQuery(null, uri.Query);
         // Only the form decides what the endpoint returns, so the list is fetched once per form and then
         // walked in memory - turning to the next submission costs no request. The quick filter is applied
         // per render instead of cached: it can change without the form changing (browser history, a shared

@@ -3,6 +3,7 @@
 @inject AdminApi Api
 @inject NavigationManager Nav
 @inject Ui T
+@implements IDisposable
 
 <h1>@T["Einsendungen"]</h1>
 
@@ -76,14 +77,35 @@ else
     private List<FormListItem>? _forms;
     private DateTimeOffset? _lastVisit;
     private string? _error;
+    private string _path = "";
 
     /// <summary>Form, quick filter and page - read from the address, never held here. That is what lets the
     /// detail page hand the same selection back when the reader returns (AC2).</summary>
     private SubmissionSelection _selection = SubmissionSelection.Default;
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    protected override Task OnParametersSetAsync() => ApplyAddress();
+
+    /// <summary>
+    /// The router re-renders on a path change and OnParametersSetAsync follows it. It stays silent when
+    /// only the query changes - which is every quick filter and every page turn here, since the form is
+    /// the route and the rest is the query. Without this the address moves and the list does not, and the
+    /// row links keep pointing at the selection the reader has already left.
+    /// </summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        var selection = SubmissionSelection.FromQuery(Slug, new Uri(Nav.Uri).Query);
+        if (new Uri(e.Location).AbsolutePath != _path) return;      // path change: the router has it
+        _ = InvokeAsync(async () => { await ApplyAddress(); StateHasChanged(); });
+    }
+
+    private async Task ApplyAddress()
+    {
+        var uri = new Uri(Nav.Uri);
+        _path = uri.AbsolutePath;
+        var selection = SubmissionSelection.FromQuery(Slug, uri.Query);
         // Only the form decides what the endpoint returns; filtering and paging happen on what is already
         // here, so switching a filter or turning a page must not cost a round trip.
         var reload = _data is null || selection.Slug != _selection.Slug;
