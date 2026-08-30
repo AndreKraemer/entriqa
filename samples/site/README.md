@@ -29,7 +29,7 @@ npm run sample:serve
 | Kontakt / Contact | `kontakt` | The basic types: text, email, textarea, consent |
 | Beratungsanfrage / Consulting request | `beratung` | The other twelve field types, a page break, a conditional field, a rating scale and a file upload |
 | Whitepaper | `whitepaper` | Lead magnet: double opt-in before the CRM step and the download link |
-| Selbsttest / Self-check | `selbsttest` | Quiz with a jump to a result, percentage scoring and findings |
+| Selbsttest / Self-check | `selbsttest` | Quiz with a jump to a result, percentage scoring and findings — and the only form with an *optional* address and an *optional* consent, so the case of a consent left unticked can be driven at all |
 
 Between them the four forms cover every field type and all three form types; the tests in
 `tests/Entriqa.Tests/SeedFormsTests.cs` fail if that stops being true, or if a sample

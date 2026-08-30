@@ -117,6 +117,22 @@ public class SeedFormsTests
     }
 
     [Fact]
+    public void GivenTheSelfCheckSample_WhenLookingAtItsAddressBlock_ThenBothTheAddressAndTheConsentAreOptional()
+    {
+        // The only shipped form where a consent can be left unticked, which is the sole route by which
+        // #1's "no tick, no proof" can be driven at the acceptance gate. Making either field required
+        // removes that route while every test here stays green - samples/site/README.md says so too.
+        var fields = Load("selbsttest.json").Fields;
+        var email = Assert.Single(fields, f => f.Type == FieldTypes.Email);
+        var consent = Assert.Single(fields, f => f.Type == FieldTypes.Consent);
+        Assert.False(email.Required);
+        Assert.False(consent.Required);
+        // collectEmail forces the address through the validator without touching Required, which
+        // would close the unticked-consent route while the two asserts above stay green.
+        Assert.Equal("optional", Load("selbsttest.json").Quiz!.CollectEmail);
+    }
+
+    [Fact]
     public void GivenAllShippedSeedForms_WhenCollectingTheirFormTypes_ThenContactLeadmagnetAndQuizAreAllPresent()
     {
         var used = Directory.EnumerateFiles(SeedFolder(), "*.json")

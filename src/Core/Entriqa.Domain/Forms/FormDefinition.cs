@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Entriqa.Domain.Validation;
 
 namespace Entriqa.Domain.Forms;
 
@@ -30,6 +31,13 @@ public sealed record FormDefinition(
 
     public FieldDefinition? EmailField => Fields.FirstOrDefault(f => f.Type == FieldTypes.Email);
     public FieldDefinition? ConsentField => Fields.FirstOrDefault(f => f.Type == FieldTypes.Consent);
+
+    /// <summary>
+    /// Whether the visitor actually ticked the consent (#1). Having a consent field is not consent:
+    /// it may be defined as optional, and Submission.ConsentText is filled either way.
+    /// </summary>
+    public bool ConsentGiven(IReadOnlyDictionary<string, string> values) =>
+        ConsentField is { } f && values.TryGetValue(f.Id, out var v) && FormSubmissionValidator.IsTrue(v);
 
     public IReadOnlyList<string> EffectiveLocales => Locales is { Count: > 0 } ? Locales : new[] { "de" };
     public string DefaultLocale => EffectiveLocales[0];

@@ -5,6 +5,11 @@ using Entriqa.Application;
 using Entriqa.Application.Security;
 using Entriqa.Domain.Forms;
 using Entriqa.Admin.Services;
+using Entriqa.Application.Consent;
+using Entriqa.Application.Ports;
+using Entriqa.Domain.Consent;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace Entriqa.Tests;
 
@@ -22,6 +27,37 @@ internal static class TestData
     public static FormTokenService Tokens(FakeTimeProvider? time = null) => new(Microsoft.Extensions.Options.Options.Create(Options()), time ?? Time);
 
     public static JsonElement Json(string json) => JsonDocument.Parse(json).RootElement.Clone();
+
+    /// <summary>
+    /// A <see cref="ConsentProofService"/> over substituted ports (#1). The doubles come back with it -
+    /// the proof is only ever observable through them, never through a table.
+    /// </summary>
+    public static (ConsentProofService Service, ConsentProofPorts Ports) ConsentProofs(
+        FakeTimeProvider? time = null, EntriqaOptions? options = null)
+    {
+        var ports = new ConsentProofPorts(
+            Substitute.For<IStoreConsentProofCommand>(),
+            Substitute.For<IConfirmConsentProofCommand>(),
+            Substitute.For<IDeleteConsentProofsByEmailCommand>(),
+            Substitute.For<IRecordConsentDeletionCommand>(),
+            Substitute.For<IListExpiredConsentProofsQuery>(),
+            Substitute.For<IDeleteConsentProofCommand>());
+        var opts = Microsoft.Extensions.Options.Options.Create(options ?? Options());
+        ports.ListExpired.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<ConsentProof>());
+        var service = new ConsentProofService(ports.Store, ports.Confirm, ports.DeleteByEmail, ports.RecordDeletion,
+            ports.ListExpired, ports.Delete, new IpHasher(opts), opts, time ?? Time,
+            NullLogger<ConsentProofService>.Instance);
+        return (service, ports);
+    }
+
+    internal sealed record ConsentProofPorts(
+        IStoreConsentProofCommand Store,
+        IConfirmConsentProofCommand Confirm,
+        IDeleteConsentProofsByEmailCommand DeleteByEmail,
+        IRecordConsentDeletionCommand RecordDeletion,
+        IListExpiredConsentProofsQuery ListExpired,
+        IDeleteConsentProofCommand Delete);
 
     /// <summary>
     /// A submissions list the way the admin receives it (#11): newest first, two forms, every quick

@@ -10,7 +10,7 @@ namespace Entriqa.Data;
 public sealed class TableStorage
 {
     private static readonly string[] TableNames =
-        ["Forms", "Versions", "Submissions", "Nonces", "RateLimits", "AdminState", "Funnel"];
+        ["Forms", "Versions", "Submissions", "Nonces", "RateLimits", "AdminState", "Funnel", "ConsentProofs"];
 
     private readonly TableServiceClient _service;
     private readonly string _prefix;

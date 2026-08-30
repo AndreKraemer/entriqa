@@ -44,7 +44,7 @@ public class HousekeepingUseCaseTests
         var listArtifacts = Substitute.For<IListArtifactsPort>();
         listArtifacts.ListAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<ArtifactInfo>());
         var uc = new RunHousekeepingUseCase(list, getVersion, save, delete, purge, recordRun, artifacts, listArtifacts, pipeline,
-            Options.Create(TestData.Options()), TestData.Time, NullLogger<RunHousekeepingUseCase>.Instance);
+            TestData.ConsentProofs().Service, Options.Create(TestData.Options()), TestData.Time, NullLogger<RunHousekeepingUseCase>.Instance);
         return (uc, pdf, list, save, delete, artifacts);
     }
 

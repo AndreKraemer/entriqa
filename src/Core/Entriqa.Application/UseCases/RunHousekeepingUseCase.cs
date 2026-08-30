@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Entriqa.Application.Consent;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Errors;
@@ -26,6 +27,7 @@ internal sealed class RunHousekeepingUseCase(
     IStoreArtifactPort artifacts,
     IListArtifactsPort listArtifacts,
     SubmissionPipelineService pipeline,
+    ConsentProofService consentProofs,
     IOptions<EntriqaOptions> options,
     TimeProvider time,
     ILogger<RunHousekeepingUseCase> log) : IRunHousekeepingUseCase
@@ -73,6 +75,9 @@ internal sealed class RunHousekeepingUseCase(
             if (day < DateOnly.FromDateTime(now.UtcDateTime).AddDays(-2))
                 await artifacts.DeleteAsync(upload.Path, ct);
         }
+
+        // 3c: consent proofs - only when ConsentRetentionDays is set; at the default of 0 they are untouchable (#1).
+        await consentProofs.PurgeExpiredAsync(now, ct);
 
         // 4: Security-Tabellen
         var (nonces, rateLimits) = await purge.ExecuteAsync(now, ct);

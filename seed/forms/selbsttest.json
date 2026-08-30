@@ -9,7 +9,15 @@
   },
   "submitLabel": { "de": "Auswerten", "en": "Evaluate" },
   "handling": false,
-  "fields": [],
+  "fields": [
+    { "id": "email", "type": "email", "label": { "de": "E-Mail (optional)", "en": "Email (optional)" } },
+    { "id": "consent", "type": "consent",
+      "label": { "de": "Einwilligung", "en": "Consent" },
+      "text": {
+        "de": "Ich bin einverstanden, dass meine Adresse zur Bearbeitung meines Selbsttests verarbeitet wird.",
+        "en": "I agree to my address being processed so that my self-check can be dealt with."
+      } }
+  ],
   "quiz": {
     "scoring": "sum",
     "collectEmail": "optional",
