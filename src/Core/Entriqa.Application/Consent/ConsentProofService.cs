@@ -54,10 +54,17 @@ public sealed class ConsentProofService(
     }
 
     /// <summary>AC 2: the double opt-in confirmation amends an existing proof - it never creates one.</summary>
-    public Task ConfirmAsync(Submission submission, CancellationToken ct = default)
+    public async Task ConfirmAsync(Submission submission, CancellationToken ct = default)
     {
-        _ = (confirm, submission, ct);
-        return Task.CompletedTask;
+        if (submission.ConfirmedAt is not { } confirmedAt) return;
+
+        // A submission whose consent was never ticked has no proof, and a confirmation is not a
+        // second consent - so this amends what is there and writes nothing where there is nothing.
+        try { await confirm.ExecuteAsync(submission.Id, confirmedAt, submission.ConfirmedIpHash, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogError(ex, "Einwilligungsnachweis für {Id} konnte nicht ergänzt werden", submission.Id);
+        }
     }
 
     /// <summary>AC 7: GDPR erasure of a contact, plus the audit trail of that erasure.</summary>
