@@ -3,33 +3,90 @@
 @inject IJSRuntime Js
 @inject Ui T
 
-@* Skeleton for #2. The address field and the found-branch are here so the page has a spine; the
-   no-consent state, the per-row delete, its confirmation and the re-search after a delete are the
-   implementation, and the story's guards are red until they exist. *@
-
 <h1>@T["Einwilligungen"]</h1>
+<p class="hint">@T["Nachweise zu einer E-Mail-Adresse – für die Auskunft nach Art. 15 DSGVO und für den Widerruf einzelner Einwilligungen."]</p>
+
+@if (_error is not null) { <p class="error">@_error</p> }
 
 <div class="filters">
-    <input placeholder="@T["E-Mail"]" style="min-width:280px" @bind="_address" />
-    <button class="btn" @onclick="Search">@T["Suchen"]</button>
+    <input placeholder="@T["E-Mail"]" style="min-width:280px" disabled="@_busy"
+           @bind="_address" @bind:event="oninput" @onkeydown="OnKey" />
+    <button class="btn" disabled="@(_busy || _address.Trim().Length == 0)" @onclick="Search">@T["Suchen"]</button>
 </div>
 
-@if (_result.State == ConsentSearchState.Found)
+@if (_busy) { <p>@T["Lade …"]</p> }
+else if (_result.State == ConsentSearchState.NoConsent)
 {
-    <ul>@foreach (var p in _result.Proofs) { <li>@p.Slug</li> }</ul>
+    @* AC 2: a sentence, not an empty table - and it names the address it is about. *@
+    <p class="ok">@T.F("Zu {0} liegt keine Einwilligung vor.", _result.Address)</p>
+}
+else if (_result.State == ConsentSearchState.Found)
+{
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>@T["Formular"]</th><th>@T["Version"]</th><th>@T["Eingang"]</th><th>@T["Bestätigt"]</th><th>@T["Wortlaut der Einwilligung"]</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var p in _result.Proofs)
+        {
+            var proof = p;
+            <tr>
+                <td>@proof.Slug</td>
+                <td>@proof.Version</td>
+                <td>@proof.SubmittedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@(proof.ConfirmedAt is { } c ? c.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : T["Nicht bestätigt"])</td>
+                <td>
+                    @proof.ConsentText
+                    @if (proof.IpHash is { Length: > 0 } || proof.ConfirmedIpHash is { Length: > 0 })
+                    {
+                        <div class="hint">@T.F("IP-Hash Einsendung: {0} · Bestätigung: {1}",
+                                               proof.IpHash ?? "–", proof.ConfirmedIpHash ?? "–")</div>
+                    }
+                </td>
+                <td><button class="btn btn--danger" disabled="@_busy" @onclick="() => DeleteProof(proof)">@T["Nachweis löschen"]</button></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
 }
 
 @code {
     private ConsentSearchResult _result = ConsentSearch.Idle();
     private string _address = "";
+    private string? _error;
+    private bool _busy;
 
-    private Task Search()
+    private async Task OnKey(KeyboardEventArgs e)
     {
-        throw new NotImplementedException("#2");
+        if (e.Key == "Enter" && !_busy && _address.Trim().Length > 0) await Search();
     }
 
-    private Task DeleteProof(ConsentProofView proof)
+    private async Task Search()
     {
-        throw new NotImplementedException("#2");
+        var address = _address.Trim();
+        _error = null;
+        _busy = true;
+        try { _result = ConsentSearch.Of(address, await Api.ListConsentProofsAsync(address)); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); _result = ConsentSearch.Idle(); }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteProof(ConsentProofView proof)
+    {
+        // AC 4: irreversible, so it is never done on a single click. The early return has to sit
+        // between the question and the call - asking and deleting anyway reads as compliant.
+        if (!await Js.InvokeAsync<bool>("confirm",
+                T.F("Einwilligungsnachweis vom {0} endgültig löschen? Der Beleg für diese Einwilligung ist danach weg.",
+                    proof.SubmittedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")))) return;
+
+        _error = null;
+        _busy = true;
+        try { await Api.DeleteConsentProofAsync(proof.Email, proof.SubmissionId); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+        finally { _busy = false; }
+
+        // AC 3: the emptied list has to be the server's answer. Dropping the row locally would satisfy
+        // "it disappears from the search" while hiding a delete that never happened.
+        await Search();
     }
 }

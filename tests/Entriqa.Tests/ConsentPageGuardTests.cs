@@ -81,6 +81,9 @@ public class ConsentPageGuardTests
         // The branch has to exist at all - an empty table under a Found-only branch is the wordless
         // empty list AC 2 rules out.
         Assert.Contains("ConsentSearchState.NoConsent", markup, StringComparison.Ordinal);
-        Assert.Contains("Zu dieser Adresse liegt keine Einwilligung vor.", markup, StringComparison.Ordinal);
+
+        // Interpolated, not a fixed sentence: the operator may already be typing the next address by
+        // the time this renders, so the answer has to name the address it is actually about.
+        Assert.Contains("T.F(\"Zu {0} liegt keine Einwilligung vor.\"", markup, StringComparison.Ordinal);
     }
 }
