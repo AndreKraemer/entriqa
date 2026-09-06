@@ -77,8 +77,32 @@ public sealed class ConsentProofService(
     /// #2 AC 3: one revoked consent, removed on its own - the surgical instrument next to the
     /// contact-wide erasure below. Records the same audit row, plus which proof it was.
     /// </summary>
-    public Task<bool> DeleteOneAsync(string email, string submissionId, string by, CancellationToken ct = default)
-        => throw new NotImplementedException("#2");
+    public async Task<bool> DeleteOneAsync(string email, string submissionId, string by, CancellationToken ct = default)
+    {
+        // Found first, deleted second: the delete command needs the proof, and looking it up in the
+        // address's own partition is what keeps a stale id in the admin from reaching another contact.
+        var proofs = await listByEmail.ExecuteAsync(email, ct);
+        if (proofs.FirstOrDefault(p => p.SubmissionId == submissionId) is not { } proof) return false;
+
+        await delete.ExecuteAsync(proof, ct);
+
+        // Unlike the contact-wide erasure, nothing is recorded when there was nothing to remove: there
+        // the empty row answers "did the erasure run for this address at all", here the id says an
+        // erasure happened, and writing one for a proof that never went would be a false witness.
+        try
+        {
+            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "",
+                                              1, by, submissionId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Same stance as below: the proof is already gone, and losing the row must not report the
+            // erasure as failed - but it is the one failure here worth an error.
+            log.LogError(ex, "Löschvermerk für Einwilligungsnachweis {Id} konnte nicht geschrieben werden", submissionId);
+        }
+        log.LogInformation("Einwilligungsnachweis {Id} gelöscht von {By}", submissionId, by);
+        return true;
+    }
 
     /// <summary>AC 7: GDPR erasure of a contact, plus the audit trail of that erasure.</summary>
     public async Task<int> DeleteForAsync(string email, string by, CancellationToken ct = default)

@@ -29,8 +29,5 @@ internal sealed class ListConsentProofsUseCase(ConsentProofService proofs) : ILi
 internal sealed class DeleteConsentProofUseCase(ConsentProofService proofs) : IDeleteConsentProofUseCase
 {
     public Task<bool> ExecuteAsync(string email, string submissionId, string by, CancellationToken ct = default)
-    {
-        _ = proofs;                                         // skeleton, no body yet (#2)
-        throw new NotImplementedException("#2");
-    }
+        => proofs.DeleteOneAsync(email, submissionId, by, ct);
 }
