@@ -22,9 +22,13 @@ public sealed record ConsentSearchResult(ConsentSearchState State, string Addres
 public static class ConsentSearch
 {
     /// <summary>Before anything was searched.</summary>
-    public static ConsentSearchResult Idle() => throw new NotImplementedException("#2");
+    public static ConsentSearchResult Idle() => new(ConsentSearchState.Idle, "", []);
 
-    /// <summary>Classifies what the API answered for that address.</summary>
+    /// <summary>
+    /// Classifies what the API answered for that address. The address travels with the answer because
+    /// the sentence AC 2 asks for has to name who it is about - by the time it is rendered, the input
+    /// field may already hold the next address the operator is typing.
+    /// </summary>
     public static ConsentSearchResult Of(string address, IReadOnlyList<ConsentProofView> proofs)
-        => throw new NotImplementedException("#2");
+        => new(proofs.Count == 0 ? ConsentSearchState.NoConsent : ConsentSearchState.Found, address, proofs);
 }
