@@ -71,10 +71,7 @@ public sealed class ConsentProofService(
 
     /// <summary>#2 AC 1: every proof of one address, for the admin's search.</summary>
     public Task<IReadOnlyList<ConsentProof>> ListForAsync(string email, CancellationToken ct = default)
-    {
-        _ = listByEmail;                                    // the port this will read - skeleton, no body yet (#2)
-        throw new NotImplementedException("#2");
-    }
+        => listByEmail.ExecuteAsync(email, ct);
 
     /// <summary>
     /// #2 AC 3: one revoked consent, removed on its own - the surgical instrument next to the

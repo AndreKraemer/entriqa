@@ -30,9 +30,13 @@ internal sealed class ListExpiredConsentProofsQuery(TableStorage storage) : ILis
 /// </summary>
 internal sealed class ListConsentProofsByEmailQuery(TableStorage storage) : IListConsentProofsByEmailQuery
 {
-    public Task<IReadOnlyList<ConsentProof>> ExecuteAsync(string email, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ConsentProof>> ExecuteAsync(string email, CancellationToken ct = default)
     {
-        _ = storage;                                        // skeleton, no body yet (#2)
-        throw new NotImplementedException("#2");
+        var table = await storage.GetAsync("ConsentProofs");
+        var partition = ConsentProofMapper.PartitionOf(email);
+        var result = new List<ConsentProof>();
+        await foreach (var e in table.QueryAsync<ConsentProofEntity>(e => e.PartitionKey == partition, cancellationToken: ct))
+            result.Add(ConsentProofMapper.ToDomain(e));
+        return result;
     }
 }
