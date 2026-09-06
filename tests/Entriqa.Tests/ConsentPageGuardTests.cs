@@ -106,6 +106,34 @@ public class ConsentPageGuardTests
             "the delete handler does not restore its error after the refresh clears it.");
     }
 
+    /// <summary>
+    /// And neither swallows the other. Restoring the delete's outcome outright discards an error the
+    /// refresh itself just set - the same defect mirrored, which is how it got past the first fix: the
+    /// erasure succeeds, the reload fails, and the page reports a clean success over a blank result.
+    /// </summary>
+    [Fact]
+    public void GivenTheRefreshFailedAfterASuccessfulDeletion_WhenTheOutcomeIsShown_ThenTheRefreshErrorSurvives()
+    {
+        var body = DeleteHandler();
+
+        Assert.Contains("_error = failed ?? _error;", body, StringComparison.Ordinal);
+        Assert.Contains("_info = _error is not null ? null", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// AC 3 again, on the quiet path: a stale id deletes nothing, and the endpoint says so. Discarding
+    /// the answer leaves the operator reading "deleted" over a record that is still there.
+    /// </summary>
+    [Fact]
+    public void GivenTheProofWasAlreadyGone_WhenTheDeletionReturns_ThenTheOperatorIsToldNothingWasRemoved()
+    {
+        var body = DeleteHandler();
+
+        Assert.Contains("removed = await Api.DeleteConsentProofAsync", body, StringComparison.Ordinal);
+        Assert.Contains("Dieser Nachweis war bereits gelöscht.", body, StringComparison.Ordinal);
+        Assert.Contains("Nachweis gelöscht.", body, StringComparison.Ordinal);
+    }
+
     // ---- AC 2: a fruitless search says so ---------------------------------------------------------
 
     [Fact]

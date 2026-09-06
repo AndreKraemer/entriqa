@@ -56,7 +56,6 @@ internal static class TestData
     /// Two proofs for one address (#2): different forms and versions, one confirmed by double opt-in and
     /// one not, and different wording - so a test that reads only the first row cannot pass by accident.
     /// Deliberately handed back oldest-first: the newest-first order is the listing's job, not the store's.
-    /// See also <see cref="ConsentProofOfSomeoneElse"/>, which must never appear in this address's result.
     /// </summary>
     public static List<ConsentProof> ConsentProofsFor(string email) =>
     [
@@ -77,14 +76,6 @@ internal static class TestData
             ConfirmedIpHash = "hash-confirm-02",
         },
     ];
-
-    /// <summary>A proof of a different address (#2) - the one that must never come back from a search.</summary>
-    public static ConsentProof ConsentProofOfSomeoneElse() => new()
-    {
-        Email = "someone.else@example.org", SubmissionId = "s77", Slug = "kontakt", Version = 1,
-        SubmittedAt = Time.GetUtcNow().AddDays(-1),
-        ConsentText = "Einwilligung einer ganz anderen Person.",
-    };
 
     internal sealed record ConsentProofPorts(
         IStoreConsentProofCommand Store,

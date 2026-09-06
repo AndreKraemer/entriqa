@@ -100,9 +100,11 @@ else if (_result.State == ConsentSearchState.Found)
         await Search(proof.Email);
 
         // Restored after the refresh, which clears both banners: on an irreversible erasure the one
-        // thing that must never be swallowed is the news that it did not happen.
-        _error = failed;
-        _info = failed is not null ? null
+        // thing that must never be swallowed is the news that it did not happen. Assigning outright
+        // would swallow the other half - the refresh may have failed on its own, and then the page
+        // would report a clean success over a result it never managed to load.
+        _error = failed ?? _error;
+        _info = _error is not null ? null
                 : removed ? T["Nachweis gelöscht."]
                 : T["Dieser Nachweis war bereits gelöscht."];
     }

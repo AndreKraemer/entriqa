@@ -78,19 +78,20 @@ public class ConsentAdminUseCaseTests
     }
 
     [Fact]
-    public async Task GivenProofsOfAnotherAddressAreOnFile_WhenAnAddressIsSearched_ThenOnlyItsOwnProofsComeBack()
+    public async Task GivenAnAddressIsSearched_WhenTheStoreIsAsked_ThenItIsAskedForThatAddressAndForNoOther()
     {
-        // A listing that answered with everything it could find would satisfy every other AC 1 test here,
-        // and would hand an Art. 15 enquiry a stranger's consent.
+        // As far as this layer reaches: the listing hands the port an address and returns what comes
+        // back, so it cannot filter and must not try. What it CAN get wrong is which address it asks
+        // for - and an Art. 15 enquiry answered with a stranger's consent starts exactly there. The
+        // isolation itself is the partition filter's, guarded in ConsentProofTests.
         var (list, _, ports) = Build();
         OnFile(ports, [.. TestData.ConsentProofsFor(Address)]);
-        ports.ListByEmail.ExecuteAsync("someone.else@example.org", Arg.Any<CancellationToken>())
-            .Returns([TestData.ConsentProofOfSomeoneElse()]);
 
-        var found = await list.ExecuteAsync(Address);
+        await list.ExecuteAsync(Address);
 
-        Assert.All(found, p => Assert.Equal(Address, p.Email));
-        Assert.DoesNotContain(found, p => p.SubmissionId == "s77");
+        await ports.ListByEmail.Received(1).ExecuteAsync(Address, Arg.Any<CancellationToken>());
+        await ports.ListByEmail.DidNotReceive().ExecuteAsync(
+            Arg.Is<string>(a => a != Address), Arg.Any<CancellationToken>());
     }
 
     // ---- AC 5: the wording is the one that was ticked -------------------------------------------

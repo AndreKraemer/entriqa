@@ -474,6 +474,11 @@ public class ConsentProofTests
         Assert.True(member.Success, "ListConsentProofsByEmailQuery is gone or renamed - update this guard.");
 
         Assert.Contains("ConsentProofMapper.PartitionOf(email)", member.Value, StringComparison.Ordinal);
+
+        // And the filter compares against it. Inverting that one operator turns the search into "every
+        // OTHER address's proofs" - a stranger's consent handed to an Art. 15 enquiry, with nothing in
+        // the suite to notice, because no test here reaches storage.
+        Assert.Contains("e.PartitionKey == partition", member.Value, StringComparison.Ordinal);
     }
 
     private static string RepositoryDirectory()
