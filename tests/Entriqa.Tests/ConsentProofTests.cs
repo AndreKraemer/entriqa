@@ -461,6 +461,21 @@ public class ConsentProofTests
         Assert.DoesNotContain("ToLowerInvariant", member.Value, StringComparison.Ordinal);   // not a second copy of the rule
     }
 
+    [Fact]
+    public void GivenTheAdminSearch_WhenReadingItsSource_ThenItLooksUpThePartitionThroughTheSharedRule()
+    {
+        // #2: the same rule, now also on the read side. Handing the raw address to the partition filter
+        // compiles, passes every unit test - the port is substituted there - and quietly makes the
+        // admin's search miss every proof whose submitter used different casing than the operator types.
+        var source = File.ReadAllText(Path.Combine(RepositoryDirectory(), "src", "Core", "Entriqa.Data",
+                                                   "Queries", "ConsentProofQueries.cs"));
+        var member = Regex.Match(source, @"class ListConsentProofsByEmailQuery.*?
+\}", RegexOptions.Singleline);
+        Assert.True(member.Success, "ListConsentProofsByEmailQuery is gone or renamed - update this guard.");
+
+        Assert.Contains("ConsentProofMapper.PartitionOf(email)", member.Value, StringComparison.Ordinal);
+    }
+
     private static string RepositoryDirectory()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)

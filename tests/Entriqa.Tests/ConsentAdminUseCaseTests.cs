@@ -77,6 +77,22 @@ public class ConsentAdminUseCaseTests
         Assert.Empty(await list.ExecuteAsync("nobody@example.org"));
     }
 
+    [Fact]
+    public async Task GivenProofsOfAnotherAddressAreOnFile_WhenAnAddressIsSearched_ThenOnlyItsOwnProofsComeBack()
+    {
+        // A listing that answered with everything it could find would satisfy every other AC 1 test here,
+        // and would hand an Art. 15 enquiry a stranger's consent.
+        var (list, _, ports) = Build();
+        OnFile(ports, [.. TestData.ConsentProofsFor(Address)]);
+        ports.ListByEmail.ExecuteAsync("someone.else@example.org", Arg.Any<CancellationToken>())
+            .Returns([TestData.ConsentProofOfSomeoneElse()]);
+
+        var found = await list.ExecuteAsync(Address);
+
+        Assert.All(found, p => Assert.Equal(Address, p.Email));
+        Assert.DoesNotContain(found, p => p.SubmissionId == "s77");
+    }
+
     // ---- AC 5: the wording is the one that was ticked -------------------------------------------
 
     [Fact]
@@ -84,7 +100,9 @@ public class ConsentAdminUseCaseTests
     {
         var (list, _, ports) = Build();
         const string asTicked = "Ich willige in die Fassung von 2024 ein.";
-        var currentFormWording = TestData.Contact().ConsentField!.Label.ToString();
+        // Text, not Label: Label is the field's caption ("Einwilligung"), Text is the wording a visitor
+        // ticks. Comparing against the label would hold under every mutation and prove nothing.
+        var currentFormWording = TestData.Contact().ConsentField!.Text!.ToString();
         OnFile(ports, new ConsentProof
         {
             Email = Address, SubmissionId = "s01", Slug = "kontakt", Version = 1,
@@ -127,16 +145,24 @@ public class ConsentAdminUseCaseTests
             Arg.Is<ConsentProof>(p => p.SubmissionId == "s01" && p.Email == Address), Arg.Any<CancellationToken>());
         await ports.Delete.DidNotReceive().ExecuteAsync(
             Arg.Is<ConsentProof>(p => p.SubmissionId == "s02"), Arg.Any<CancellationToken>());
+
+        // And it never reaches for the contact-wide erasure of #1. That command takes an address, not a
+        // proof, so the two assertions above hold even when every proof of the address has just gone.
+        await ports.DeleteByEmail.DidNotReceive().ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GivenASingleProofIsDeleted_WhenTheErasureIsRecorded_ThenItNamesTheTimeTheAdminAndTheProof()
     {
+        // Mixed case on purpose, like the contact-wide sibling in ConsentProofTests: the audit hash is
+        // taken over the normalized address, and against an already-lowercase one that rule is invisible.
+        const string asTyped = "Eva@Example.org";
         var (_, delete, ports) = Build();
-        OnFile(ports, [.. TestData.ConsentProofsFor(Address)]);
+        ports.ListByEmail.ExecuteAsync(asTyped, Arg.Any<CancellationToken>())
+            .Returns([.. TestData.ConsentProofsFor(Address)]);
         var expectedHash = new IpHasher(Options.Create(TestData.Options())).Hash(ConsentProof.KeyOf(Address))!;
 
-        await delete.ExecuteAsync(Address, "s01", Admin);
+        await delete.ExecuteAsync(asTyped, "s01", Admin);
 
         // The submission id is what makes this row answer its question years later: against a hashed
         // address, "one proof was removed" cannot say which one.
@@ -153,5 +179,12 @@ public class ConsentAdminUseCaseTests
         Assert.False(await delete.ExecuteAsync(Address, "s99", Admin));
 
         await ports.Delete.DidNotReceive().ExecuteAsync(Arg.Any<ConsentProof>(), Arg.Any<CancellationToken>());
+
+        // Nor is an erasure recorded. Unlike the contact-wide path, where an empty row answers "did this
+        // run at all", a row here asserts that a specific proof went - written for one that never
+        // existed it is a false witness in exactly the record that has to be trustworthy.
+        await ports.RecordDeletion.DidNotReceive().ExecuteAsync(
+            Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 }
