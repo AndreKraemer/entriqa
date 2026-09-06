@@ -97,6 +97,18 @@ public sealed class AdminApi(HttpClient http)
         return doc.GetProperty("deleted").GetInt32();
     }
 
+    public Task<List<ConsentProofView>> ListConsentProofsAsync(string email) =>
+        GetAsync<List<ConsentProofView>>($"api/manage/consent?email={Uri.EscapeDataString(email)}");
+
+    public async Task<bool> DeleteConsentProofAsync(string email, string submissionId)
+    {
+        var res = await http.DeleteAsync($"api/manage/consent?email={Uri.EscapeDataString(email)}" +
+                                         $"&submission={Uri.EscapeDataString(submissionId)}");
+        await ThrowIfError(res);
+        var doc = await res.Content.ReadFromJsonAsync<JsonElement>(Json);
+        return doc.GetProperty("deleted").GetBoolean();
+    }
+
     public async Task<string> GetUploadLinkAsync(string path)
     {
         var doc = await GetAsync<JsonElement>($"api/manage/uploads/link?path={Uri.EscapeDataString(path)}");
