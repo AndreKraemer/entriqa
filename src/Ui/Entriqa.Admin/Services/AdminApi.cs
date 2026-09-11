@@ -285,6 +285,22 @@ public static class Labels
     /// The local part carries the name: an address abbreviated whole would read as its provider. Two
     /// initials where the name has parts, the first two letters where it has one, "?" for nobody.
     /// </summary>
+    /// <summary>
+    /// The names an assignee picker offers (#13): the admins the application knows, plus the one the
+    /// submission already carries when that is not among them.
+    ///
+    /// The second half is not a nicety. A select whose value matches no option falls back to the first
+    /// one, so the picker would read "Niemand" for a submission that is assigned - and the next change
+    /// would write that lie back. The case is the one the story accepted rather than a rarity: an admin
+    /// who is renamed leaves their old name on every submission they still hold.
+    /// </summary>
+    public static List<string> AssigneeChoices(IEnumerable<string>? admins, string? current)
+    {
+        var choices = admins?.ToList() ?? [];
+        if (current is { Length: > 0 } c && !choices.Contains(c, StringComparer.Ordinal)) choices.Insert(0, c);
+        return choices;
+    }
+
     public static string Initials(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return "?";

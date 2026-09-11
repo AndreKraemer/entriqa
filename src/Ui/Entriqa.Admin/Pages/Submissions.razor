@@ -34,7 +34,11 @@ else
         <select value="@(_selection.Assignee ?? "")" @onchange="OnAssigneeChange" title="@T["Bearbeiter"]">
             <option value="">@T["Alle Bearbeiter"]</option>
             <option value="@SubmissionSelection.Nobody" selected="@(_selection.Assignee == SubmissionSelection.Nobody)">@T["Niemand"]</option>
-            @foreach (var a in _admins ?? new()) { <option value="@a" selected="@(_selection.Assignee == a)">@a</option> }
+            @* "Niemand" has its own option above, so it is not handed in as a name to keep. *@
+            @foreach (var a in Labels.AssigneeChoices(_admins, _selection.Assignee == SubmissionSelection.Nobody ? null : _selection.Assignee))
+            {
+                <option value="@a" selected="@(_selection.Assignee == a)">@a</option>
+            }
         </select>
         @if (Slug is not null)
         {

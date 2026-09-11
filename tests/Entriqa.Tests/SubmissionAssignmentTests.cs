@@ -290,6 +290,42 @@ public class SubmissionAssignmentTests
     private static string HeadBlock(string markup) => AdminMarkup.Between(markup, "<thead>", "</thead>",
         "the submissions list no longer has a table head - update this guard.");
 
+    // ---- What the picker offers -------------------------------------------------------------------
+
+    /// <summary>
+    /// A select whose value matches no option does not show an empty picker - the browser falls back to
+    /// the first one. So a stored assignee the admin list no longer holds would read as "Niemand" while
+    /// the submission is in fact assigned, and the next change would write that back. The story accepted
+    /// exactly this case ("a renamed display name leaves old assignments on the old string"), which is
+    /// why the current value has to be offered whether or not it is still an admin.
+    /// </summary>
+    [Fact]
+    public void GivenAnAssigneeTheAdminListNoLongerHolds_WhenThePickerIsBuilt_ThenItIsStillOffered() =>
+        Assert.Equal([Colleague, Me], Labels.AssigneeChoices([Me], Colleague));
+
+    [Fact]
+    public void GivenAnAssigneeThatIsStillAnAdmin_WhenThePickerIsBuilt_ThenTheChoicesAreUnchanged() =>
+        Assert.Equal([Colleague, Me], Labels.AssigneeChoices([Colleague, Me], Me));
+
+    /// <summary>Nobody is an option of its own, so an unassigned submission adds nothing to the list.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void GivenNoAssignee_WhenThePickerIsBuilt_ThenOnlyTheAdminsAreOffered(string? current) =>
+        Assert.Equal([Me], Labels.AssigneeChoices([Me], current));
+
+    /// <summary>The admin list may not have arrived yet - the value on the submission still has to show.</summary>
+    [Fact]
+    public void GivenTheAdminListHasNotLoadedYet_WhenThePickerIsBuilt_ThenTheStoredAssigneeIsTheChoice() =>
+        Assert.Equal([Me], Labels.AssigneeChoices(null, Me));
+
+    /// <summary>Both pickers have to go through it, or the one that does not keeps the defect.</summary>
+    [Theory]
+    [InlineData("Pages", "Submissions.razor")]
+    [InlineData("Components", "SubmissionDetailPanel.razor")]
+    public void GivenAnAssigneePicker_WhenReadingItsOptions_ThenTheyComeFromTheSharedChoices(string folder, string file) =>
+        Assert.Contains("Labels.AssigneeChoices(", AdminMarkup.Read(folder, file), StringComparison.Ordinal);
+
     // ---- The avatar the assignee is shown as ------------------------------------------------------
 
     [Theory]

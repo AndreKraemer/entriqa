@@ -38,7 +38,7 @@ else
             @T["Bearbeiter:"]
             <select value="@(_s.Assignee ?? "")" @onchange="OnAssigneeChange" disabled="@_busy">
                 <option value="">@T["Niemand"]</option>
-                @foreach (var a in _admins ?? new()) { <option value="@a" selected="@(_s.Assignee == a)">@a</option> }
+                @foreach (var a in Labels.AssigneeChoices(_admins, _s.Assignee)) { <option value="@a" selected="@(_s.Assignee == a)">@a</option> }
             </select>
             <span class="hint">@T["Zur Auswahl stehen nur Admins, die schon einmal im Admin waren."]</span>
         </p>
