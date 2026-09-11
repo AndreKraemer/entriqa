@@ -297,11 +297,6 @@ public class SubmissionAssignmentTests
     }
 
     /// <summary>
-    /// The label alone says nothing about what the chip does. What AC4 promises is the navigation behind
-    /// it, and that is decided in SubmissionSelection.TogglePersonal, which is tested by executing it -
-    /// so what remains to be guarded here is only that the button actually goes through it.
-    /// </summary>
-    /// <summary>
     /// AC4's trigger. What it promises is decided in SubmissionSelection and tested by executing it, so
     /// what remains here is only that the button goes through that decision - and for whom, because a
     /// chip wired to any other name renders and counts exactly the same.
