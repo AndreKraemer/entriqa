@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.UseCases;
 using Entriqa.Functions.Http;
@@ -39,7 +40,8 @@ public sealed class AdminFunctions(
     IDeleteContactUseCase deleteContact,
     IListConsentProofsUseCase listConsentProofs,
     IDeleteConsentProofUseCase deleteConsentProof,
-    Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks)
+    Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks,
+    ILogger<AdminFunctions> log)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -107,7 +109,18 @@ public sealed class AdminFunctions(
         principal.RequireRole(req, "admin");
         // The one place every admin passes on every page load, which is what makes it the right place
         // to notice them at all (#13, AC2). It does not touch their last visit.
-        await recordSeen.ExecuteAsync(principal.UserName(req), ct);
+        //
+        // Best-effort: this is bookkeeping for the assignment picker, not part of the answer. Letting it
+        // throw would turn a failed write of a side note into a dead inbox - the one page every admin
+        // starts on - for a list that was served perfectly well before #13.
+        try
+        {
+            await recordSeen.ExecuteAsync(principal.UserName(req), ct);
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(ex, "Sichtung von {User} nicht aufgezeichnet - der Posteingang wird trotzdem geliefert", principal.UserName(req));
+        }
         var slug = req.Query["slug"].FirstOrDefault();
         return new OkObjectResult(await recent.ExecuteAsync(string.IsNullOrEmpty(slug) ? null : slug, principal.UserName(req), 500, ct));
     }

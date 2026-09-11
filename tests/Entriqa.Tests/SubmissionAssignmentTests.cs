@@ -205,6 +205,19 @@ public class SubmissionAssignmentTests
             InboxEndpoint());
     }
 
+    /// <summary>
+    /// The sighting is bookkeeping for the picker, not part of the answer. Before #13 the inbox served
+    /// its list without writing anything; letting a failed write through would make the one page every
+    /// admin starts on depend on it.
+    /// </summary>
+    [Fact]
+    public void GivenTheInboxEndpoint_WhenTheSightingCannotBeWritten_ThenTheListIsStillServed()
+    {
+        var endpoint = InboxEndpoint();
+        Assert.Matches(new Regex(@"try\s*\{[^}]*recordSeen", RegexOptions.Singleline), endpoint);
+        Assert.Contains("catch", endpoint, StringComparison.Ordinal);
+    }
+
     /// <summary>The AdminRecentSubmissions function, from its attribute to the next one.</summary>
     private static string InboxEndpoint()
     {
