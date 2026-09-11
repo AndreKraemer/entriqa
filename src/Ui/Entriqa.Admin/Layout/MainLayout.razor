@@ -35,7 +35,7 @@
         @if (_me is not null)
         {
             <span class="whoami" title="@string.Join(", ", _me.UserRoles)">
-                <span class="avatar">@Initials(_me.UserDetails)</span>
+                <span class="avatar">@Labels.Initials(_me.UserDetails)</span>
                 <span class="whoami-name">@_me.UserDetails</span>
             </span>
             <a class="topnav" href="/.auth/logout">@T["Abmelden"]</a>
@@ -70,16 +70,6 @@
             _unlicensed = (await Api.GetStatusAsync()).License is not { Valid: true };
         }
         catch { /* badge and banner are a convenience - errors are shown by the page itself */ }
-    }
-
-    private static string Initials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
-        var clean = name.Split('@')[0];
-        var parts = clean.Split(new[] { ' ', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 2
-            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}"
-            : clean[..Math.Min(2, clean.Length)].ToUpperInvariant();
     }
 
     private async Task SetLang(string lang)

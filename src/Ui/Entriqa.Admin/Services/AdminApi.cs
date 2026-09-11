@@ -268,13 +268,20 @@ public static class Labels
     public static string StepCss(int s) => s switch { 1 => "chip chip--ok", 3 => "chip chip--err", 4 => "chip chip--err", 2 => "chip chip--wait", 5 => "chip", _ => "chip chip--busy" };
 
     /// <summary>
-    /// The avatar an assignee is shown as in the list and in the detail header (#13). It lives here rather
-    /// than in MainLayout, which had it first, because a name has to read the same in every place that
-    /// abbreviates it. Skeleton.
+    /// The avatar a person is shown as - the signed-in admin in the header, and since #13 the assignee in
+    /// the list and the detail view. It lives here rather than in MainLayout, which had it first, because
+    /// a name has to read the same in every place that abbreviates it.
+    ///
+    /// The local part carries the name: an address abbreviated whole would read as its provider. Two
+    /// initials where the name has parts, the first two letters where it has one, "?" for nobody.
     /// </summary>
     public static string Initials(string? name)
     {
-        _ = name;
-        throw new NotImplementedException("#13");
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var clean = name.Split('@')[0];
+        var parts = clean.Split([' ', '.', '-', '_'], StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}"
+            : clean[..Math.Min(2, clean.Length)].ToUpperInvariant();
     }
 }
