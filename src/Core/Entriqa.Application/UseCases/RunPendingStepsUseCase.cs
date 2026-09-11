@@ -26,7 +26,7 @@ internal sealed class RunPendingStepsUseCase(
             ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct)
             ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormVersionNotFound);
-        await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, ct);
+        await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, null, ct);
         try { await save.ExecuteAsync(s, ct); }
         catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* confirm or retry was faster - its run covers those steps */ }
     }

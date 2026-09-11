@@ -243,8 +243,12 @@ public sealed record SubmissionListItem(string Id, string Slug, int Version, Dat
 
 public sealed record SubmissionDetail(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale,
     string? Email, string? FirstName, string? Source, List<SubmissionValue> Values, QuizInfo? Quiz, string? QuizResultTitle,
-    string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns, string Handling, int State,
+    string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns,
+    List<HistoryEntry>? History, string Handling, int State,
     string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null);
+
+/// <summary>One entry of a submission's history (#14), newest first as the API delivers it.</summary>
+public sealed record HistoryEntry(DateTimeOffset At, string Type, string Origin, string? By, string? Detail);
 
 public sealed record IntegrationDirectory(bool BrevoConfigured, List<DirectoryEntry> BrevoLists, List<DirectoryEntry> BrevoTemplates,
     bool ReportingCloudConfigured, List<string> ReportTemplates, List<LeadMagnetInfo> LeadMagnets,

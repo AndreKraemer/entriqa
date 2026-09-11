@@ -48,7 +48,8 @@ internal sealed class GetSubmissionDetailUseCase(
         }
 
         return new SubmissionDetailView(s.Id, s.Slug, s.Version, s.CreatedAt, s.Locale, s.Email, s.FirstName,
-            s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns, s.Handling, s.State,
+            s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns,
+            s.History.Entries, s.Handling, s.State,
             s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee);
     }
 }
@@ -57,7 +58,7 @@ internal sealed class SetSubmissionHandlingUseCase(
     ITryGetSubmissionQuery getSubmission,
     ISaveSubmissionCommand save) : ISetSubmissionHandlingUseCase
 {
-    public async Task ExecuteAsync(string submissionId, string handling, CancellationToken ct = default)
+    public async Task ExecuteAsync(string submissionId, string handling, string? by, CancellationToken ct = default)
     {
         if (handling is not (HandlingStates.Open or HandlingStates.Done))
             throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingInvalid);
@@ -98,7 +99,7 @@ internal sealed class SetSubmissionAssigneeUseCase(
     ITryGetSubmissionQuery getSubmission,
     ISaveSubmissionCommand save) : ISetSubmissionAssigneeUseCase
 {
-    public async Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default)
+    public async Task ExecuteAsync(string submissionId, string? assignee, string? by, CancellationToken ct = default)
     {
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
             ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);

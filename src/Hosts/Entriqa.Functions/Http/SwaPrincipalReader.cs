@@ -27,7 +27,20 @@ public sealed class SwaPrincipalReader(IOptions<EntriqaOptions> options)
         catch (Exception ex) when (ex is FormatException or JsonException) { throw new ForbiddenException(ErrorMessages.PrincipalInvalid); }
     }
 
-    /// <summary>Display name of the signed-in admin (userDetails) - for UpdatedBy and PublishedBy.</summary>
+    /// <summary>
+    /// Display name of the signed-in admin, or null when the request carried no usable principal (#14).
+    /// Use this wherever the name is <em>attribution</em> - a history entry, UpdatedBy, PublishedBy, the
+    /// erasure audit row. <see cref="UserName"/>'s literal "admin" cannot be told apart from a real
+    /// account of that name, so it would record a person for something nobody signed in did.
+    /// </summary>
+    public string? TryUserName(HttpRequest req) => throw new NotImplementedException();
+
+    /// <summary>
+    /// Display name of the signed-in admin (userDetails), falling back to "admin".
+    /// <para>This is the <em>identity key</em> of the per-admin state row, not an attribution: it is the
+    /// RowKey of AdminStateEntity, so it has to be stable and non-null even without a principal. For
+    /// anything that records who did something, use <see cref="TryUserName"/> (#14).</para>
+    /// </summary>
     public string UserName(HttpRequest req)
     {
         if (!req.Headers.TryGetValue("x-ms-client-principal", out var header) || string.IsNullOrEmpty(header)) return "admin";

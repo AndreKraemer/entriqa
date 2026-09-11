@@ -48,6 +48,9 @@ internal sealed class SubmissionEntity : ITableEntity
     public string? QuizJson { get; set; }
     public string? ConsentText { get; set; }
     public string StepRunsJson { get; set; } = "[]";
+    // #14. Missing on every row written before this feature, which deserializes to the default "[]" -
+    // an empty history, which is exactly what those submissions have. No migration.
+    public string HistoryJson { get; set; } = "[]";
     public string ArtifactsJson { get; set; } = "{}";
     public string Handling { get; set; } = "none";
     public string State { get; set; } = "processing";       // denormalized for filtering in the admin

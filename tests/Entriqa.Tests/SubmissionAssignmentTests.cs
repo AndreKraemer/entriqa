@@ -52,7 +52,7 @@ public class SubmissionAssignmentTests
     {
         var (assign, _, save) = Build(Stored());
 
-        await assign.ExecuteAsync(Id, Me);
+        await assign.ExecuteAsync(Id, Me, Me);
 
         var written = save.ReceivedCalls().Single().GetArguments()[0] as Submission;
         Assert.Equal(Me, written!.Assignee);
@@ -68,7 +68,7 @@ public class SubmissionAssignmentTests
     {
         var (assign, _, save) = Build(Stored(assignee: Me));
 
-        await assign.ExecuteAsync(Id, Colleague);
+        await assign.ExecuteAsync(Id, Colleague, Me);
 
         var written = save.ReceivedCalls().Single().GetArguments()[0] as Submission;
         Assert.Equal(Colleague, written!.Assignee);
@@ -81,7 +81,7 @@ public class SubmissionAssignmentTests
     {
         var (assign, _, save) = Build(Stored(assignee: Me));
 
-        await assign.ExecuteAsync(Id, null);
+        await assign.ExecuteAsync(Id, null, Me);
 
         var written = save.ReceivedCalls().Single().GetArguments()[0] as Submission;
         Assert.Null(written!.Assignee);
@@ -97,7 +97,7 @@ public class SubmissionAssignmentTests
     {
         var (assign, _, save) = Build(Stored(assignee: Me));
 
-        await assign.ExecuteAsync(Id, "   ");
+        await assign.ExecuteAsync(Id, "   ", Me);
 
         var written = save.ReceivedCalls().Single().GetArguments()[0] as Submission;
         Assert.Null(written!.Assignee);
@@ -132,7 +132,7 @@ public class SubmissionAssignmentTests
     {
         var (assign, _, save) = Build(Stored(handling: HandlingStates.None));
 
-        var ex = await Assert.ThrowsAsync<AppException>(() => assign.ExecuteAsync(Id, Me));
+        var ex = await Assert.ThrowsAsync<AppException>(() => assign.ExecuteAsync(Id, Me, Me));
 
         Assert.Equal(ErrorMessages.HandlingUnsupported, ex.MessageKey);
         Assert.Empty(save.ReceivedCalls());
@@ -145,7 +145,7 @@ public class SubmissionAssignmentTests
         var save = Substitute.For<ISaveSubmissionCommand>();
         get.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((Submission?)null);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => new SetSubmissionAssigneeUseCase(get, save).ExecuteAsync(Id, Me));
+        await Assert.ThrowsAsync<NotFoundException>(() => new SetSubmissionAssigneeUseCase(get, save).ExecuteAsync(Id, Me, Me));
         Assert.Empty(save.ReceivedCalls());
     }
 

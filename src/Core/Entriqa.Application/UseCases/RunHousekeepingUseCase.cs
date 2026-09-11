@@ -48,7 +48,7 @@ internal sealed class RunHousekeepingUseCase(
             if (v is null) { log.LogWarning("Housekeeping: Version {Version} zu {Id} fehlt", s.Version, s.Id); continue; }
 
             var mode = failed.Count > 0 ? RunMode.Retry : RunMode.Deferred;
-            await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, mode, null, ct);
+            await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, mode, null, null, ct);
             try
             {
                 await save.ExecuteAsync(s, ct);

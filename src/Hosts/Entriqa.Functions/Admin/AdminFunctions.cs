@@ -185,7 +185,7 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         var body = await JsonSerializer.DeserializeAsync<HandlingBody>(req.Body, Json, ct) ?? new HandlingBody(null);
-        await setHandling.ExecuteAsync(id, body.Handling ?? "", ct);
+        await setHandling.ExecuteAsync(id, body.Handling ?? "", null, ct);
         return new NoContentResult();
     }
 
@@ -194,7 +194,7 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         var body = await JsonSerializer.DeserializeAsync<AssigneeBody>(req.Body, Json, ct) ?? new AssigneeBody(null);
-        await setAssignee.ExecuteAsync(id, body.Assignee, ct);
+        await setAssignee.ExecuteAsync(id, body.Assignee, null, ct);
         return new NoContentResult();
     }
 
@@ -259,7 +259,7 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> ResendDoi([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/submissions/{id}/resend-doi")] HttpRequest req, string id, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
-        await resendDoi.ExecuteAsync(id, ct);
+        await resendDoi.ExecuteAsync(id, null, ct);
         return new AcceptedResult();
     }
 
@@ -278,7 +278,7 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> Retry([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/submissions/{id}/steps/{stepId}/retry")] HttpRequest req, string id, string stepId, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
-        await retry.ExecuteAsync(id, stepId, ct);
+        await retry.ExecuteAsync(id, stepId, null, ct);
         return new AcceptedResult();
     }
 

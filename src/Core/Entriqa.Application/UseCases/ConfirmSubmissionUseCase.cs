@@ -53,7 +53,7 @@ internal sealed class ConfirmSubmissionUseCase(
         {
             var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct)
                 ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormVersionNotFound);
-            await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, ct);
+            await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Deferred, null, null, ct);
             try { await save.ExecuteAsync(s, ct); }
             catch (AppException ex) when (ex.ErrorCode == ErrorCodes.Conflict) { /* a parallel run is already writing */ }
         }

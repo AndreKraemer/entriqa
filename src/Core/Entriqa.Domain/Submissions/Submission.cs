@@ -21,6 +21,8 @@ public sealed class Submission
     public QuizOutcome? Quiz { get; init; }
     public string? ConsentText { get; init; }                      // the exact text at the time of submission
     public List<StepRun> StepRuns { get; init; } = new();
+    /// <summary>What happened to this submission and who did it (#14). Append-only, see <see cref="Record"/>.</summary>
+    public SubmissionHistory History { get; init; } = new();
     public Dictionary<string, string> Artifacts { get; init; } = new(); // "report" -> blob path, "download" -> URL
     public string Handling { get; set; } = HandlingStates.None;
     public string? Assignee { get; set; }                          // #13: who takes care of it; null = nobody
@@ -33,6 +35,20 @@ public sealed class Submission
     public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
 
     public StepRun Run(string stepId) => StepRuns.First(r => r.StepId == stepId);
+
+    /// <summary>
+    /// Notes one thing that happened, on the caller's clock (#14). The only way an entry comes into
+    /// being, so the invariants of AC4 have exactly one place to hold.
+    /// </summary>
+    public void Record(string type, HistoryActor by, DateTimeOffset at, string? detail = null) =>
+        History.Append(new SubmissionHistoryEntry
+        {
+            At = at,
+            Type = type,
+            Origin = by.Origin,
+            By = by.By,
+            Detail = detail,
+        });
 
     public SubmissionState State
     {

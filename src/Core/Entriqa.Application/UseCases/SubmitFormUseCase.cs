@@ -100,7 +100,7 @@ internal sealed class SubmitFormUseCase(
         await consentProofs.RecordAsync(def, submission, ct);   // #1: the proof outlives the submission
 
         // 6. Inline steps; deferred ones stay pending and are triggered by the client with the run token.
-        var deferredLeft = await pipeline.RunAsync(submission, def, published.Version, RunMode.Inline, null, ct);
+        var deferredLeft = await pipeline.RunAsync(submission, def, published.Version, RunMode.Inline, null, null, ct);
         await save.ExecuteAsync(submission, ct);
 
         QuizResultView? quizView = null;
