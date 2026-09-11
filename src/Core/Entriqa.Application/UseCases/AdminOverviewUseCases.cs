@@ -55,22 +55,20 @@ internal sealed class MarkVisitedUseCase(ISetLastVisitCommand set, TimeProvider 
     }
 }
 
-/// <summary>#13 skeleton - the choices an assignment has.</summary>
+/// <summary>The choices an assignment has (#13) - the admins the application has seen.</summary>
 internal sealed class ListAdminsUseCase(IListAdminsQuery admins) : IListAdminsUseCase
 {
-    public Task<IReadOnlyList<string>> ExecuteAsync(CancellationToken ct = default)
-    {
-        _ = admins; _ = ct;
-        throw new NotImplementedException("#13");
-    }
+    public Task<IReadOnlyList<string>> ExecuteAsync(CancellationToken ct = default) => admins.ExecuteAsync(ct);
 }
 
-/// <summary>#13 skeleton - what turns "has signed in" into a row the assignment list can read.</summary>
+/// <summary>
+/// What turns "has been in the admin" into a row the assignment picker can read (#13). Called from
+/// the inbox endpoint, which every admin passes on every page load - recording it where the
+/// assignment happens would mean only people who have already assigned something can be assigned
+/// something.
+/// </summary>
 internal sealed class RecordAdminSeenUseCase(IRecordAdminSeenCommand record, TimeProvider time) : IRecordAdminSeenUseCase
 {
-    public Task ExecuteAsync(string user, CancellationToken ct = default)
-    {
-        _ = record; _ = time; _ = user; _ = ct;
-        throw new NotImplementedException("#13");
-    }
+    public Task ExecuteAsync(string user, CancellationToken ct = default) =>
+        record.ExecuteAsync(user, time.GetUtcNow(), ct);
 }

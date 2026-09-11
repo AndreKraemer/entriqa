@@ -66,7 +66,7 @@ internal sealed class GetHousekeepingRunQuery(TableStorage storage) : IGetHousek
     {
         var table = await storage.GetAsync("AdminState");
         var e = await table.GetEntityIfExistsAsync<AdminStateEntity>("housekeeping", "last", cancellationToken: ct);
-        return e.HasValue ? (e.Value!.LastVisitAt, e.Value!.Note ?? "") : null;
+        return e.HasValue && e.Value!.LastVisitAt is { } at ? (at, e.Value!.Note ?? "") : null;
     }
 }
 
@@ -76,6 +76,26 @@ internal sealed class GetLastVisitQuery(TableStorage storage) : IGetLastVisitQue
     {
         var table = await storage.GetAsync("AdminState");
         var e = await table.GetEntityIfExistsAsync<AdminStateEntity>("state", user, cancellationToken: ct);
-        return e.HasValue ? e.Value!.LastVisitAt : null;
+        return e.HasValue ? e.Value!.LastVisitAt : null;        // null for a row that only records a sighting (#13)
+    }
+}
+
+/// <summary>
+/// The admins the application has seen, which is what an assignment can choose from (#13). The row
+/// keys of the state partition are those admins: one is written when someone marks everything as
+/// seen, and since #13 also when they merely open the inbox. Someone who has never been in the
+/// admin is not offered - Entriqa keeps no user management, and the people invited in the SWA role
+/// administration are unknown to it.
+/// </summary>
+internal sealed class ListAdminsQuery(TableStorage storage) : IListAdminsQuery
+{
+    public async Task<IReadOnlyList<string>> ExecuteAsync(CancellationToken ct = default)
+    {
+        var table = await storage.GetAsync("AdminState");
+        var admins = new List<string>();
+        await foreach (var e in table.QueryAsync<AdminStateEntity>(e => e.PartitionKey == "state", cancellationToken: ct))
+            admins.Add(e.RowKey);
+        admins.Sort(StringComparer.Ordinal);                    // the picker's order must not depend on the scan
+        return admins;
     }
 }

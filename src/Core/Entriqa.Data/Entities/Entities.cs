@@ -64,7 +64,10 @@ internal sealed class AdminStateEntity : ITableEntity
     public string RowKey { get; set; } = default!;           // Admin-User (userDetails)
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
-    public DateTimeOffset LastVisitAt { get; set; }
+    // Nullable since #13: a state row is now also created by merely being in the admin, and such a
+    // row has no last visit. Reporting 0001-01-01 instead would mark every submission as new.
+    public DateTimeOffset? LastVisitAt { get; set; }
+    public DateTimeOffset? SeenAt { get; set; }              // state row: when this admin was last seen at all (#13)
     public string? Note { get; set; }                        // housekeeping row: summary of the last run; consentdeletion row: the hashed address (#1)
     public int? Count { get; set; }                          // consentdeletion row: how many proofs the erasure removed (#1)
     public string? By { get; set; }                          // consentdeletion row: the admin account that triggered it (#2)
