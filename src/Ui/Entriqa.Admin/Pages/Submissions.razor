@@ -25,9 +25,9 @@ else
            filter stays shareable and SubmissionSelection stays free of any notion of identity. *@
         @if (_me is { Length: > 0 } me)
         {
-            var mine = CountForAssignee(me);
+            var mine = CountPersonal(me);
             <button class="btn @(_selection.Assignee == me ? "btn--primary" : "")"
-                    @onclick="() => Go(_selection with { Assignee = _selection.Assignee == me ? null : me, Page = 1 })">
+                    @onclick="() => Go(_selection.TogglePersonal(me))">
                 @T["Meine offenen"] @if (mine > 0) { <span class="count">@mine</span> }
             </button>
         }
@@ -161,9 +161,8 @@ else
     /// the one nothing tests, and the counts could then disagree with what the button shows.</summary>
     private int CountFor(string quick) => (_selection with { Quick = quick, Page = 1 }).Select(_data!.Items, _lastVisit).Count;
 
-    /// <summary>Same rule as the chip it labels - the selection decides, not a second copy of the filter here.</summary>
-    private int CountForAssignee(string who) =>
-        (_selection with { Assignee = who, Quick = null, Page = 1 }).Select(_data!.Items, _lastVisit).Count;
+    /// <summary>The badge counts exactly the selection the chip leads to - one expression, so the two cannot drift.</summary>
+    private int CountPersonal(string who) => SubmissionSelection.Personal(who).Select(_data!.Items, _lastVisit).Count;
 
     private IReadOnlyList<SubmissionListItem> Filtered => _selection.Select(_data!.Items, _lastVisit);
 

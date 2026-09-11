@@ -197,7 +197,12 @@ public class SubmissionAssignmentTests
     {
         // Some use case is awaited with nothing but the caller's name - which is what recording a
         // sighting looks like, and what listing the recent submissions (two more arguments) does not.
-        Assert.Matches(new Regex(@"await\s+\w+\.ExecuteAsync\(\s*principal\.UserName\(req\)\s*,\s*ct\s*\)"), InboxEndpoint());
+        // Anchored at the start of a line so that commenting the call out fails too: deleting it is not
+        // the only way to lose it, and a bare Matches is satisfied by "// await ...".
+        Assert.Matches(
+            new Regex(@"^[^\S
+]*await\s+\w+\.ExecuteAsync\(\s*principal\.UserName\(req\)\s*,\s*ct\s*\)", RegexOptions.Multiline),
+            InboxEndpoint());
     }
 
     /// <summary>The AdminRecentSubmissions function, from its attribute to the next one.</summary>
@@ -236,22 +241,25 @@ public class SubmissionAssignmentTests
         Assert.Contains("Niemand", block, StringComparison.Ordinal);
     }
 
-    /// <summary>Everything the detail panel renders for a submission that tracks handling.</summary>
-    private static string HandlingBlock()
-    {
-        var markup = AdminMarkup.Read("Components", "SubmissionDetailPanel.razor");
-        var start = markup.IndexOf("_s.Handling != \"none\"", StringComparison.Ordinal);
-        Assert.True(start > 0, "the detail panel no longer guards the handling controls - update this guard.");
-        var end = markup.IndexOf("<h2>", start, StringComparison.Ordinal);
-        Assert.True(end > start, "the handling block is no longer followed by the values - update this guard.");
-        return markup[start..end];
-    }
+    /// <summary>
+    /// Everything the detail panel renders for a submission that tracks handling - cut at the branch's own
+    /// closing brace. Cutting at the values heading instead let the picker be moved out of the branch
+    /// altogether while this guard kept passing, which is precisely the property it exists to pin.
+    /// </summary>
+    private static string HandlingBlock() =>
+        AdminMarkup.IfBody(AdminMarkup.Read("Components", "SubmissionDetailPanel.razor"), "_s.Handling != \"none\"",
+            "the detail panel no longer guards the handling controls with an @if - update this guard.");
 
+    /// <summary>
+    /// The header is read inside the table head, not anywhere in the file: the filter select carries the
+    /// same word as a title and "Alle Bearbeiter" contains it as well, so a whole-file scan stayed green
+    /// with the column header deleted.
+    /// </summary>
     [Fact]
     public void GivenTheSubmissionsList_WhenInspectingItsRows_ThenTheAssigneeIsOneOfTheColumns()
     {
         var markup = AdminMarkup.Read("Pages", "Submissions.razor");
-        Assert.Contains("Bearbeiter", markup, StringComparison.Ordinal);
+        Assert.Contains("@T[\"Bearbeiter\"]", HeadBlock(markup), StringComparison.Ordinal);
         Assert.Contains("Assignee", RowBlock(markup), StringComparison.Ordinal);
     }
 
@@ -262,14 +270,25 @@ public class SubmissionAssignmentTests
         Assert.Contains("Meine offenen", markup, StringComparison.Ordinal);
     }
 
-    private static string RowBlock(string markup)
+    /// <summary>
+    /// The label alone says nothing about what the chip does. What AC4 promises is the navigation behind
+    /// it, and that is decided in SubmissionSelection.TogglePersonal, which is tested by executing it -
+    /// so what remains to be guarded here is only that the button actually goes through it.
+    /// </summary>
+    [Fact]
+    public void GivenThePersonalFilterChip_WhenItIsClicked_ThenItNavigatesThroughTheSelection()
     {
-        var start = markup.IndexOf("<tr class=\"rowlink\"", StringComparison.Ordinal);
-        Assert.True(start > 0, "the submissions list no longer has a clickable row - update this guard.");
-        var end = markup.IndexOf("</tr>", start, StringComparison.Ordinal);
-        Assert.True(end > start, "the clickable row is not closed - update this guard.");
-        return markup[start..end];
+        var markup = AdminMarkup.Read("Pages", "Submissions.razor");
+        var chip = AdminMarkup.Tags(markup, "<button").FirstOrDefault(t => t.Contains("TogglePersonal", StringComparison.Ordinal));
+        Assert.True(chip is not null, "no button navigates through SubmissionSelection.TogglePersonal any more - update this guard.");
+        Assert.Contains("Go(", chip!, StringComparison.Ordinal);
     }
+
+    private static string RowBlock(string markup) => AdminMarkup.Between(markup, "<tr class=\"rowlink\"", "</tr>",
+        "the submissions list no longer has a closed clickable row - update this guard.");
+
+    private static string HeadBlock(string markup) => AdminMarkup.Between(markup, "<thead>", "</thead>",
+        "the submissions list no longer has a table head - update this guard.");
 
     // ---- The avatar the assignee is shown as ------------------------------------------------------
 
@@ -277,6 +296,7 @@ public class SubmissionAssignmentTests
     [InlineData("Martina Weiß", "MW")]
     [InlineData("kim.lorenz@example.org", "KL")]
     [InlineData("admin", "AD")]
+    [InlineData("admin@example.org", "AD")]      // unstripped this reads "AO" - the provider, not the person
     [InlineData(null, "?")]
     public void GivenAnAssigneesName_WhenItIsAbbreviatedForTheAvatar_ThenTheInitialsReadAsThatPerson(string? name, string expected) =>
         Assert.Equal(expected, Labels.Initials(name));

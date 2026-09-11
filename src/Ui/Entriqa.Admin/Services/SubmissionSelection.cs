@@ -31,6 +31,22 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     public static SubmissionSelection Default => new(null, null, 1);
 
     /// <summary>
+    /// What "Meine offenen" stands for (#13, AC4): every open submission assigned to that admin, across
+    /// all forms. It drops the form and the quick filter rather than narrowing further - the list is
+    /// reachable per form (Forms.razor links straight to einsendungen/{slug}), and asking for one's own
+    /// open ones from there means all of them, not that form's.
+    /// </summary>
+    public static SubmissionSelection Personal(string who) => new(null, null, 1, who);
+
+    /// <summary>
+    /// Choosing "Meine offenen", and choosing it again: into the personal filter, or back out of it while
+    /// the rest of the selection stays. One expression for the chip's target and for its badge, so the
+    /// number on the button cannot disagree with the list the button leads to.
+    /// </summary>
+    public SubmissionSelection TogglePersonal(string who) =>
+        Assignee == who ? this with { Assignee = null, Page = 1 } : Personal(who);
+
+    /// <summary>
     /// Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").
     /// The list passes the slug of its route, the detail page passes null and lets "formular" supply it -
     /// the detail route has no slug segment to read. An address is something people edit and share, so it

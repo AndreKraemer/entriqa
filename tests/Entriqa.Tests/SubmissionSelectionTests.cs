@@ -368,4 +368,47 @@ public class SubmissionSelectionTests
     public void GivenAnAssigneeFilter_WhenNamingTheWayBack_ThenTheLabelSaysWhoseSubmissionsTheseAre() =>
         Assert.Contains(TestData.AdminMe, new SubmissionSelection(null, null, 1, TestData.AdminMe).BackLabel(new Ui(), null),
             StringComparison.Ordinal);
+
+    /// <summary>The mirror of the one above - the unassigned filter is a narrowing too, and drops out of the
+    /// label just as silently when nothing pins it.</summary>
+    [Fact]
+    public void GivenTheNobodyFilter_WhenNamingTheWayBack_ThenTheLabelSaysTheseAreUnassigned() =>
+        Assert.Contains("ohne Bearbeiter", new SubmissionSelection(null, null, 1, SubmissionSelection.Nobody).BackLabel(new Ui(), null),
+            StringComparison.Ordinal);
+
+    // ---- #13: "Meine offenen" as an operation, not as markup ----
+
+    /// <summary>
+    /// AC4's "formularübergreifend" is a property of the chip, not only of the filter behind it. The list is
+    /// reachable per form, so the state this widens out of is one a reader is actually in - and narrowing
+    /// further from there would answer "my open ones" with one form's worth of them.
+    /// </summary>
+    [Fact]
+    public void GivenAFormAndAQuickFilter_WhenChoosingThePersonalFilter_ThenItWidensToEveryFormAndPageOne()
+    {
+        var chosen = new SubmissionSelection("kontakt", "failed", 3).TogglePersonal(TestData.AdminMe);
+
+        Assert.Equal(new SubmissionSelection(null, null, 1, TestData.AdminMe), chosen);
+    }
+
+    /// <summary>Choosing it again gives the narrowing back, and nothing else with it.</summary>
+    [Fact]
+    public void GivenThePersonalFilterIsOn_WhenChoosingItAgain_ThenOnlyThatNarrowingIsGone()
+    {
+        var selection = new SubmissionSelection("kontakt", "todo", 2, TestData.AdminMe);
+
+        Assert.Equal(new SubmissionSelection("kontakt", "todo", 1), selection.TogglePersonal(TestData.AdminMe));
+    }
+
+    /// <summary>
+    /// The badge on the chip and the list the chip leads to are the same selection, so the button cannot
+    /// promise a count the table then does not show.
+    /// </summary>
+    [Fact]
+    public void GivenAnyOtherNarrowing_WhenTheChipAndItsBadgeAreCompared_ThenBothMeanTheSameSelection()
+    {
+        var selection = new SubmissionSelection("kontakt", "failed", 2);
+
+        Assert.Equal(SubmissionSelection.Personal(TestData.AdminMe), selection.TogglePersonal(TestData.AdminMe));
+    }
 }

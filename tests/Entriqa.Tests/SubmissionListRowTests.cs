@@ -44,14 +44,8 @@ public class SubmissionListRowTests
     private static string Markup() => AdminMarkup.Read("Pages", "Submissions.razor");
 
     /// <summary>Everything from the opening row tag to its &lt;/tr&gt; - the cells included.</summary>
-    private static string RowBlock()
-    {
-        var markup = Markup();
-        var start = RowStart(markup);
-        var end = markup.IndexOf("</tr>", start, StringComparison.Ordinal);
-        Assert.True(end > start, "the clickable row is not closed - update this guard.");
-        return markup[start..end];
-    }
+    private static string RowBlock() => AdminMarkup.Between(Markup(), "<tr class=\"rowlink", "</tr>",
+        "Submissions.razor no longer has a closed row carrying the rowlink class - update this guard.");
 
     private static string RowTag()
     {
