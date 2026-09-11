@@ -462,6 +462,22 @@ public sealed class Ui
         ["{0} Einsendungen gelöscht."] = "{0} submissions deleted.",
         ["Öffnen"] = "Open",
 
+        // Einwilligungen-Sicht (#2)
+        ["Einwilligungen"] = "Consents",
+        ["Suchen"] = "Search",
+        ["Nachweis gelöscht."] = "Proof deleted.",
+        ["Dieser Nachweis war bereits gelöscht."] = "This proof had already been deleted.",
+        ["Nachweise zu einer E-Mail-Adresse – für die Auskunft nach Art. 15 DSGVO und für den Widerruf einzelner Einwilligungen."] =
+            "Proof of consent for one email address – for an Art. 15 GDPR request and for revoking a single consent.",
+        ["Zu {0} liegt keine Einwilligung vor."] = "No consent is on file for {0}.",
+        ["Bestätigt"] = "Confirmed",
+        ["Nicht bestätigt"] = "Not confirmed",
+        ["Wortlaut der Einwilligung"] = "Consent wording",
+        ["Nachweis löschen"] = "Delete proof",
+        ["IP-Hash Einsendung: {0} · Bestätigung: {1}"] = "IP hash on submission: {0} · on confirmation: {1}",
+        ["Einwilligungsnachweis vom {0} endgültig löschen? Der Beleg für diese Einwilligung ist danach weg."] =
+            "Permanently delete the consent proof from {0}? The evidence for this consent is gone afterwards.",
+
         // Lizenz
         ["Lizenz"] = "License",
         ["Lizenziert"] = "Licensed",

@@ -22,6 +22,7 @@ public sealed class ConsentProofService(
     IRecordConsentDeletionCommand recordDeletion,
     IListExpiredConsentProofsQuery listExpired,
     IDeleteConsentProofCommand delete,
+    IListConsentProofsByEmailQuery listByEmail,
     IpHasher hasher,
     IOptions<EntriqaOptions> options,
     TimeProvider time,
@@ -68,8 +69,43 @@ public sealed class ConsentProofService(
         }
     }
 
+    /// <summary>#2 AC 1: every proof of one address, for the admin's search.</summary>
+    public Task<IReadOnlyList<ConsentProof>> ListForAsync(string email, CancellationToken ct = default)
+        => listByEmail.ExecuteAsync(email, ct);
+
+    /// <summary>
+    /// #2 AC 3: one revoked consent, removed on its own - the surgical instrument next to the
+    /// contact-wide erasure below. Records the same audit row, plus which proof it was.
+    /// </summary>
+    public async Task<bool> DeleteOneAsync(string email, string submissionId, string by, CancellationToken ct = default)
+    {
+        // Found first, deleted second: the delete command needs the proof, and looking it up in the
+        // address's own partition is what keeps a stale id in the admin from reaching another contact.
+        var proofs = await listByEmail.ExecuteAsync(email, ct);
+        if (proofs.FirstOrDefault(p => p.SubmissionId == submissionId) is not { } proof) return false;
+
+        await delete.ExecuteAsync(proof, ct);
+
+        // Unlike the contact-wide erasure, nothing is recorded when there was nothing to remove: there
+        // the empty row answers "did the erasure run for this address at all", here the id says an
+        // erasure happened, and writing one for a proof that never went would be a false witness.
+        try
+        {
+            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "",
+                                              1, by, submissionId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Same stance as below: the proof is already gone, and losing the row must not report the
+            // erasure as failed - but it is the one failure here worth an error.
+            log.LogError(ex, "Löschvermerk für Einwilligungsnachweis {Id} konnte nicht geschrieben werden", submissionId);
+        }
+        log.LogInformation("Einwilligungsnachweis {Id} gelöscht von {By}", submissionId, by);
+        return true;
+    }
+
     /// <summary>AC 7: GDPR erasure of a contact, plus the audit trail of that erasure.</summary>
-    public async Task<int> DeleteForAsync(string email, CancellationToken ct = default)
+    public async Task<int> DeleteForAsync(string email, string by, CancellationToken ct = default)
     {
         // On the address, not on the submissions: after the retention period the contact has none
         // left, and the proof is exactly what the erasure has to reach.
@@ -83,7 +119,10 @@ public sealed class ConsentProofService(
         // The row is only as unguessable as EntriqaOptions.IpHashSalt - addresses are enumerable.
         try
         {
-            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "", count, ct);
+            // No submission id: a contact-wide erasure removes whatever was there, and the count is
+            // the whole answer. A single deletion (#2) names its proof instead.
+            await recordDeletion.ExecuteAsync(time.GetUtcNow(), hasher.Hash(ConsentProof.KeyOf(email)) ?? "",
+                                              count, by, null, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

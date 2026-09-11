@@ -64,7 +64,8 @@ internal sealed class DeleteConsentProofCommand(TableStorage storage) : IDeleteC
 
 internal sealed class RecordConsentDeletionCommand(TableStorage storage) : IRecordConsentDeletionCommand
 {
-    public async Task ExecuteAsync(DateTimeOffset at, string emailHash, int count, CancellationToken ct = default)
+    public async Task ExecuteAsync(DateTimeOffset at, string emailHash, int count, string by, string? submissionId,
+                                   CancellationToken ct = default)
     {
         // Structured, not a sentence: the erasure of an address must not be documented with that address,
         // and a machine-readable row survives the language the admin will later render it in.
@@ -72,10 +73,16 @@ internal sealed class RecordConsentDeletionCommand(TableStorage storage) : IReco
         await table.UpsertEntityAsync(new AdminStateEntity
         {
             PartitionKey = "consentdeletion",
-            RowKey = $"{DateTimeOffset.MaxValue.Ticks - at.Ticks:D19}-{emailHash}",       // newest first
+            // Newest first. The submission id joins the key because #2 made one row per erased proof
+            // the normal case: without it two erasures of the same address collapse onto one row, and
+            // the id the row carries to say which proof went is exactly what would be lost.
+            RowKey = $"{DateTimeOffset.MaxValue.Ticks - at.Ticks:D19}-{emailHash}" +
+                     (submissionId is { Length: > 0 } id ? $"-{id}" : ""),
             LastVisitAt = at,
             Note = emailHash,
             Count = count,
+            By = by,
+            SubmissionId = submissionId,
         }, TableUpdateMode.Replace, ct);
     }
 }

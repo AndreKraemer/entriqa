@@ -375,14 +375,14 @@ public class ConsentProofTests
         var (service, proofs) = TestData.ConsentProofs();
         var useCase = new DeleteContactUseCase(query, Substitute.For<IDeleteSubmissionAdminUseCase>(), service);
 
-        await useCase.ExecuteAsync("eva@example.org");
+        await useCase.ExecuteAsync("eva@example.org", "kim@admin.example");
 
         await proofs.DeleteByEmail.Received(1).ExecuteAsync("eva@example.org", Arg.Any<CancellationToken>());
 
         // Recorded even though nothing was found: a missing row would be ambiguous between "never
         // had a proof" and "the erasure never ran", which is the question the row exists to answer.
         await proofs.RecordDeletion.Received(1).ExecuteAsync(
-            TestData.Time.GetUtcNow(), Arg.Any<string>(), 0, Arg.Any<CancellationToken>());
+            TestData.Time.GetUtcNow(), Arg.Any<string>(), 0, "kim@admin.example", Arg.Is<string?>(x => x == null), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -398,10 +398,12 @@ public class ConsentProofTests
         var useCase = new DeleteContactUseCase(query, Substitute.For<IDeleteSubmissionAdminUseCase>(), service);
         var expectedHash = new IpHasher(Options.Create(TestData.Options())).Hash("eva@example.org")!;
 
-        await useCase.ExecuteAsync(asTyped);
+        await useCase.ExecuteAsync(asTyped, "kim@admin.example");
 
+        // #2: and it names the admin who triggered it. A contact-wide erasure passes no submission id -
+        //     it removes whatever was there, and the count is the whole answer.
         await proofs.RecordDeletion.Received(1).ExecuteAsync(
-            TestData.Time.GetUtcNow(), expectedHash, 2, Arg.Any<CancellationToken>());
+            TestData.Time.GetUtcNow(), expectedHash, 2, "kim@admin.example", Arg.Is<string?>(x => x == null), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -427,10 +429,11 @@ public class ConsentProofTests
         query.ListByEmailAsync("eva@example.org", Arg.Any<CancellationToken>()).Returns(Array.Empty<SubmissionListItem>());
         var (service, proofs) = TestData.ConsentProofs();
         proofs.DeleteByEmail.ExecuteAsync("eva@example.org", Arg.Any<CancellationToken>()).Returns(3);
-        proofs.RecordDeletion.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        proofs.RecordDeletion.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<string>(), Arg.Any<int>(),
+                                           Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(_ => throw new TimeoutException("Tabelle nicht erreichbar"));
 
-        Assert.Equal(3, await service.DeleteForAsync("eva@example.org"));
+        Assert.Equal(3, await service.DeleteForAsync("eva@example.org", "kim@admin.example"));
     }
 
     [Fact]
@@ -456,6 +459,26 @@ public class ConsentProofTests
 
         Assert.Contains("ConsentProof.KeyOf(", member.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("ToLowerInvariant", member.Value, StringComparison.Ordinal);   // not a second copy of the rule
+    }
+
+    [Fact]
+    public void GivenTheAdminSearch_WhenReadingItsSource_ThenItLooksUpThePartitionThroughTheSharedRule()
+    {
+        // #2: the same rule, now also on the read side. Handing the raw address to the partition filter
+        // compiles, passes every unit test - the port is substituted there - and quietly makes the
+        // admin's search miss every proof whose submitter used different casing than the operator types.
+        var source = File.ReadAllText(Path.Combine(RepositoryDirectory(), "src", "Core", "Entriqa.Data",
+                                                   "Queries", "ConsentProofQueries.cs"));
+        var member = Regex.Match(source, @"class ListConsentProofsByEmailQuery.*?
+\}", RegexOptions.Singleline);
+        Assert.True(member.Success, "ListConsentProofsByEmailQuery is gone or renamed - update this guard.");
+
+        Assert.Contains("ConsentProofMapper.PartitionOf(email)", member.Value, StringComparison.Ordinal);
+
+        // And the filter compares against it. Inverting that one operator turns the search into "every
+        // OTHER address's proofs" - a stranger's consent handed to an Art. 15 enquiry, with nothing in
+        // the suite to notice, because no test here reaches storage.
+        Assert.Contains("e.PartitionKey == partition", member.Value, StringComparison.Ordinal);
     }
 
     private static string RepositoryDirectory()

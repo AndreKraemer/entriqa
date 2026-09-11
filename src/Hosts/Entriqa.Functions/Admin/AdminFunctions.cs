@@ -34,6 +34,8 @@ public sealed class AdminFunctions(
     IListContactsUseCase listContacts,
     IListContactSubmissionsUseCase contactSubmissions,
     IDeleteContactUseCase deleteContact,
+    IListConsentProofsUseCase listConsentProofs,
+    IDeleteConsentProofUseCase deleteConsentProof,
     Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -60,7 +62,28 @@ public sealed class AdminFunctions(
         principal.RequireRole(req, "admin");
         var email = req.Query["email"].FirstOrDefault() ?? "";
         if (email.Length == 0) return new BadRequestResult();
-        return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, ct) });
+        return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, principal.UserName(req), ct) });
+    }
+
+    /// <summary>The consent proofs on file for one address (#2) - the evidence an Art. 15 enquiry needs.</summary>
+    [Function("AdminListConsentProofs")]
+    public async Task<IActionResult> ConsentProofs([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/consent")] HttpRequest req, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var email = req.Query["email"].FirstOrDefault() ?? "";
+        if (email.Length == 0) return new BadRequestResult();
+        return new OkObjectResult(await listConsentProofs.ExecuteAsync(email, ct));
+    }
+
+    /// <summary>Revocation of one consent (#2): the single proof goes, the rest of the address stays.</summary>
+    [Function("AdminDeleteConsentProof")]
+    public async Task<IActionResult> DeleteConsentProof([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "manage/consent")] HttpRequest req, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var email = req.Query["email"].FirstOrDefault() ?? "";
+        var submissionId = req.Query["submission"].FirstOrDefault() ?? "";
+        if (email.Length == 0 || submissionId.Length == 0) return new BadRequestResult();
+        return new OkObjectResult(new { deleted = await deleteConsentProof.ExecuteAsync(email, submissionId, principal.UserName(req), ct) });
     }
 
     /// <summary>Time-limited download link to a visitor upload (a value of one submission).</summary>

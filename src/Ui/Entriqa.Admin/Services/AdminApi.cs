@@ -97,6 +97,18 @@ public sealed class AdminApi(HttpClient http)
         return doc.GetProperty("deleted").GetInt32();
     }
 
+    public Task<List<ConsentProofView>> ListConsentProofsAsync(string email) =>
+        GetAsync<List<ConsentProofView>>($"api/manage/consent?email={Uri.EscapeDataString(email)}");
+
+    public async Task<bool> DeleteConsentProofAsync(string email, string submissionId)
+    {
+        var res = await http.DeleteAsync($"api/manage/consent?email={Uri.EscapeDataString(email)}" +
+                                         $"&submission={Uri.EscapeDataString(submissionId)}");
+        await ThrowIfError(res);
+        var doc = await res.Content.ReadFromJsonAsync<JsonElement>(Json);
+        return doc.GetProperty("deleted").GetBoolean();
+    }
+
     public async Task<string> GetUploadLinkAsync(string path)
     {
         var doc = await GetAsync<JsonElement>($"api/manage/uploads/link?path={Uri.EscapeDataString(path)}");
@@ -193,6 +205,10 @@ public static class Errors
 public sealed record FormListItem(string Slug, string Name, string Type, string Status, int PublishedVersion, DateTimeOffset UpdatedAt);
 public sealed record ContactSummary(string Email, string? Name, string? Company, int Count,
     DateTimeOffset FirstAt, DateTimeOffset LastAt, string? BrevoContactId, List<string> Slugs);
+/// <summary>One consent proof as the admin reads it (#2) - the wording as it was ticked, never the form's current text.</summary>
+public sealed record ConsentProofView(string Email, string SubmissionId, string Slug, int Version,
+    DateTimeOffset SubmittedAt, DateTimeOffset? ConfirmedAt, string ConsentText,
+    string? IpHash, string? ConfirmedIpHash);
 public sealed record StepDescriptorDto(string Key, string Name, string Description, string Mode, bool SplitsPhase,
     List<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault,
     List<MailParamDto>? MailParams = null);

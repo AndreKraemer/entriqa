@@ -41,15 +41,41 @@ internal static class TestData
             Substitute.For<IDeleteConsentProofsByEmailCommand>(),
             Substitute.For<IRecordConsentDeletionCommand>(),
             Substitute.For<IListExpiredConsentProofsQuery>(),
-            Substitute.For<IDeleteConsentProofCommand>());
+            Substitute.For<IDeleteConsentProofCommand>(),
+            Substitute.For<IListConsentProofsByEmailQuery>());
         var opts = Microsoft.Extensions.Options.Options.Create(options ?? Options());
         ports.ListExpired.ExecuteAsync(Arg.Any<DateTimeOffset>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<ConsentProof>());
         var service = new ConsentProofService(ports.Store, ports.Confirm, ports.DeleteByEmail, ports.RecordDeletion,
-            ports.ListExpired, ports.Delete, new IpHasher(opts), opts, time ?? Time,
+            ports.ListExpired, ports.Delete, ports.ListByEmail, new IpHasher(opts), opts, time ?? Time,
             NullLogger<ConsentProofService>.Instance);
         return (service, ports);
     }
+
+    /// <summary>
+    /// Two proofs for one address (#2): different forms and versions, one confirmed by double opt-in and
+    /// one not, and different wording - so a test that reads only the first row cannot pass by accident.
+    /// Deliberately handed back oldest-first: the newest-first order is the listing's job, not the store's.
+    /// </summary>
+    public static List<ConsentProof> ConsentProofsFor(string email) =>
+    [
+        new()
+        {
+            Email = email, SubmissionId = "s01", Slug = "kontakt", Version = 1,
+            SubmittedAt = Time.GetUtcNow().AddDays(-9),
+            ConsentText = "Ich willige ein, zum Zweck der Kontaktaufnahme kontaktiert zu werden.",
+            IpHash = "hash-submit-01",
+        },
+        new()
+        {
+            Email = email, SubmissionId = "s02", Slug = "whitepaper", Version = 4,
+            SubmittedAt = Time.GetUtcNow().AddDays(-2),
+            ConsentText = "Ja, schickt mir das Whitepaper und gelegentlich Neuigkeiten.",
+            IpHash = "hash-submit-02",
+            ConfirmedAt = Time.GetUtcNow().AddDays(-2).AddMinutes(6),
+            ConfirmedIpHash = "hash-confirm-02",
+        },
+    ];
 
     internal sealed record ConsentProofPorts(
         IStoreConsentProofCommand Store,
@@ -57,7 +83,8 @@ internal static class TestData
         IDeleteConsentProofsByEmailCommand DeleteByEmail,
         IRecordConsentDeletionCommand RecordDeletion,
         IListExpiredConsentProofsQuery ListExpired,
-        IDeleteConsentProofCommand Delete);
+        IDeleteConsentProofCommand Delete,
+        IListConsentProofsByEmailQuery ListByEmail);
 
     /// <summary>
     /// A submissions list the way the admin receives it (#11): newest first, two forms, every quick

@@ -1,0 +1,111 @@
+@page "/einwilligungen"
+@inject AdminApi Api
+@inject IJSRuntime Js
+@inject Ui T
+
+<h1>@T["Einwilligungen"]</h1>
+<p class="hint">@T["Nachweise zu einer E-Mail-Adresse – für die Auskunft nach Art. 15 DSGVO und für den Widerruf einzelner Einwilligungen."]</p>
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_info is not null) { <p class="ok">@_info</p> }
+
+<div class="filters">
+    <input placeholder="@T["E-Mail"]" style="min-width:280px" disabled="@_busy"
+           @bind="_address" @bind:event="oninput" @onkeydown="OnKey" />
+    <button class="btn" disabled="@(_busy || _address.Trim().Length == 0)" @onclick="SearchTyped">@T["Suchen"]</button>
+</div>
+
+@if (_busy) { <p>@T["Lade …"]</p> }
+else if (_result.State == ConsentSearchState.NoConsent)
+{
+    @* AC 2: a sentence, not an empty table - and it names the address it is about. *@
+    <p class="ok">@T.F("Zu {0} liegt keine Einwilligung vor.", _result.Address)</p>
+}
+else if (_result.State == ConsentSearchState.Found)
+{
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>@T["Formular"]</th><th>@T["Version"]</th><th>@T["Eingang"]</th><th>@T["Bestätigt"]</th><th>@T["Wortlaut der Einwilligung"]</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var p in _result.Proofs)
+        {
+            var proof = p;
+            <tr>
+                <td>@proof.Slug</td>
+                <td>@proof.Version</td>
+                <td>@proof.SubmittedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@(proof.ConfirmedAt is { } c ? c.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : T["Nicht bestätigt"])</td>
+                <td>
+                    @proof.ConsentText
+                    @if (proof.IpHash is { Length: > 0 } || proof.ConfirmedIpHash is { Length: > 0 })
+                    {
+                        <div class="hint">@T.F("IP-Hash Einsendung: {0} · Bestätigung: {1}",
+                                               proof.IpHash ?? "–", proof.ConfirmedIpHash ?? "–")</div>
+                    }
+                </td>
+                <td><button class="btn btn--danger" disabled="@_busy" @onclick="() => DeleteProof(proof)">@T["Nachweis löschen"]</button></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+}
+
+@code {
+    private ConsentSearchResult _result = ConsentSearch.Idle();
+    private string _address = "";
+    private string? _error, _info;
+    private bool _busy;
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_busy && _address.Trim().Length > 0) await SearchTyped();
+    }
+
+    private Task SearchTyped() => Search(_address.Trim());
+
+    /// <summary>
+    /// Always asked for an explicit address, never for whatever the input box currently holds: it is
+    /// bound on oninput, so after a search it drifts with every keystroke, and a refresh that read it
+    /// would answer about a different address than the one it claims to be confirming.
+    /// </summary>
+    private async Task Search(string address)
+    {
+        _error = null;
+        _info = null;
+        _busy = true;
+        try { _result = ConsentSearch.Of(address, await Api.ListConsentProofsAsync(address)); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); _result = ConsentSearch.Idle(); }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteProof(ConsentProofView proof)
+    {
+        // AC 4: irreversible, so it is never done on a single click. The early return has to sit
+        // between the question and the call - asking and deleting anyway reads as compliant.
+        if (!await Js.InvokeAsync<bool>("confirm",
+                T.F("Einwilligungsnachweis vom {0} endgültig löschen? Der Beleg für diese Einwilligung ist danach weg.",
+                    proof.SubmittedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")))) return;
+
+        _busy = true;
+        string? failed = null;
+        var removed = false;
+        try { removed = await Api.DeleteConsentProofAsync(proof.Email, proof.SubmissionId); }
+        catch (Exception ex) { failed = Errors.Friendly(ex, T); }
+        finally { _busy = false; }
+
+        // AC 3: the emptied list has to be the server's answer. Dropping the row locally would satisfy
+        // "it disappears from the search" while hiding a delete that never happened - and the address
+        // is the proof's own, because the box may already hold the next one being typed.
+        await Search(proof.Email);
+
+        // Restored after the refresh, which clears both banners: on an irreversible erasure the one
+        // thing that must never be swallowed is the news that it did not happen. Assigning outright
+        // would swallow the other half - the refresh may have failed on its own, and then the page
+        // would report a clean success over a result it never managed to load.
+        _error = failed ?? _error;
+        _info = _error is not null ? null
+                : removed ? T["Nachweis gelöscht."]
+                : T["Dieser Nachweis war bereits gelöscht."];
+    }
+}

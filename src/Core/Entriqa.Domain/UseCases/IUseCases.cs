@@ -191,7 +191,31 @@ public interface IListContactSubmissionsUseCase
 public interface IDeleteContactUseCase
 {
     /// <summary>GDPR deletion: removes every submission of that address (blobs included). Returns the count.</summary>
-    Task<int> ExecuteAsync(string email, CancellationToken ct = default);
+    /// <param name="by">The admin account that triggered it - it lands in the erasure audit row (#2).</param>
+    Task<int> ExecuteAsync(string email, string by, CancellationToken ct = default);
+}
+
+// Consent proofs in the admin (#2): the window onto what #1 files away. Searchable by address so an
+// Art. 15 enquiry can be answered, and removable one at a time when a single consent is revoked.
+
+/// <summary>
+/// One proof as the admin reads it. It carries the wording that was ticked, never the form's current
+/// text - the evidence is what the visitor agreed to, not what the form says today (AC 5).
+/// </summary>
+public sealed record ConsentProofView(string Email, string SubmissionId, string Slug, int Version,
+    DateTimeOffset SubmittedAt, DateTimeOffset? ConfirmedAt, string ConsentText,
+    string? IpHash, string? ConfirmedIpHash);
+
+public interface IListConsentProofsUseCase
+{
+    /// <summary>Every proof of that address, newest submission first. Empty when there is none.</summary>
+    Task<IReadOnlyList<ConsentProofView>> ExecuteAsync(string email, CancellationToken ct = default);
+}
+
+public interface IDeleteConsentProofUseCase
+{
+    /// <summary>Removes one proof and records the erasure. false when there was nothing under that id.</summary>
+    Task<bool> ExecuteAsync(string email, string submissionId, string by, CancellationToken ct = default);
 }
 
 public interface IUploadFileUseCase

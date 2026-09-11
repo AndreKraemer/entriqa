@@ -181,8 +181,20 @@ public interface IDeleteConsentProofsByEmailCommand
 
 public interface IRecordConsentDeletionCommand
 {
-    /// <summary>Audit trail of an erasure - without the plaintext address, which is exactly what was erased.</summary>
-    Task ExecuteAsync(DateTimeOffset at, string emailHash, int count, CancellationToken ct = default);
+    /// <summary>
+    /// Audit trail of an erasure - without the plaintext address, which is exactly what was erased.
+    /// <paramref name="by"/> is the admin account that triggered it and <paramref name="submissionId"/>
+    /// names the single proof where one was removed on its own (#2); a contact-wide erasure passes null,
+    /// because there the count is the whole story.
+    /// </summary>
+    Task ExecuteAsync(DateTimeOffset at, string emailHash, int count, string by, string? submissionId,
+                      CancellationToken ct = default);
+}
+
+public interface IListConsentProofsByEmailQuery
+{
+    /// <summary>Every proof of that address (case-insensitive). A point query - the partition is the address.</summary>
+    Task<IReadOnlyList<ConsentProof>> ExecuteAsync(string email, CancellationToken ct = default);
 }
 
 public interface IListExpiredConsentProofsQuery
