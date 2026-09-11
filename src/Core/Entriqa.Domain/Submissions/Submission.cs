@@ -23,6 +23,7 @@ public sealed class Submission
     public List<StepRun> StepRuns { get; init; } = new();
     public Dictionary<string, string> Artifacts { get; init; } = new(); // "report" -> blob path, "download" -> URL
     public string Handling { get; set; } = HandlingStates.None;
+    public string? Assignee { get; set; }                          // #13: who takes care of it; null = nobody
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? ConfirmedIpHash { get; set; }
     public string? BrevoContactId { get; set; }

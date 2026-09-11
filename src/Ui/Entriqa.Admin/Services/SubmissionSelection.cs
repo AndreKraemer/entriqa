@@ -12,9 +12,15 @@ namespace Entriqa.Admin.Services;
 /// Deliberately free of Blazor types: this is where the story's logic sits, and it is executed by
 /// the unit tests rather than scanned as source.
 /// </summary>
-public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
+public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, string? Assignee = null)
 {
     public const int PerPage = 15;
+
+    /// <summary>
+    /// The assignee filter that means "nobody has taken this" (#13). A single dash can never be an
+    /// admin's display name, so it needs no escaping and no second query parameter.
+    /// </summary>
+    public const string Nobody = "-";
 
     /// <summary>The quick filters the list offers. An address naming anything else has no filter at all.</summary>
     public static readonly IReadOnlySet<string> QuickFilters =

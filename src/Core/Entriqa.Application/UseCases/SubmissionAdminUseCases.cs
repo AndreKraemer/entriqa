@@ -84,3 +84,19 @@ internal sealed class DeleteSubmissionAdminUseCase(
         await delete.ExecuteAsync(s, ct);
     }
 }
+
+/// <summary>
+/// #13 skeleton - deliberately without behaviour: the red tests state what assigning means, the
+/// implementation follows them. What the shape already says is that this use case has no way of
+/// notifying anyone (AC7): it knows the submission and how to save it, and nothing else.
+/// </summary>
+internal sealed class SetSubmissionAssigneeUseCase(
+    ITryGetSubmissionQuery getSubmission,
+    ISaveSubmissionCommand save) : ISetSubmissionAssigneeUseCase
+{
+    public Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default)
+    {
+        _ = getSubmission; _ = save; _ = submissionId; _ = assignee; _ = ct;
+        throw new NotImplementedException("#13");
+    }
+}

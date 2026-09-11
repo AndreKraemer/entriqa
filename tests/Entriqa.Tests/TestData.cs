@@ -107,6 +107,29 @@ internal static class TestData
             Handling: i >= 18 ? "none" : i is 5 or 11 ? "done" : "open",
             QuizResultId: null)).ToList();
 
+    public const string AdminMe = "kim@admin.example";
+    public const string AdminColleague = "robin@admin.example";
+
+    /// <summary>
+    /// Seven submissions for the personal filters of #13: assigned to me and to a colleague, in both
+    /// forms so that a cross-form filter has something to cross, plus the three that have to stay out of
+    /// every personal filter - unassigned, already done, and a form that tracks no handling at all.
+    /// Separate from AdminSubmissionList, whose distribution the paging and quick-filter tests count on.
+    /// </summary>
+    public static List<SubmissionListItem> AssignedSubmissionList() =>
+    [
+        Assigned("a1", "kontakt", "open", AdminMe),
+        Assigned("a2", "whitepaper", "open", AdminMe),
+        Assigned("a3", "kontakt", "open", AdminColleague),
+        Assigned("a4", "whitepaper", "open", AdminColleague),
+        Assigned("a5", "kontakt", "open", null),
+        Assigned("a6", "kontakt", "done", AdminMe),
+        Assigned("a7", "whitepaper", "none", null),
+    ];
+
+    private static SubmissionListItem Assigned(string id, string slug, string handling, string? assignee) =>
+        new(id, slug, 1, Time.GetUtcNow(), $"{id}@example.org", $"Person {id}", 3, handling, null, assignee);
+
     public static FormDefinition Contact() => new(
         Slug: "kontakt", Name: "Kontakt", Type: "contact", Intro: null, SubmitLabel: null,
         Fields: new[]

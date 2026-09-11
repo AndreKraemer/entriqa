@@ -54,3 +54,23 @@ internal sealed class MarkVisitedUseCase(ISetLastVisitCommand set, TimeProvider 
         return now;
     }
 }
+
+/// <summary>#13 skeleton - the choices an assignment has.</summary>
+internal sealed class ListAdminsUseCase(IListAdminsQuery admins) : IListAdminsUseCase
+{
+    public Task<IReadOnlyList<string>> ExecuteAsync(CancellationToken ct = default)
+    {
+        _ = admins; _ = ct;
+        throw new NotImplementedException("#13");
+    }
+}
+
+/// <summary>#13 skeleton - what turns "has signed in" into a row the assignment list can read.</summary>
+internal sealed class RecordAdminSeenUseCase(IRecordAdminSeenCommand record, TimeProvider time) : IRecordAdminSeenUseCase
+{
+    public Task ExecuteAsync(string user, CancellationToken ct = default)
+    {
+        _ = record; _ = time; _ = user; _ = ct;
+        throw new NotImplementedException("#13");
+    }
+}

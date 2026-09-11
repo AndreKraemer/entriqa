@@ -229,12 +229,12 @@ public sealed record QuizStats(List<StatsBar> Results, int AvgPct, int EndedByJu
 public sealed record QuestionStats(string Question, int Seen, List<StatsBar> Options);
 public sealed record FieldStats(string Label, List<StatsBar> Options);
 public sealed record SubmissionListItem(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Email,
-    string Summary, int State, string Handling, string? QuizResultId);
+    string Summary, int State, string Handling, string? QuizResultId, string? Assignee = null);
 
 public sealed record SubmissionDetail(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale,
     string? Email, string? FirstName, string? Source, List<SubmissionValue> Values, QuizInfo? Quiz, string? QuizResultTitle,
     string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns, string Handling, int State,
-    string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers);
+    string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null);
 
 public sealed record IntegrationDirectory(bool BrevoConfigured, List<DirectoryEntry> BrevoLists, List<DirectoryEntry> BrevoTemplates,
     bool ReportingCloudConfigured, List<string> ReportTemplates, List<LeadMagnetInfo> LeadMagnets,
@@ -266,4 +266,15 @@ public static class Labels
     public static string StepStatus(int s) => s >= 0 && s < StepStatuses.Length ? StepStatuses[s] : s.ToString(CultureInfo.InvariantCulture);
     public static string StateCss(int s) => s switch { 0 => "chip chip--busy", 1 => "chip chip--wait", 2 => "chip chip--err", 3 => "chip chip--ok", _ => "chip" };
     public static string StepCss(int s) => s switch { 1 => "chip chip--ok", 3 => "chip chip--err", 4 => "chip chip--err", 2 => "chip chip--wait", 5 => "chip", _ => "chip chip--busy" };
+
+    /// <summary>
+    /// The avatar an assignee is shown as in the list and in the detail header (#13). It lives here rather
+    /// than in MainLayout, which had it first, because a name has to read the same in every place that
+    /// abbreviates it. Skeleton.
+    /// </summary>
+    public static string Initials(string? name)
+    {
+        _ = name;
+        throw new NotImplementedException("#13");
+    }
 }
