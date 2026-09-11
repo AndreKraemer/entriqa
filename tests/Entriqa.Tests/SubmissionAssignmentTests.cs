@@ -313,6 +313,12 @@ public class SubmissionAssignmentTests
         // chip wired to any other name renders and counts exactly the same.
         Assert.Contains("TogglePersonal(me)", chip!, StringComparison.Ordinal);
 
+        // And it has to look on the same condition it acts on. Lighting the chip on the assignee alone
+        // compiles, renders and keeps every other test green, while the button goes dark exactly where
+        // clicking it still leads into the filter - appearance and action drifting apart is how this
+        // corner broke once already.
+        Assert.Contains("IsPersonal(me)", chip!, StringComparison.Ordinal);
+
         // The badge beside it is code-behind that no test executes, so what keeps it from drifting back
         // into a second copy of the filter is that it goes through the same shared expression.
         Assert.Contains("SubmissionSelection.Personal(", markup, StringComparison.Ordinal);
