@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.UseCases;
 using Entriqa.Functions.Http;
@@ -21,6 +22,9 @@ public sealed class AdminFunctions(
     IPublishFormUseCase publish,
     IGetSubmissionDetailUseCase getSubmission,
     ISetSubmissionHandlingUseCase setHandling,
+    ISetSubmissionAssigneeUseCase setAssignee,
+    IListAdminsUseCase listAdmins,
+    IRecordAdminSeenUseCase recordSeen,
     IDeleteSubmissionAdminUseCase deleteSubmission,
     IListRecentSubmissionsUseCase recent,
     IMarkVisitedUseCase markVisited,
@@ -36,7 +40,8 @@ public sealed class AdminFunctions(
     IDeleteContactUseCase deleteContact,
     IListConsentProofsUseCase listConsentProofs,
     IDeleteConsentProofUseCase deleteConsentProof,
-    Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks)
+    Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks,
+    ILogger<AdminFunctions> log)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -102,6 +107,20 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> Recent([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/submissions")] HttpRequest req, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
+        // The one place every admin passes on every page load, which is what makes it the right place
+        // to notice them at all (#13, AC2). It does not touch their last visit.
+        //
+        // Best-effort: this is bookkeeping for the assignment picker, not part of the answer. Letting it
+        // throw would turn a failed write of a side note into a dead inbox - the one page every admin
+        // starts on - for a list that was served perfectly well before #13.
+        try
+        {
+            await recordSeen.ExecuteAsync(principal.UserName(req), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogWarning(ex, "Sichtung von {User} nicht aufgezeichnet - der Posteingang wird trotzdem geliefert", principal.UserName(req));
+        }
         var slug = req.Query["slug"].FirstOrDefault();
         return new OkObjectResult(await recent.ExecuteAsync(string.IsNullOrEmpty(slug) ? null : slug, principal.UserName(req), 500, ct));
     }
@@ -170,6 +189,22 @@ public sealed class AdminFunctions(
         return new NoContentResult();
     }
 
+    [Function("AdminSetAssignee")]
+    public async Task<IActionResult> SetAssignee([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/submissions/{id}/assignee")] HttpRequest req, string id, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var body = await JsonSerializer.DeserializeAsync<AssigneeBody>(req.Body, Json, ct) ?? new AssigneeBody(null);
+        await setAssignee.ExecuteAsync(id, body.Assignee, ct);
+        return new NoContentResult();
+    }
+
+    [Function("AdminListAdmins")]
+    public async Task<IActionResult> Admins([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/admins")] HttpRequest req, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        return new OkObjectResult(await listAdmins.ExecuteAsync(ct));
+    }
+
     [Function("AdminDeleteSubmission")]
     public async Task<IActionResult> Delete([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "manage/submissions/{id}")] HttpRequest req, string id, CancellationToken ct)
     {
@@ -229,6 +264,7 @@ public sealed class AdminFunctions(
     }
 
     private sealed record HandlingBody(string? Handling);
+    private sealed record AssigneeBody(string? Assignee);
 
     [Function("AdminListSubmissions")]
     public async Task<IActionResult> List([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/forms/{slug}/submissions")] HttpRequest req, string slug, CancellationToken ct)

@@ -97,6 +97,18 @@ public interface ISetLastVisitCommand
     Task ExecuteAsync(string user, DateTimeOffset at, CancellationToken ct = default);
 }
 
+public interface IListAdminsQuery
+{
+    /// <summary>Every admin the application has seen, in a stable order (#13).</summary>
+    Task<IReadOnlyList<string>> ExecuteAsync(CancellationToken ct = default);
+}
+
+public interface IRecordAdminSeenCommand
+{
+    /// <summary>Merges the sighting into the admin's row - the last visit has to survive it (#13).</summary>
+    Task ExecuteAsync(string user, DateTimeOffset at, CancellationToken ct = default);
+}
+
 public interface IGetFormsActivityQuery
 {
     Task<IReadOnlyDictionary<string, Domain.UseCases.FormActivity>> ExecuteAsync(DateTimeOffset today, CancellationToken ct = default);

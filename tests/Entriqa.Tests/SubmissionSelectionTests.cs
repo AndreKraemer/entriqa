@@ -290,4 +290,151 @@ public class SubmissionSelectionTests
 
         Assert.Equal(selection, selection.AtPageContaining(items, selection.PageSlice(items)[0].Id));
     }
+
+    // ---- #13: the personal filters ----
+
+    private static IReadOnlyList<SubmissionListItem> Assigned(SubmissionSelection selection) =>
+        selection.Select(TestData.AssignedSubmissionList(), lastVisit: null);
+
+    private static string[] IdsOf(IReadOnlyList<SubmissionListItem> selection) =>
+        [.. selection.Select(s => s.Id)];
+
+    /// <summary>
+    /// AC4. "Meine offenen" is not a view of one form: whoever works through their own requests wants all
+    /// of them, and the list already holds every form. What it is not is everything with my name on it -
+    /// an assignee filter means open and assigned, here and in AC5 alike.
+    /// </summary>
+    [Fact]
+    public void GivenSubmissionsOfSeveralForms_WhenFilteringByTheSignedInAdmin_ThenTheirOpenOnesOfEveryFormAppear()
+    {
+        var mine = Assigned(new SubmissionSelection(null, null, 1, TestData.AdminMe));
+
+        Assert.Equal(new[] { "a1", "a2" }, IdsOf(mine));
+        Assert.Equal(new[] { "kontakt", "whitepaper" }, mine.Select(s => s.Slug).ToArray());
+    }
+
+    /// <summary>AC5: the same rule, someone else's name.</summary>
+    [Fact]
+    public void GivenSubmissionsOfSeveralForms_WhenFilteringByAnotherAdmin_ThenOnlyThatAdminsOpenOnesAppear()
+    {
+        var theirs = Assigned(new SubmissionSelection(null, null, 1, TestData.AdminColleague));
+
+        Assert.Equal(new[] { "a3", "a4" }, IdsOf(theirs));
+    }
+
+    /// <summary>
+    /// The "open" half of AC4 and AC5, on its own: a submission the assignee has already finished is not
+    /// what a personal filter is for. Without this the filter would grow into an archive of everything
+    /// that person ever touched.
+    /// </summary>
+    [Fact]
+    public void GivenAnAssigneeFilter_WhenOneOfTheirSubmissionsIsAlreadyDone_ThenItIsNotInTheSelection() =>
+        Assert.DoesNotContain("a6", IdsOf(Assigned(new SubmissionSelection(null, null, 1, TestData.AdminMe))));
+
+    /// <summary>
+    /// AC6, second half: after the assignment is gone the submission is in nobody's personal filter. It is
+    /// still open and still in the list - it has just stopped being anyone's.
+    /// </summary>
+    [Fact]
+    public void GivenASubmissionWithoutAnAssignee_WhenAnyPersonalFilterIsApplied_ThenItIsInNoneOfThem()
+    {
+        Assert.DoesNotContain("a5", IdsOf(Assigned(new SubmissionSelection(null, null, 1, TestData.AdminMe))));
+        Assert.DoesNotContain("a5", IdsOf(Assigned(new SubmissionSelection(null, null, 1, TestData.AdminColleague))));
+    }
+
+    /// <summary>
+    /// The picker's third entry: what is open and nobody has taken. It follows the same rule as a name -
+    /// a submission of a form without handling is not open, so it is not waiting for anyone either.
+    /// </summary>
+    [Fact]
+    public void GivenTheNobodyFilter_WhenSelecting_ThenOnlyOpenSubmissionsWithoutAnAssigneeAppear() =>
+        Assert.Equal(new[] { "a5" }, IdsOf(Assigned(new SubmissionSelection(null, null, 1, SubmissionSelection.Nobody))));
+
+    /// <summary>
+    /// A personal filter is a selection like any other, so it has to survive the trip to a submission and
+    /// back - otherwise the way back out of the detail view lands in a wider list than the reader left.
+    /// </summary>
+    [Fact]
+    public void GivenAnAssigneeFilterInTheAddress_WhenTurningItIntoADetailAddressAndBack_ThenTheSelectionIsUnchanged()
+    {
+        var selection = new SubmissionSelection("kontakt", null, 2, TestData.AdminMe);
+        var url = selection.DetailUrl("a1");
+
+        Assert.Equal(selection, SubmissionSelection.FromQuery(null, url[url.IndexOf('?', StringComparison.Ordinal)..]));
+    }
+
+    /// <summary>The back link has to name the narrowing it returns to, or it promises a list it does not lead to.</summary>
+    [Fact]
+    public void GivenAnAssigneeFilter_WhenNamingTheWayBack_ThenTheLabelSaysWhoseSubmissionsTheseAre() =>
+        Assert.Contains(TestData.AdminMe, new SubmissionSelection(null, null, 1, TestData.AdminMe).BackLabel(new Ui(), null),
+            StringComparison.Ordinal);
+
+    /// <summary>The mirror of the one above - the unassigned filter is a narrowing too, and drops out of the
+    /// label just as silently when nothing pins it.</summary>
+    [Fact]
+    public void GivenTheNobodyFilter_WhenNamingTheWayBack_ThenTheLabelSaysTheseAreUnassigned() =>
+        Assert.Contains("ohne Bearbeiter", new SubmissionSelection(null, null, 1, SubmissionSelection.Nobody).BackLabel(new Ui(), null),
+            StringComparison.Ordinal);
+
+    // ---- #13: "Meine offenen" as an operation, not as markup ----
+
+    /// <summary>
+    /// AC4's "formularübergreifend" is a property of the chip, not only of the filter behind it. The list is
+    /// reachable per form, so the state this widens out of is one a reader is actually in - and narrowing
+    /// further from there would answer "my open ones" with one form's worth of them.
+    /// </summary>
+    [Fact]
+    public void GivenAFormAndAQuickFilter_WhenChoosingThePersonalFilter_ThenItWidensToEveryFormAndPageOne()
+    {
+        var chosen = new SubmissionSelection("kontakt", "failed", 3).TogglePersonal(TestData.AdminMe);
+
+        Assert.Equal(new SubmissionSelection(null, null, 1, TestData.AdminMe), chosen);
+    }
+
+    /// <summary>Choosing it again, from inside the filter, gives the whole list back.</summary>
+    [Fact]
+    public void GivenThePersonalFilterIsOn_WhenChoosingItAgain_ThenTheNarrowingIsGone()
+    {
+        var selection = SubmissionSelection.Personal(TestData.AdminMe) with { Page = 2 };
+
+        Assert.Equal(new SubmissionSelection(null, null, 1), selection.TogglePersonal(TestData.AdminMe));
+    }
+
+    /// <summary>
+    /// The mirror that keeps the chip's three rules together. A selection that merely carries my name is
+    /// not the personal filter - the form select and the quick filters keep the assignee on purpose - so
+    /// the chip is unlit there, and choosing it has to lead into the list its badge counts rather than
+    /// quietly dropping the name. Without this the round-one defect returns in a narrower corner: a badge
+    /// promising a list the click does not produce.
+    /// </summary>
+    [Fact]
+    public void GivenASelectionThatMerelyCarriesMyName_WhenChoosingThePersonalFilter_ThenItLeadsIntoIt() =>
+        Assert.Equal(SubmissionSelection.Personal(TestData.AdminMe),
+            new SubmissionSelection("kontakt", "todo", 2, TestData.AdminMe).TogglePersonal(TestData.AdminMe));
+
+    /// <summary>
+    /// The chip is lit exactly while the list it stands for is the list on screen. Paging through one's
+    /// own open ones stays inside that filter, so the page must not put the light out.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void GivenThePersonalFilterOnAnyPage_WhenTheChipAsksWhetherItIsLit_ThenItIs(int page) =>
+        Assert.True(new SubmissionSelection(null, null, page, TestData.AdminMe).IsPersonal(TestData.AdminMe));
+
+    /// <summary>
+    /// The mirror, and the reason this is not simply "is the assignee me": both the form select and the
+    /// quick filters deliberately keep the assignee, so a selection can carry my name and still not be
+    /// the cross-form set the badge counts. A chip lit there would claim a list that is not on screen.
+    /// </summary>
+    [Fact]
+    public void GivenAPersonalFilterNarrowedFurther_WhenTheChipAsksWhetherItIsLit_ThenItIsNot()
+    {
+        Assert.False(new SubmissionSelection("kontakt", null, 1, TestData.AdminMe).IsPersonal(TestData.AdminMe));
+        Assert.False(new SubmissionSelection(null, "failed", 1, TestData.AdminMe).IsPersonal(TestData.AdminMe));
+    }
+
+    [Fact]
+    public void GivenAnotherAdminsFilter_WhenTheChipAsksWhetherItIsLit_ThenItIsNot() =>
+        Assert.False(SubmissionSelection.Personal(TestData.AdminColleague).IsPersonal(TestData.AdminMe));
 }

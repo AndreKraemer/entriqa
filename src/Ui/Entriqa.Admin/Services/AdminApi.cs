@@ -154,6 +154,16 @@ public sealed class AdminApi(HttpClient http)
         await ThrowIfError(res);
     }
 
+    /// <summary>Hands a submission to an admin, or to nobody (null) - one operation for all three (#13).</summary>
+    public async Task SetAssigneeAsync(string id, string? assignee)
+    {
+        var res = await http.PostAsJsonAsync($"api/manage/submissions/{Uri.EscapeDataString(id)}/assignee", new { assignee }, Json);
+        await ThrowIfError(res);
+    }
+
+    /// <summary>The admins an assignment can choose from - those the application has seen at least once (#13).</summary>
+    public Task<List<string>> ListAdminsAsync() => GetAsync<List<string>>("api/manage/admins");
+
     public async Task DeleteSubmissionAsync(string id)
     {
         var res = await http.DeleteAsync($"api/manage/submissions/{Uri.EscapeDataString(id)}");
@@ -229,12 +239,12 @@ public sealed record QuizStats(List<StatsBar> Results, int AvgPct, int EndedByJu
 public sealed record QuestionStats(string Question, int Seen, List<StatsBar> Options);
 public sealed record FieldStats(string Label, List<StatsBar> Options);
 public sealed record SubmissionListItem(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Email,
-    string Summary, int State, string Handling, string? QuizResultId);
+    string Summary, int State, string Handling, string? QuizResultId, string? Assignee = null);
 
 public sealed record SubmissionDetail(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale,
     string? Email, string? FirstName, string? Source, List<SubmissionValue> Values, QuizInfo? Quiz, string? QuizResultTitle,
     string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns, string Handling, int State,
-    string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers);
+    string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null);
 
 public sealed record IntegrationDirectory(bool BrevoConfigured, List<DirectoryEntry> BrevoLists, List<DirectoryEntry> BrevoTemplates,
     bool ReportingCloudConfigured, List<string> ReportTemplates, List<LeadMagnetInfo> LeadMagnets,
@@ -266,4 +276,38 @@ public static class Labels
     public static string StepStatus(int s) => s >= 0 && s < StepStatuses.Length ? StepStatuses[s] : s.ToString(CultureInfo.InvariantCulture);
     public static string StateCss(int s) => s switch { 0 => "chip chip--busy", 1 => "chip chip--wait", 2 => "chip chip--err", 3 => "chip chip--ok", _ => "chip" };
     public static string StepCss(int s) => s switch { 1 => "chip chip--ok", 3 => "chip chip--err", 4 => "chip chip--err", 2 => "chip chip--wait", 5 => "chip", _ => "chip chip--busy" };
+
+    /// <summary>
+    /// The names an assignee picker offers (#13): the admins the application knows, plus the one the
+    /// submission already carries when that is not among them.
+    ///
+    /// The second half is not a nicety. A select whose value matches no option falls back to the first
+    /// one, so the picker would read "Niemand" for a submission that is assigned - and the next change
+    /// would write that lie back. The case is the one the story accepted rather than a rarity: an admin
+    /// who is renamed leaves their old name on every submission they still hold.
+    /// </summary>
+    public static List<string> AssigneeChoices(IEnumerable<string>? admins, string? current)
+    {
+        var choices = admins?.ToList() ?? [];
+        if (current is { Length: > 0 } c && !choices.Contains(c, StringComparer.Ordinal)) choices.Insert(0, c);
+        return choices;
+    }
+
+    /// <summary>
+    /// The avatar a person is shown as - the signed-in admin in the header, and since #13 the assignee in
+    /// the list and the detail view. It lives here rather than in MainLayout, which had it first, because
+    /// a name has to read the same in every place that abbreviates it.
+    ///
+    /// The local part carries the name: an address abbreviated whole would read as its provider. Two
+    /// initials where the name has parts, the first two letters where it has one, "?" for nobody.
+    /// </summary>
+    public static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var clean = name.Split('@')[0];
+        var parts = clean.Split([' ', '.', '-', '_'], StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}"
+            : clean[..Math.Min(2, clean.Length)].ToUpperInvariant();
+    }
 }

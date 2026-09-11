@@ -161,9 +161,31 @@ public sealed record SubmissionDetailView(
     string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale, string? Email, string? FirstName,
     string? Source, IReadOnlyList<SubmissionValueView> Values, Quiz.QuizOutcome? Quiz, string? QuizResultTitle,
     string? ConsentText, DateTimeOffset? ConfirmedAt, IReadOnlyList<StepRun> StepRuns, string Handling, SubmissionState State,
-    string? BrevoContactId, bool CanResendDoi, IReadOnlyList<QuizAnswerView>? QuizAnswers = null);
+    string? BrevoContactId, bool CanResendDoi, IReadOnlyList<QuizAnswerView>? QuizAnswers = null,
+    string? Assignee = null);
 
 public sealed record QuizAnswerView(string Question, string Answer, int Points, bool Jumped);
+
+// Assigning a submission to an admin (#13). Assign, hand over and unassign are one operation:
+// the submission carries at most one assignee, and setting it to null is how it loses one.
+
+public interface ISetSubmissionAssigneeUseCase
+{
+    /// <summary>Hands one submission to an admin, or to nobody (null). Notifies no one, ever.</summary>
+    Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default);
+}
+
+public interface IListAdminsUseCase
+{
+    /// <summary>The admins the application has seen at least once - the choices an assignment has.</summary>
+    Task<IReadOnlyList<string>> ExecuteAsync(CancellationToken ct = default);
+}
+
+public interface IRecordAdminSeenUseCase
+{
+    /// <summary>Notes that this admin has been here - without touching their last visit.</summary>
+    Task ExecuteAsync(string user, CancellationToken ct = default);
+}
 
 public interface IGetFormsActivityUseCase
 {

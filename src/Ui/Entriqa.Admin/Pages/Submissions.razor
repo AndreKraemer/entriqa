@@ -20,6 +20,26 @@ else
         @QuickButton("todo", T["Zu bearbeiten"])
         @QuickButton("waiting", T["Wartet auf Bestätigung"])
         @QuickButton("failed", T["Fehler"])
+        @* The personal filter is one concept with two ways in: the chip is this picker set to the
+           signed-in admin. The name - not a "me" marker - goes into the address, so a personal
+           filter stays shareable and SubmissionSelection stays free of any notion of identity. *@
+        @if (_me is { Length: > 0 } me)
+        {
+            var mine = CountPersonal(me);
+            <button class="btn @(_selection.IsPersonal(me) ? "btn--primary" : "")"
+                    @onclick="() => Go(_selection.TogglePersonal(me))">
+                @T["Meine offenen"] @if (mine > 0) { <span class="count">@mine</span> }
+            </button>
+        }
+        <select value="@(_selection.Assignee ?? "")" @onchange="OnAssigneeChange" title="@T["Bearbeiter"]">
+            <option value="">@T["Alle Bearbeiter"]</option>
+            <option value="@SubmissionSelection.Nobody" selected="@(_selection.Assignee == SubmissionSelection.Nobody)">@T["Niemand"]</option>
+            @* "Niemand" has its own option above, so it is not handed in as a name to keep. *@
+            @foreach (var a in Labels.AssigneeChoices(_admins, _selection.Assignee == SubmissionSelection.Nobody ? null : _selection.Assignee))
+            {
+                <option value="@a" selected="@(_selection.Assignee == a)">@a</option>
+            }
+        </select>
         @if (Slug is not null)
         {
             <a class="btn" href="api/manage/forms/@Slug/export.csv" target="_blank">@T["CSV exportieren"]</a>
@@ -34,7 +54,7 @@ else
 
     <div class="table-scroll">
         <table>
-            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Quiz"]</th></tr></thead>
+            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Bearbeiter"]</th><th>@T["Quiz"]</th></tr></thead>
             <tbody>
             @foreach (var s in Paged)
             {
@@ -51,12 +71,19 @@ else
                     <td @onclick:stopPropagation="true"><a href="@Shown.DetailUrl(item.Id)">@item.Summary</a></td>
                     <td><span class="@Labels.StateCss(item.State)">@T[Labels.SubmissionState(item.State)]</span></td>
                     <td>@(item.Handling == "none" ? "–" : item.Handling == "open" ? T["Offen"] : T["Erledigt"])</td>
+                    <td>
+                        @if (item.Assignee is { Length: > 0 } who)
+                        {
+                            <span class="avatar avatar--sm" title="@who">@Labels.Initials(who)</span>
+                        }
+                        else { <span class="hint">–</span> }
+                    </td>
                     <td>@(item.QuizResultId ?? "–")</td>
                 </tr>
             }
             @if (!Paged.Any())
             {
-                <tr><td colspan="7" class="hint" style="text-align:center;padding:1.5rem">@T["Nichts in dieser Auswahl."]</td></tr>
+                <tr><td colspan="8" class="hint" style="text-align:center;padding:1.5rem">@T["Nichts in dieser Auswahl."]</td></tr>
             }
             </tbody>
         </table>
@@ -75,6 +102,8 @@ else
 
     private RecentSubmissions? _data;
     private List<FormListItem>? _forms;
+    private List<string>? _admins;
+    private string? _me;
     private DateTimeOffset? _lastVisit;
     private string? _error;
     private string _path = "";
@@ -118,7 +147,12 @@ else
         try
         {
             _forms ??= await Api.ListFormsAsync();
+            _me ??= (await Api.GetMeAsync())?.UserDetails;
             _data = await Api.ListRecentAsync(_selection.Slug);
+            // After the inbox call, not before: that request is what records the caller as having been
+            // here, so asking earlier would leave the signed-in admin out of their own picker until the
+            // next load (#13).
+            _admins ??= await Api.ListAdminsAsync();
             _lastVisit = _data.LastVisitAt;
             _error = null;
         }
@@ -130,6 +164,9 @@ else
     /// <summary>The badge counts come from the selection itself - a second copy of the filter here would be
     /// the one nothing tests, and the counts could then disagree with what the button shows.</summary>
     private int CountFor(string quick) => (_selection with { Quick = quick, Page = 1 }).Select(_data!.Items, _lastVisit).Count;
+
+    /// <summary>The badge counts exactly the selection the chip leads to - one expression, so the two cannot drift.</summary>
+    private int CountPersonal(string who) => SubmissionSelection.Personal(who).Select(_data!.Items, _lastVisit).Count;
 
     private IReadOnlyList<SubmissionListItem> Filtered => _selection.Select(_data!.Items, _lastVisit);
 
@@ -152,8 +189,13 @@ else
         </button>
     };
 
+    // The personal filter survives a change of form - "my open ones in this form" is a narrowing a
+    // reader asks for, and silently dropping it would widen the list they are looking at.
     private void OnSlugChange(ChangeEventArgs e) =>
-        Go(new SubmissionSelection(e.Value?.ToString() is { Length: > 0 } s ? s : null, null, 1));
+        Go(new SubmissionSelection(e.Value?.ToString() is { Length: > 0 } s ? s : null, null, 1, _selection.Assignee));
+
+    private void OnAssigneeChange(ChangeEventArgs e) =>
+        Go(_selection with { Assignee = e.Value?.ToString() is { Length: > 0 } a ? a : null, Page = 1 });
 
     private async Task MarkVisited()
     {

@@ -49,7 +49,7 @@ internal sealed class GetSubmissionDetailUseCase(
 
         return new SubmissionDetailView(s.Id, s.Slug, s.Version, s.CreatedAt, s.Locale, s.Email, s.FirstName,
             s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns, s.Handling, s.State,
-            s.BrevoContactId, canResendDoi, quizAnswers);
+            s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee);
     }
 }
 
@@ -82,5 +82,31 @@ internal sealed class DeleteSubmissionAdminUseCase(
         foreach (var path in s.Artifacts.Values.Where(v => !v.Contains("://", StringComparison.Ordinal)))
             await artifacts.DeleteAsync(path, ct);                          // like retention: blobs first
         await delete.ExecuteAsync(s, ct);
+    }
+}
+
+/// <summary>
+/// Assigning, handing over and unassigning are one operation (#13): the submission carries at most
+/// one assignee, and setting it to nobody is how it loses one. The boundary is the one
+/// <see cref="SetSubmissionHandlingUseCase"/> already draws - a form that tracks no handling has no
+/// open state either, so an assignment on it could never surface in a personal filter.
+///
+/// It knows the submission and how to save it, and nothing else: that is what makes AC7 - an
+/// assignment never notifies anyone - true by construction rather than by care.
+/// </summary>
+internal sealed class SetSubmissionAssigneeUseCase(
+    ITryGetSubmissionQuery getSubmission,
+    ISaveSubmissionCommand save) : ISetSubmissionAssigneeUseCase
+{
+    public async Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default)
+    {
+        var s = await getSubmission.ExecuteAsync(submissionId, ct)
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
+        if (s.Handling == HandlingStates.None)
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingUnsupported);
+        // A <select> sends "" for its "nobody" option and an empty body degrades to the same, so a
+        // blank name means nobody rather than an admin whose name is blank.
+        s.Assignee = string.IsNullOrWhiteSpace(assignee) ? null : assignee.Trim();
+        await save.ExecuteAsync(s, ct);
     }
 }

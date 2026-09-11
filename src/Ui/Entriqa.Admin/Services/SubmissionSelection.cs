@@ -4,7 +4,8 @@ using System.Web;
 namespace Entriqa.Admin.Services;
 
 /// <summary>
-/// The selection a reader is looking at: which form, which quick filter, which page. Both the list
+/// The selection a reader is looking at: which form, which quick filter, whose submissions, which
+/// page. Both the list
 /// and the detail page derive everything from this one value - the list to render itself, the detail
 /// page to name its way back and to walk the neighbours. It therefore lives in the URL rather than in
 /// a field, which is what makes the way back (AC2) and a linkable address (AC6) possible at all.
@@ -12,9 +13,15 @@ namespace Entriqa.Admin.Services;
 /// Deliberately free of Blazor types: this is where the story's logic sits, and it is executed by
 /// the unit tests rather than scanned as source.
 /// </summary>
-public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
+public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, string? Assignee = null)
 {
     public const int PerPage = 15;
+
+    /// <summary>
+    /// The assignee filter that means "nobody has taken this" (#13). A single dash can never be an
+    /// admin's display name, so it needs no escaping and no second query parameter.
+    /// </summary>
+    public const string Nobody = "-";
 
     /// <summary>The quick filters the list offers. An address naming anything else has no filter at all.</summary>
     public static readonly IReadOnlySet<string> QuickFilters =
@@ -22,6 +29,34 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
 
     /// <summary>All forms, no quick filter, page one - what a bare address means (AC3, AC4).</summary>
     public static SubmissionSelection Default => new(null, null, 1);
+
+    /// <summary>
+    /// What "Meine offenen" stands for (#13, AC4): every open submission assigned to that admin, across
+    /// all forms. It drops the form and the quick filter rather than narrowing further - the list is
+    /// reachable per form (Forms.razor links straight to einsendungen/{slug}), and asking for one's own
+    /// open ones from there means all of them, not that form's.
+    /// </summary>
+    public static SubmissionSelection Personal(string who) => new(null, null, 1, who);
+
+    /// <summary>
+    /// Whether this selection is that admin's personal filter, on whichever page. Paging stays inside the
+    /// filter; narrowing does not - the form select and the quick filters deliberately keep the assignee,
+    /// so a selection can carry a name without being the cross-form set the chip stands for.
+    /// </summary>
+    public bool IsPersonal(string who) => this with { Page = 1 } == Personal(who);
+
+    /// <summary>
+    /// Choosing "Meine offenen", and choosing it again. It turns on exactly where the chip is unlit, and
+    /// then leads into the filter the badge beside it counts; from inside, it gives the whole list back.
+    ///
+    /// Keyed on <see cref="IsPersonal"/> and not on the assignee alone, or the three would part company:
+    /// a selection that merely carries my name - after picking myself in the form list's picker, or after
+    /// choosing the chip and then a form - would show an unlit chip, a badge counting the cross-form set,
+    /// and a click that dropped the name instead of going to what that badge promised. Removing the name
+    /// without leaving the form is what "Alle Bearbeiter" in the picker is for.
+    /// </summary>
+    public SubmissionSelection TogglePersonal(string who) =>
+        IsPersonal(who) ? this with { Assignee = null, Page = 1 } : Personal(who);
 
     /// <summary>
     /// Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").
@@ -36,7 +71,10 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
         var q = HttpUtility.ParseQueryString(query);
         var page = int.TryParse(q["seite"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 1 ? n : 1;
         var quick = Set(q["filter"]) is { } f && QuickFilters.Contains(f) ? f : null;
-        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page);
+        // The assignee is not validated against the admin list on purpose: a name the list no longer
+        // holds yields an empty selection, which is honest, where silently dropping the narrowing would
+        // show a wider list than the address promises.
+        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page, Set(q["bearbeiter"]));
     }
 
     /// <summary>The list address this selection returns to - the form stays the route segment it is today.</summary>
@@ -51,9 +89,10 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
 
     private string Query(bool withForm)
     {
-        var parts = new List<string>(3);
+        var parts = new List<string>(4);
         if (withForm && Slug is not null) parts.Add("formular=" + Uri.EscapeDataString(Slug));
         if (Quick is not null) parts.Add("filter=" + Uri.EscapeDataString(Quick));
+        if (Assignee is not null) parts.Add("bearbeiter=" + Uri.EscapeDataString(Assignee));
         if (Page > 1) parts.Add("seite=" + Page.ToString(CultureInfo.InvariantCulture));
         return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
     }
@@ -72,8 +111,24 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
     public string BackLabel(Ui t, string? formName)
     {
         var target = formName ?? Slug ?? t["allen Einsendungen"];
-        return QuickLabel(t) is { } quick ? t.F("Zurück zu {0} · {1}", target, quick) : t.F("Zurück zu {0}", target);
+        var narrowings = new List<string>(2);
+        if (AssigneeLabel(t) is { } who) narrowings.Add(who);
+        if (QuickLabel(t) is { } quick) narrowings.Add(quick);
+        return narrowings.Count == 0
+            ? t.F("Zurück zu {0}", target)
+            : t.F("Zurück zu {0} · {1}", target, string.Join(" · ", narrowings));
     }
+
+    /// <summary>
+    /// The personal filter as the list writes it (#13). The admin's name is data and stays untranslated,
+    /// exactly like the form name above.
+    /// </summary>
+    private string? AssigneeLabel(Ui t) => Assignee switch
+    {
+        null => null,
+        Nobody => t["Offene ohne Bearbeiter"],
+        var who => t.F("Offene von {0}", who),
+    };
 
     /// <summary>The quick filter as the list writes it; null for none and for one this version does not know.</summary>
     private string? QuickLabel(Ui t) => Quick switch
@@ -93,6 +148,16 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page)
     /// </summary>
     public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit) =>
         all.Where(s => Slug is null || s.Slug == Slug)
+           // One filter concept, not two (AC4, AC5): an assignee filter always means open *and* assigned
+           // to that person. "Meine offenen" is this filter with the signed-in admin's name; the picker
+           // is the same filter with someone else's, or with nobody's. Without the open half it would
+           // grow into an archive of everything that person ever touched.
+           .Where(s => Assignee switch
+           {
+               null => true,
+               Nobody => s.Handling == "open" && s.Assignee is null,
+               var who => s.Handling == "open" && s.Assignee == who,
+           })
            .Where(s => Quick switch
            {
                "new" => IsNew(s, lastVisit),
