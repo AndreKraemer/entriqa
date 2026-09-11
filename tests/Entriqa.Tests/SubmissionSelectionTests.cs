@@ -391,14 +391,26 @@ public class SubmissionSelectionTests
         Assert.Equal(new SubmissionSelection(null, null, 1, TestData.AdminMe), chosen);
     }
 
-    /// <summary>Choosing it again gives the narrowing back, and nothing else with it.</summary>
+    /// <summary>Choosing it again, from inside the filter, gives the whole list back.</summary>
     [Fact]
-    public void GivenThePersonalFilterIsOn_WhenChoosingItAgain_ThenOnlyThatNarrowingIsGone()
+    public void GivenThePersonalFilterIsOn_WhenChoosingItAgain_ThenTheNarrowingIsGone()
     {
-        var selection = new SubmissionSelection("kontakt", "todo", 2, TestData.AdminMe);
+        var selection = SubmissionSelection.Personal(TestData.AdminMe) with { Page = 2 };
 
-        Assert.Equal(new SubmissionSelection("kontakt", "todo", 1), selection.TogglePersonal(TestData.AdminMe));
+        Assert.Equal(new SubmissionSelection(null, null, 1), selection.TogglePersonal(TestData.AdminMe));
     }
+
+    /// <summary>
+    /// The mirror that keeps the chip's three rules together. A selection that merely carries my name is
+    /// not the personal filter - the form select and the quick filters keep the assignee on purpose - so
+    /// the chip is unlit there, and choosing it has to lead into the list its badge counts rather than
+    /// quietly dropping the name. Without this the round-one defect returns in a narrower corner: a badge
+    /// promising a list the click does not produce.
+    /// </summary>
+    [Fact]
+    public void GivenASelectionThatMerelyCarriesMyName_WhenChoosingThePersonalFilter_ThenItLeadsIntoIt() =>
+        Assert.Equal(SubmissionSelection.Personal(TestData.AdminMe),
+            new SubmissionSelection("kontakt", "todo", 2, TestData.AdminMe).TogglePersonal(TestData.AdminMe));
 
     /// <summary>
     /// The chip is lit exactly while the list it stands for is the list on screen. Paging through one's

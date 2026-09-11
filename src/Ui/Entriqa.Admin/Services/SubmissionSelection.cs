@@ -39,20 +39,24 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     public static SubmissionSelection Personal(string who) => new(null, null, 1, who);
 
     /// <summary>
-    /// Choosing "Meine offenen", and choosing it again: into the personal filter, or back out of it while
-    /// the rest of the selection stays. One expression for the chip's target and for its badge, so the
-    /// number on the button cannot disagree with the list the button leads to.
-    /// </summary>
-    public SubmissionSelection TogglePersonal(string who) =>
-        Assignee == who ? this with { Assignee = null, Page = 1 } : Personal(who);
-
-    /// <summary>
-    /// Whether this selection is that admin's personal filter, on whichever page. The chip highlights on
-    /// this rather than on the assignee alone: a selection narrowed further - to one form, or by a quick
-    /// filter, both of which deliberately keep the assignee - is no longer the cross-form set the badge
-    /// counts, and a chip that stayed lit would claim that it was.
+    /// Whether this selection is that admin's personal filter, on whichever page. Paging stays inside the
+    /// filter; narrowing does not - the form select and the quick filters deliberately keep the assignee,
+    /// so a selection can carry a name without being the cross-form set the chip stands for.
     /// </summary>
     public bool IsPersonal(string who) => this with { Page = 1 } == Personal(who);
+
+    /// <summary>
+    /// Choosing "Meine offenen", and choosing it again. It turns on exactly where the chip is unlit, and
+    /// then leads into the filter the badge beside it counts; from inside, it gives the whole list back.
+    ///
+    /// Keyed on <see cref="IsPersonal"/> and not on the assignee alone, or the three would part company:
+    /// a selection that merely carries my name - after picking myself in the form list's picker, or after
+    /// choosing the chip and then a form - would show an unlit chip, a badge counting the cross-form set,
+    /// and a click that dropped the name instead of going to what that badge promised. Removing the name
+    /// without leaving the form is what "Alle Bearbeiter" in the picker is for.
+    /// </summary>
+    public SubmissionSelection TogglePersonal(string who) =>
+        IsPersonal(who) ? this with { Assignee = null, Page = 1 } : Personal(who);
 
     /// <summary>
     /// Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").
