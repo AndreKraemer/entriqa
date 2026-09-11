@@ -46,15 +46,21 @@ public class AssignmentStorageGuardTests
     /// further down, which legitimately replaces its own row in a different partition.
     /// </summary>
     [Theory]
-    [InlineData("class SetLastVisitCommand")]
-    [InlineData("class RecordAdminSeenCommand")]
-    public void GivenAWriterOfTheAdminStateRow_WhenReadingIt_ThenItMergesItsOwnColumnOnly(string writer)
+    [InlineData("class SetLastVisitCommand", "LastVisitAt", "SeenAt")]
+    [InlineData("class RecordAdminSeenCommand", "SeenAt", "LastVisitAt")]
+    public void GivenAWriterOfTheAdminStateRow_WhenReadingIt_ThenItMergesItsOwnColumnOnly(string writer, string own, string other)
     {
         var body = SourceText.Block(Source("Commands", "AdminStateCommands.cs"), writer,
             $"AdminStateCommands no longer has {writer} - update this guard.");
 
         Assert.Contains("TableUpdateMode.Merge", body, StringComparison.Ordinal);
         Assert.DoesNotContain("TableUpdateMode.Replace", body, StringComparison.Ordinal);
+
+        // Merging is only half of it. A merge that names the other column overwrites it just as surely
+        // as a replace would - and for the sighting, which runs on every page load, that would clear the
+        // last visit and put out the blue "new since" dot on every row, permanently.
+        Assert.Contains($"[\"{own}\"]", body, StringComparison.Ordinal);
+        Assert.DoesNotContain($"[\"{other}\"]", body, StringComparison.Ordinal);
     }
 
     /// <summary>

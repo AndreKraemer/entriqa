@@ -231,7 +231,12 @@ public class SubmissionAssignmentTests
     {
         var endpoint = InboxEndpoint();
         Assert.Matches(new Regex(@"try\s*\{[^}]*recordSeen", RegexOptions.Singleline), endpoint);
-        Assert.Contains("catch", endpoint, StringComparison.Ordinal);
+
+        // Catching and then rethrowing would satisfy a scan for try/catch while doing exactly what this
+        // test forbids, so what the catch does NOT do is the half that carries the promise.
+        var swallowed = SourceText.Block(endpoint, "catch (Exception ex)",
+            "the sighting is no longer wrapped in a catch - update this guard.");
+        Assert.DoesNotContain("throw", swallowed, StringComparison.Ordinal);
     }
 
     /// <summary>The AdminRecentSubmissions function, from its attribute to the next one.</summary>
@@ -304,9 +309,17 @@ public class SubmissionAssignmentTests
         Assert.True(chip is not null, "no button navigates through SubmissionSelection.TogglePersonal any more - update this guard.");
         Assert.Contains("Go(", chip!, StringComparison.Ordinal);
 
+        // Whose filter it is, not merely that it is somebody's: AC4 is about the signed-in admin, and a
+        // chip wired to any other name renders and counts exactly the same.
+        Assert.Contains("TogglePersonal(me)", chip!, StringComparison.Ordinal);
+
         // The badge beside it is code-behind that no test executes, so what keeps it from drifting back
         // into a second copy of the filter is that it goes through the same shared expression.
         Assert.Contains("SubmissionSelection.Personal(", markup, StringComparison.Ordinal);
+
+        // And the name itself has to come from the signed-in principal. Without it the chip never
+        // renders at all and AC4 loses its entry point, silently.
+        Assert.Contains("_me ??= (await Api.GetMeAsync())?.UserDetails", markup, StringComparison.Ordinal);
     }
 
     private static string RowBlock(string markup) => AdminMarkup.Between(markup, "<tr class=\"rowlink\"", "</tr>",

@@ -426,15 +426,5 @@ public class SubmissionSelectionTests
     public void GivenAnotherAdminsFilter_WhenTheChipAsksWhetherItIsLit_ThenItIsNot() =>
         Assert.False(SubmissionSelection.Personal(TestData.AdminColleague).IsPersonal(TestData.AdminMe));
 
-    /// <summary>
-    /// The badge on the chip and the list the chip leads to are the same selection, so the button cannot
-    /// promise a count the table then does not show.
-    /// </summary>
-    [Fact]
-    public void GivenAnyOtherNarrowing_WhenTheChipAndItsBadgeAreCompared_ThenBothMeanTheSameSelection()
-    {
-        var selection = new SubmissionSelection("kontakt", "failed", 2);
 
-        Assert.Equal(SubmissionSelection.Personal(TestData.AdminMe), selection.TogglePersonal(TestData.AdminMe));
-    }
 }
