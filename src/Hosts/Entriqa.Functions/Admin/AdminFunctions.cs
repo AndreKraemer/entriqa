@@ -117,7 +117,7 @@ public sealed class AdminFunctions(
         {
             await recordSeen.ExecuteAsync(principal.UserName(req), ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             log.LogWarning(ex, "Sichtung von {User} nicht aufgezeichnet - der Posteingang wird trotzdem geliefert", principal.UserName(req));
         }

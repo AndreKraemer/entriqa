@@ -401,6 +401,32 @@ public class SubmissionSelectionTests
     }
 
     /// <summary>
+    /// The chip is lit exactly while the list it stands for is the list on screen. Paging through one's
+    /// own open ones stays inside that filter, so the page must not put the light out.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void GivenThePersonalFilterOnAnyPage_WhenTheChipAsksWhetherItIsLit_ThenItIs(int page) =>
+        Assert.True(new SubmissionSelection(null, null, page, TestData.AdminMe).IsPersonal(TestData.AdminMe));
+
+    /// <summary>
+    /// The mirror, and the reason this is not simply "is the assignee me": both the form select and the
+    /// quick filters deliberately keep the assignee, so a selection can carry my name and still not be
+    /// the cross-form set the badge counts. A chip lit there would claim a list that is not on screen.
+    /// </summary>
+    [Fact]
+    public void GivenAPersonalFilterNarrowedFurther_WhenTheChipAsksWhetherItIsLit_ThenItIsNot()
+    {
+        Assert.False(new SubmissionSelection("kontakt", null, 1, TestData.AdminMe).IsPersonal(TestData.AdminMe));
+        Assert.False(new SubmissionSelection(null, "failed", 1, TestData.AdminMe).IsPersonal(TestData.AdminMe));
+    }
+
+    [Fact]
+    public void GivenAnotherAdminsFilter_WhenTheChipAsksWhetherItIsLit_ThenItIsNot() =>
+        Assert.False(SubmissionSelection.Personal(TestData.AdminColleague).IsPersonal(TestData.AdminMe));
+
+    /// <summary>
     /// The badge on the chip and the list the chip leads to are the same selection, so the button cannot
     /// promise a count the table then does not show.
     /// </summary>

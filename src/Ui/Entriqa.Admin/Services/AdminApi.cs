@@ -278,14 +278,6 @@ public static class Labels
     public static string StepCss(int s) => s switch { 1 => "chip chip--ok", 3 => "chip chip--err", 4 => "chip chip--err", 2 => "chip chip--wait", 5 => "chip", _ => "chip chip--busy" };
 
     /// <summary>
-    /// The avatar a person is shown as - the signed-in admin in the header, and since #13 the assignee in
-    /// the list and the detail view. It lives here rather than in MainLayout, which had it first, because
-    /// a name has to read the same in every place that abbreviates it.
-    ///
-    /// The local part carries the name: an address abbreviated whole would read as its provider. Two
-    /// initials where the name has parts, the first two letters where it has one, "?" for nobody.
-    /// </summary>
-    /// <summary>
     /// The names an assignee picker offers (#13): the admins the application knows, plus the one the
     /// submission already carries when that is not among them.
     ///
@@ -301,6 +293,14 @@ public static class Labels
         return choices;
     }
 
+    /// <summary>
+    /// The avatar a person is shown as - the signed-in admin in the header, and since #13 the assignee in
+    /// the list and the detail view. It lives here rather than in MainLayout, which had it first, because
+    /// a name has to read the same in every place that abbreviates it.
+    ///
+    /// The local part carries the name: an address abbreviated whole would read as its provider. Two
+    /// initials where the name has parts, the first two letters where it has one, "?" for nobody.
+    /// </summary>
     public static string Initials(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return "?";

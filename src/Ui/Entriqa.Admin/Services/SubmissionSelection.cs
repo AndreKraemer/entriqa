@@ -47,6 +47,14 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
         Assignee == who ? this with { Assignee = null, Page = 1 } : Personal(who);
 
     /// <summary>
+    /// Whether this selection is that admin's personal filter, on whichever page. The chip highlights on
+    /// this rather than on the assignee alone: a selection narrowed further - to one form, or by a quick
+    /// filter, both of which deliberately keep the assignee - is no longer the cross-form set the badge
+    /// counts, and a chip that stayed lit would claim that it was.
+    /// </summary>
+    public bool IsPersonal(string who) => this with { Page = 1 } == Personal(who);
+
+    /// <summary>
     /// Reads a selection back out of a route slug and a query string ("?filter=todo&amp;seite=2").
     /// The list passes the slug of its route, the detail page passes null and lets "formular" supply it -
     /// the detail route has no slug segment to read. An address is something people edit and share, so it

@@ -26,7 +26,7 @@ else
         @if (_me is { Length: > 0 } me)
         {
             var mine = CountPersonal(me);
-            <button class="btn @(_selection.Assignee == me ? "btn--primary" : "")"
+            <button class="btn @(_selection.IsPersonal(me) ? "btn--primary" : "")"
                     @onclick="() => Go(_selection.TogglePersonal(me))">
                 @T["Meine offenen"] @if (mine > 0) { <span class="count">@mine</span> }
             </button>

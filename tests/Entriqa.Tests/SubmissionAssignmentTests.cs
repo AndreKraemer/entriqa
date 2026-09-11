@@ -20,8 +20,8 @@ namespace Entriqa.Tests;
 /// </summary>
 public class SubmissionAssignmentTests
 {
-    private const string Me = "kim@admin.example";
-    private const string Colleague = "robin@admin.example";
+    private const string Me = TestData.AdminMe;
+    private const string Colleague = TestData.AdminColleague;
     private const string Id = "kontakt:0900";
 
     private static (ISetSubmissionAssigneeUseCase Assign, ITryGetSubmissionQuery Get, ISaveSubmissionCommand Save)
@@ -217,8 +217,7 @@ public class SubmissionAssignmentTests
         // Anchored at the start of a line so that commenting the call out fails too: deleting it is not
         // the only way to lose it, and a bare Matches is satisfied by "// await ...".
         Assert.Matches(
-            new Regex(@"^[^\S
-]*await\s+\w+\.ExecuteAsync\(\s*principal\.UserName\(req\)\s*,\s*ct\s*\)", RegexOptions.Multiline),
+            new Regex(@"^[^\S\r\n]*await\s+\w+\.ExecuteAsync\(\s*principal\.UserName\(req\)\s*,\s*ct\s*\)", RegexOptions.Multiline),
             InboxEndpoint());
     }
 
@@ -246,15 +245,7 @@ public class SubmissionAssignmentTests
         return source[start..end];
     }
 
-    private static string FunctionsDirectory()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var functions = Path.Combine(dir.FullName, "src", "Hosts", "Entriqa.Functions");
-            if (Directory.Exists(functions)) return functions;
-        }
-        throw new DirectoryNotFoundException($"Entriqa.Functions not found above {AppContext.BaseDirectory}");
-    }
+    private static string FunctionsDirectory() => SourceText.RepoDirectory("src", "Hosts", "Entriqa.Functions");
 
     // ---- AC1 / AC2 in the markup ------------------------------------------------------------------
 
@@ -312,6 +303,10 @@ public class SubmissionAssignmentTests
         var chip = AdminMarkup.Tags(markup, "<button").FirstOrDefault(t => t.Contains("TogglePersonal", StringComparison.Ordinal));
         Assert.True(chip is not null, "no button navigates through SubmissionSelection.TogglePersonal any more - update this guard.");
         Assert.Contains("Go(", chip!, StringComparison.Ordinal);
+
+        // The badge beside it is code-behind that no test executes, so what keeps it from drifting back
+        // into a second copy of the filter is that it goes through the same shared expression.
+        Assert.Contains("SubmissionSelection.Personal(", markup, StringComparison.Ordinal);
     }
 
     private static string RowBlock(string markup) => AdminMarkup.Between(markup, "<tr class=\"rowlink\"", "</tr>",

@@ -71,13 +71,6 @@ public class AssignmentStorageGuardTests
         Assert.Contains("PartitionKey == \"state\"", body, StringComparison.Ordinal);
     }
 
-    private static string Source(params string[] relativeToData)
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var data = Path.Combine(dir.FullName, "src", "Core", "Entriqa.Data");
-            if (Directory.Exists(data)) return File.ReadAllText(Path.Combine([data, .. relativeToData]));
-        }
-        throw new DirectoryNotFoundException($"Entriqa.Data not found above {AppContext.BaseDirectory}");
-    }
+    private static string Source(params string[] relativeToData) =>
+        File.ReadAllText(Path.Combine([SourceText.RepoDirectory("src", "Core", "Entriqa.Data"), .. relativeToData]));
 }

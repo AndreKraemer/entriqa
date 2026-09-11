@@ -43,13 +43,5 @@ internal static class AdminMarkup
     public static string IfBody(string markup, string condition, string hint) =>
         SourceText.Block(markup, condition, hint);
 
-    public static string Directory()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var admin = Path.Combine(dir.FullName, "src", "Ui", "Entriqa.Admin");
-            if (System.IO.Directory.Exists(admin)) return admin;
-        }
-        throw new DirectoryNotFoundException($"Entriqa.Admin not found above {AppContext.BaseDirectory}");
-    }
+    public static string Directory() => SourceText.RepoDirectory("src", "Ui", "Entriqa.Admin");
 }
