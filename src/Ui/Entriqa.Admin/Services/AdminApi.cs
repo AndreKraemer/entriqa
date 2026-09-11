@@ -154,6 +154,16 @@ public sealed class AdminApi(HttpClient http)
         await ThrowIfError(res);
     }
 
+    /// <summary>Hands a submission to an admin, or to nobody (null) - one operation for all three (#13).</summary>
+    public async Task SetAssigneeAsync(string id, string? assignee)
+    {
+        var res = await http.PostAsJsonAsync($"api/manage/submissions/{Uri.EscapeDataString(id)}/assignee", new { assignee }, Json);
+        await ThrowIfError(res);
+    }
+
+    /// <summary>The admins an assignment can choose from - those the application has seen at least once (#13).</summary>
+    public Task<List<string>> ListAdminsAsync() => GetAsync<List<string>>("api/manage/admins");
+
     public async Task DeleteSubmissionAsync(string id)
     {
         var res = await http.DeleteAsync($"api/manage/submissions/{Uri.EscapeDataString(id)}");

@@ -30,6 +30,18 @@ else
             <button class="btn @(_s.Handling == "open" ? "btn--primary" : "")" disabled="@(_s.Handling == "open" || _busy)" @onclick="@(() => SetHandling("open"))">@T["Offen"]</button>
             <button class="btn @(_s.Handling == "done" ? "btn--primary" : "")" disabled="@(_s.Handling == "done" || _busy)" @onclick="@(() => SetHandling("done"))">@T["Erledigt"]</button>
         </p>
+        @* Assignment shares the boundary of handling: a form that tracks no handling has no open state,
+           so an assignment on it could never surface in a personal filter. "Niemand" is an option of the
+           picker rather than a button of its own - taking an assignment back is the same operation as
+           giving it. *@
+        <p>
+            @T["Bearbeiter:"]
+            <select value="@(_s.Assignee ?? "")" @onchange="OnAssigneeChange" disabled="@_busy">
+                <option value="">@T["Niemand"]</option>
+                @foreach (var a in _admins ?? new()) { <option value="@a" selected="@(_s.Assignee == a)">@a</option> }
+            </select>
+            <span class="hint">@T["Zur Auswahl stehen nur Admins, die schon einmal im Admin waren."]</span>
+        </p>
     }
 
     <h2>@T["Werte"]</h2>
@@ -113,6 +125,7 @@ else
     [Parameter] public EventCallback OnChanged { get; set; }
 
     private SubmissionDetail? _s;
+    private List<string>? _admins;
     private string? _error, _info;
     private bool _busy;
     private string? _loadedId;
@@ -155,7 +168,12 @@ else
 
     private async Task Reload()
     {
-        try { _s = await Api.GetSubmissionAsync(Id); _error = null; }
+        try
+        {
+            _s = await Api.GetSubmissionAsync(Id);
+            _admins ??= await Api.ListAdminsAsync();
+            _error = null;
+        }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
     }
 
@@ -169,6 +187,14 @@ else
     private async Task SetHandling(string handling) => await Guarded(async () =>
     {
         await Api.SetHandlingAsync(Id, handling);
+        await Reload();
+        await OnChanged.InvokeAsync();
+    });
+
+    // The empty option is "Niemand", which is what an unassignment sends (#13).
+    private async Task OnAssigneeChange(ChangeEventArgs e) => await Guarded(async () =>
+    {
+        await Api.SetAssigneeAsync(Id, e.Value?.ToString() is { Length: > 0 } a ? a : null);
         await Reload();
         await OnChanged.InvokeAsync();
     });

@@ -356,6 +356,13 @@ public sealed class Ui
         ["Formular"] = "Form",
         ["Absender"] = "Sender",
         ["Bearbeitung"] = "Handling",
+        ["Bearbeiter"] = "Assignee",
+        ["Meine offenen"] = "My open ones",
+        ["Niemand"] = "Nobody",
+        ["Bearbeiter:"] = "Assignee:",
+        ["Alle Bearbeiter"] = "All assignees",
+        ["Zur Auswahl stehen nur Admins, die schon einmal im Admin waren."] =
+            "Only admins who have been in the admin at least once are offered.",
         ["Offene von {0}"] = "{0}'s open ones",
         ["Offene ohne Bearbeiter"] = "Open, unassigned",
         ["neu seit letztem Besuch"] = "new since last visit",
