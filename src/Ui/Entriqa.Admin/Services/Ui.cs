@@ -356,6 +356,8 @@ public sealed class Ui
         ["Formular"] = "Form",
         ["Absender"] = "Sender",
         ["Bearbeitung"] = "Handling",
+        ["Offene von {0}"] = "{0}'s open ones",
+        ["Offene ohne Bearbeiter"] = "Open, unassigned",
         ["neu seit letztem Besuch"] = "new since last visit",
         ["Offen"] = "Open",
         ["Erledigt"] = "Done",

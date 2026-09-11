@@ -4,7 +4,8 @@ using System.Web;
 namespace Entriqa.Admin.Services;
 
 /// <summary>
-/// The selection a reader is looking at: which form, which quick filter, which page. Both the list
+/// The selection a reader is looking at: which form, which quick filter, whose submissions, which
+/// page. Both the list
 /// and the detail page derive everything from this one value - the list to render itself, the detail
 /// page to name its way back and to walk the neighbours. It therefore lives in the URL rather than in
 /// a field, which is what makes the way back (AC2) and a linkable address (AC6) possible at all.
@@ -42,7 +43,10 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
         var q = HttpUtility.ParseQueryString(query);
         var page = int.TryParse(q["seite"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 1 ? n : 1;
         var quick = Set(q["filter"]) is { } f && QuickFilters.Contains(f) ? f : null;
-        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page);
+        // The assignee is not validated against the admin list on purpose: a name the list no longer
+        // holds yields an empty selection, which is honest, where silently dropping the narrowing would
+        // show a wider list than the address promises.
+        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page, Set(q["bearbeiter"]));
     }
 
     /// <summary>The list address this selection returns to - the form stays the route segment it is today.</summary>
@@ -57,9 +61,10 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
 
     private string Query(bool withForm)
     {
-        var parts = new List<string>(3);
+        var parts = new List<string>(4);
         if (withForm && Slug is not null) parts.Add("formular=" + Uri.EscapeDataString(Slug));
         if (Quick is not null) parts.Add("filter=" + Uri.EscapeDataString(Quick));
+        if (Assignee is not null) parts.Add("bearbeiter=" + Uri.EscapeDataString(Assignee));
         if (Page > 1) parts.Add("seite=" + Page.ToString(CultureInfo.InvariantCulture));
         return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
     }
@@ -78,8 +83,24 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     public string BackLabel(Ui t, string? formName)
     {
         var target = formName ?? Slug ?? t["allen Einsendungen"];
-        return QuickLabel(t) is { } quick ? t.F("Zurück zu {0} · {1}", target, quick) : t.F("Zurück zu {0}", target);
+        var narrowings = new List<string>(2);
+        if (AssigneeLabel(t) is { } who) narrowings.Add(who);
+        if (QuickLabel(t) is { } quick) narrowings.Add(quick);
+        return narrowings.Count == 0
+            ? t.F("Zurück zu {0}", target)
+            : t.F("Zurück zu {0} · {1}", target, string.Join(" · ", narrowings));
     }
+
+    /// <summary>
+    /// The personal filter as the list writes it (#13). The admin's name is data and stays untranslated,
+    /// exactly like the form name above.
+    /// </summary>
+    private string? AssigneeLabel(Ui t) => Assignee switch
+    {
+        null => null,
+        Nobody => t["Offene ohne Bearbeiter"],
+        var who => t.F("Offene von {0}", who),
+    };
 
     /// <summary>The quick filter as the list writes it; null for none and for one this version does not know.</summary>
     private string? QuickLabel(Ui t) => Quick switch
@@ -99,6 +120,16 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     /// </summary>
     public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit) =>
         all.Where(s => Slug is null || s.Slug == Slug)
+           // One filter concept, not two (AC4, AC5): an assignee filter always means open *and* assigned
+           // to that person. "Meine offenen" is this filter with the signed-in admin's name; the picker
+           // is the same filter with someone else's, or with nobody's. Without the open half it would
+           // grow into an archive of everything that person ever touched.
+           .Where(s => Assignee switch
+           {
+               null => true,
+               Nobody => s.Handling == "open" && s.Assignee is null,
+               var who => s.Handling == "open" && s.Assignee == who,
+           })
            .Where(s => Quick switch
            {
                "new" => IsNew(s, lastVisit),
