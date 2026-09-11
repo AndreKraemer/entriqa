@@ -26,6 +26,7 @@ public sealed class DevSeedHostedService(
     IPublishFormVersionCommand publish,
     IStoreArtifactPort artifacts,
     IListRecentSubmissionsQuery recent,
+    IRecordAdminSeenCommand recordAdminSeen,
     IStoreSubmissionCommand storeSubmission,
     SubmissionPipelineService pipeline,
     ConsentProofService consentProofs,
@@ -55,8 +56,34 @@ public sealed class DevSeedHostedService(
             catch (Exception ex) { log.LogWarning(ex, "Seed {File} übersprungen", file); }
         }
 
+        await SeedAdminsAsync(cancellationToken);
         await SeedSubmissionsAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// The two admins an assignment can choose from (#13). Without them the picker is empty on a fresh
+    /// environment: its choices are the admins the application has seen, and locally there is only ever
+    /// one browser. Seeded outside SeedSubmissionsAsync on purpose - that one leaves a store with data
+    /// alone, and an environment seeded before #13 would otherwise never get its rows.
+    ///
+    /// DevAdmin is what SwaPrincipalReader.UserName returns without a principal header, so it is the
+    /// account the local admin actually acts as; DevColleague exists so that handing a submission over
+    /// and "Meine offenen" can be told apart without a second real account.
+    /// </summary>
+    private async Task SeedAdminsAsync(CancellationToken ct)
+    {
+        foreach (var admin in new[] { DevAdmin, DevColleague })
+        {
+            try { await recordAdminSeen.ExecuteAsync(admin, time.GetUtcNow(), ct); }
+            catch (Exception ex) { log.LogWarning(ex, "Demo-Admin {Admin} übersprungen", admin); }
+        }
+    }
+
+    /// <summary>The account the local admin acts as - see SwaPrincipalReader.UserName.</summary>
+    private const string DevAdmin = "admin";
+
+    /// <summary>A second admin, so handing over is drivable without a second real account.</summary>
+    private const string DevColleague = "martina.weiss@example.org";
 
     /// <summary>
     /// Demo submissions, so the inbox is not empty on a fresh environment. Without them the admin's list,
@@ -77,7 +104,10 @@ public sealed class DevSeedHostedService(
 
         var now = time.GetUtcNow();
         var index = 0;
-        foreach (var (slug, count) in new[] { ("kontakt", 18), ("whitepaper", 6) })
+        // "beratung" joins the two since #13: it is the only other seed form that tracks handling, and
+        // "Meine offenen" across all forms needs open submissions in more than one of them to show
+        // anything a single-form filter would not.
+        foreach (var (slug, count) in new[] { ("kontakt", 18), ("whitepaper", 6), ("beratung", 4) })
         {
             var published = await getPublished.ExecuteAsync(slug, ct);
             if (published is null) continue;
@@ -136,8 +166,24 @@ public sealed class DevSeedHostedService(
             ConsentText = def.ConsentField?.Text?.Resolve("de"),
             StepRuns = runs,
             Handling = def.Handling ? (i < 16 ? HandlingStates.Open : HandlingStates.Done) : HandlingStates.None,
+            Assignee = def.Handling ? Assignee(def.Slug, i) : null,
         };
     }
+
+    /// <summary>
+    /// Who is on it (#13), so every branch of a personal filter exists without assigning by hand first:
+    /// open ones of both admins in two different forms (AC4 cross-form, AC5), one that nobody has taken
+    /// ("Niemand"), and one already done that must therefore stay out of "Meine offenen". Only where the
+    /// form tracks handling - the application refuses an assignment anywhere else, and seed data must not
+    /// hold a state it would reject.
+    /// </summary>
+    private static string? Assignee(string slug, int i) => (slug, i) switch
+    {
+        ("kontakt", 3) or ("beratung", 0) => DevAdmin,        // open, mine - in two forms
+        ("kontakt", 4) or ("beratung", 1) => DevColleague,    // open, someone else's
+        ("kontakt", 16) => DevAdmin,                          // done and mine: in no personal filter
+        _ => null,                                            // the rest is unassigned - the "Niemand" filter
+    };
 
     /// <summary>
     /// Puts the run into the state the list's quick filters distinguish. The state is derived from the step
