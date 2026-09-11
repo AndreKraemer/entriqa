@@ -49,7 +49,7 @@ internal sealed class GetSubmissionDetailUseCase(
 
         return new SubmissionDetailView(s.Id, s.Slug, s.Version, s.CreatedAt, s.Locale, s.Email, s.FirstName,
             s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns, s.Handling, s.State,
-            s.BrevoContactId, canResendDoi, quizAnswers);
+            s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee);
     }
 }
 

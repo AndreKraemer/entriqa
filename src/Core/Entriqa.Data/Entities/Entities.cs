@@ -52,6 +52,7 @@ internal sealed class SubmissionEntity : ITableEntity
     public string Handling { get; set; } = "none";
     public string State { get; set; } = "processing";       // denormalized for filtering in the admin
     public string? QuizResultId { get; set; }
+    public string? Assignee { get; set; }                   // #13: the admin taking care of it, null = nobody
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? ConfirmedIpHash { get; set; }
     public string? BrevoContactId { get; set; }

@@ -30,6 +30,7 @@ internal static class SubmissionMapper
             Handling = s.Handling,
             State = s.State.ToString().ToLowerInvariant(),
             QuizResultId = s.Quiz?.ResultId,
+            Assignee = s.Assignee,
             ConfirmedAt = s.ConfirmedAt,
             ConfirmedIpHash = s.ConfirmedIpHash,
             BrevoContactId = s.BrevoContactId,
@@ -53,6 +54,7 @@ internal static class SubmissionMapper
         StepRuns = JsonSerializer.Deserialize<List<StepRun>>(e.StepRunsJson, TableStorage.Json) ?? new(),
         Artifacts = JsonSerializer.Deserialize<Dictionary<string, string>>(e.ArtifactsJson, TableStorage.Json) ?? new(),
         Handling = e.Handling,
+        Assignee = e.Assignee,
         ConfirmedAt = e.ConfirmedAt,
         ConfirmedIpHash = e.ConfirmedIpHash,
         BrevoContactId = e.BrevoContactId,
@@ -64,6 +66,7 @@ internal static class SubmissionMapper
         var values = JsonSerializer.Deserialize<Dictionary<string, string>>(e.ValuesJson, TableStorage.Json) ?? new();
         var summary = e.Email ?? values.Values.FirstOrDefault() ?? "";
         if (!Enum.TryParse<SubmissionState>(e.State, true, out var state)) state = SubmissionState.Processing;
-        return new SubmissionListItem($"{e.PartitionKey}:{e.RowKey}", e.PartitionKey, e.Version, e.CreatedAt, e.Email, summary, state, e.Handling, e.QuizResultId);
+        return new SubmissionListItem($"{e.PartitionKey}:{e.RowKey}", e.PartitionKey, e.Version, e.CreatedAt, e.Email, summary,
+            state, e.Handling, e.QuizResultId, e.Assignee);
     }
 }
