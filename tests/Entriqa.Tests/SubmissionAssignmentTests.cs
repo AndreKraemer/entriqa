@@ -103,6 +103,23 @@ public class SubmissionAssignmentTests
         Assert.Null(written!.Assignee);
     }
 
+    /// <summary>
+    /// AC1's second half. The detail view is what the picker reads its current value from, and Assignee is
+    /// a trailing optional parameter of SubmissionDetailView - so dropping it from the projection compiles,
+    /// and the panel would then report "Niemand" for every assigned submission. The markup guard below
+    /// cannot see that; only calling the use case can.
+    /// </summary>
+    [Fact]
+    public async Task GivenAnAssignedSubmission_WhenTheDetailViewIsBuilt_ThenItNamesTheAssignee()
+    {
+        var get = Substitute.For<ITryGetSubmissionQuery>();
+        get.ExecuteAsync(Id, Arg.Any<CancellationToken>()).Returns(Stored(assignee: Me));
+
+        var view = await new GetSubmissionDetailUseCase(get, Substitute.For<ITryGetFormVersionQuery>()).ExecuteAsync(Id);
+
+        Assert.Equal(Me, view.Assignee);
+    }
+
     // ---- The boundary: only where there is something to handle ------------------------------------
 
     /// <summary>

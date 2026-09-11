@@ -35,39 +35,13 @@ internal static class AdminMarkup
         }
     }
 
-    /// <summary>
-    /// The markup between an opening marker and the first closing one after it. Fails loudly rather than
-    /// returning an empty string, because a guard that silently reads nothing passes on everything.
-    /// </summary>
-    public static string Between(string markup, string from, string to, string hint)
-    {
-        var start = markup.IndexOf(from, StringComparison.Ordinal);
-        if (start < 0) throw new InvalidOperationException(hint);
-        var end = markup.IndexOf(to, start, StringComparison.Ordinal);
-        if (end <= start) throw new InvalidOperationException(hint);
-        return markup[start..end];
-    }
+    /// <inheritdoc cref="SourceText.Between"/>
+    public static string Between(string markup, string from, string to, string hint) =>
+        SourceText.Between(markup, from, to, hint);
 
-    /// <summary>
-    /// The body of the <c>@if</c> block whose condition contains <paramref name="condition"/>, cut at its
-    /// own closing brace rather than at whatever tag happens to follow. A guard that ends the block at the
-    /// next heading keeps passing when the markup it guards is moved out of the branch entirely - which is
-    /// the whole property such a guard exists to pin.
-    /// </summary>
-    public static string IfBody(string markup, string condition, string hint)
-    {
-        var at = markup.IndexOf(condition, StringComparison.Ordinal);
-        if (at < 0) throw new InvalidOperationException(hint);
-        var open = markup.IndexOf('{', at);
-        if (open < 0) throw new InvalidOperationException(hint);
-        var depth = 0;
-        for (var i = open; i < markup.Length; i++)
-        {
-            if (markup[i] == '{') depth++;
-            else if (markup[i] == '}' && --depth == 0) return markup[(open + 1)..i];
-        }
-        throw new InvalidOperationException(hint);
-    }
+    /// <summary>The body of the <c>@if</c> block whose condition contains <paramref name="condition"/>.</summary>
+    public static string IfBody(string markup, string condition, string hint) =>
+        SourceText.Block(markup, condition, hint);
 
     public static string Directory()
     {
