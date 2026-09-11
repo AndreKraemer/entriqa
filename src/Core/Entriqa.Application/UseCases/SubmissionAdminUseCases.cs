@@ -86,17 +86,27 @@ internal sealed class DeleteSubmissionAdminUseCase(
 }
 
 /// <summary>
-/// #13 skeleton - deliberately without behaviour: the red tests state what assigning means, the
-/// implementation follows them. What the shape already says is that this use case has no way of
-/// notifying anyone (AC7): it knows the submission and how to save it, and nothing else.
+/// Assigning, handing over and unassigning are one operation (#13): the submission carries at most
+/// one assignee, and setting it to nobody is how it loses one. The boundary is the one
+/// <see cref="SetSubmissionHandlingUseCase"/> already draws - a form that tracks no handling has no
+/// open state either, so an assignment on it could never surface in a personal filter.
+///
+/// It knows the submission and how to save it, and nothing else: that is what makes AC7 - an
+/// assignment never notifies anyone - true by construction rather than by care.
 /// </summary>
 internal sealed class SetSubmissionAssigneeUseCase(
     ITryGetSubmissionQuery getSubmission,
     ISaveSubmissionCommand save) : ISetSubmissionAssigneeUseCase
 {
-    public Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default)
+    public async Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default)
     {
-        _ = getSubmission; _ = save; _ = submissionId; _ = assignee; _ = ct;
-        throw new NotImplementedException("#13");
+        var s = await getSubmission.ExecuteAsync(submissionId, ct)
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
+        if (s.Handling == HandlingStates.None)
+            throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingUnsupported);
+        // A <select> sends "" for its "nobody" option and an empty body degrades to the same, so a
+        // blank name means nobody rather than an admin whose name is blank.
+        s.Assignee = string.IsNullOrWhiteSpace(assignee) ? null : assignee.Trim();
+        await save.ExecuteAsync(s, ct);
     }
 }
