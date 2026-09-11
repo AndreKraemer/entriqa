@@ -217,7 +217,7 @@ public class SubmissionAssignmentTests
         // Anchored at the start of a line so that commenting the call out fails too: deleting it is not
         // the only way to lose it, and a bare Matches is satisfied by "// await ...".
         Assert.Matches(
-            new Regex(@"^[^\S\r\n]*await\s+\w+\.ExecuteAsync\(\s*principal\.UserName\(req\)\s*,\s*ct\s*\)", RegexOptions.Multiline),
+            new Regex(@"^[^\S\r\n]*await\s+recordSeen\.ExecuteAsync\(\s*principal\.UserName\(req\)\s*,\s*ct\s*\)", RegexOptions.Multiline),
             InboxEndpoint());
     }
 
@@ -301,31 +301,52 @@ public class SubmissionAssignmentTests
     /// it, and that is decided in SubmissionSelection.TogglePersonal, which is tested by executing it -
     /// so what remains to be guarded here is only that the button actually goes through it.
     /// </summary>
+    /// <summary>
+    /// AC4's trigger. What it promises is decided in SubmissionSelection and tested by executing it, so
+    /// what remains here is only that the button goes through that decision - and for whom, because a
+    /// chip wired to any other name renders and counts exactly the same.
+    /// </summary>
     [Fact]
     public void GivenThePersonalFilterChip_WhenItIsClicked_ThenItNavigatesThroughTheSelection()
+    {
+        Assert.Contains("Go(", Chip(), StringComparison.Ordinal);
+        Assert.Contains("TogglePersonal(me)", Chip(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Appearance and action have to key on one condition. Lighting the chip on the assignee alone
+    /// compiles, renders and leaves every other test green, while the button goes dark exactly where
+    /// clicking it still leads into the filter - which is how this corner broke once already.
+    /// </summary>
+    [Fact]
+    public void GivenThePersonalFilterChip_WhenItIsRendered_ThenItLooksOnTheConditionItActsOn() =>
+        Assert.Contains("IsPersonal(me)", Chip(), StringComparison.Ordinal);
+
+    /// <summary>
+    /// The badge is code-behind that no test executes, so what keeps it from drifting back into a second
+    /// copy of the filter is that it goes through the same shared expression the click does.
+    /// </summary>
+    [Fact]
+    public void GivenThePersonalFilterChip_WhenItsBadgeIsCounted_ThenItCountsWhatTheClickLeadsTo() =>
+        Assert.Contains("SubmissionSelection.Personal(", AdminMarkup.Read("Pages", "Submissions.razor"),
+            StringComparison.Ordinal);
+
+    /// <summary>
+    /// Whose chip it is comes from the signed-in principal. Without that the chip never renders at all
+    /// and AC4 loses its entry point, silently and with the suite green.
+    /// </summary>
+    [Fact]
+    public void GivenThePersonalFilterChip_WhenAskingWhoItIsFor_ThenTheNameComesFromTheSignedInPrincipal() =>
+        Assert.Contains("_me ??= (await Api.GetMeAsync())?.UserDetails", AdminMarkup.Read("Pages", "Submissions.razor"),
+            StringComparison.Ordinal);
+
+    /// <summary>The button that carries the personal filter, attributes included.</summary>
+    private static string Chip()
     {
         var markup = AdminMarkup.Read("Pages", "Submissions.razor");
         var chip = AdminMarkup.Tags(markup, "<button").FirstOrDefault(t => t.Contains("TogglePersonal", StringComparison.Ordinal));
         Assert.True(chip is not null, "no button navigates through SubmissionSelection.TogglePersonal any more - update this guard.");
-        Assert.Contains("Go(", chip!, StringComparison.Ordinal);
-
-        // Whose filter it is, not merely that it is somebody's: AC4 is about the signed-in admin, and a
-        // chip wired to any other name renders and counts exactly the same.
-        Assert.Contains("TogglePersonal(me)", chip!, StringComparison.Ordinal);
-
-        // And it has to look on the same condition it acts on. Lighting the chip on the assignee alone
-        // compiles, renders and keeps every other test green, while the button goes dark exactly where
-        // clicking it still leads into the filter - appearance and action drifting apart is how this
-        // corner broke once already.
-        Assert.Contains("IsPersonal(me)", chip!, StringComparison.Ordinal);
-
-        // The badge beside it is code-behind that no test executes, so what keeps it from drifting back
-        // into a second copy of the filter is that it goes through the same shared expression.
-        Assert.Contains("SubmissionSelection.Personal(", markup, StringComparison.Ordinal);
-
-        // And the name itself has to come from the signed-in principal. Without it the chip never
-        // renders at all and AC4 loses its entry point, silently.
-        Assert.Contains("_me ??= (await Api.GetMeAsync())?.UserDetails", markup, StringComparison.Ordinal);
+        return chip!;
     }
 
     private static string RowBlock(string markup) => AdminMarkup.Between(markup, "<tr class=\"rowlink\"", "</tr>",

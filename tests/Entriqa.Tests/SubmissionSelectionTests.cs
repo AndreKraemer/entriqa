@@ -437,6 +437,4 @@ public class SubmissionSelectionTests
     [Fact]
     public void GivenAnotherAdminsFilter_WhenTheChipAsksWhetherItIsLit_ThenItIsNot() =>
         Assert.False(SubmissionSelection.Personal(TestData.AdminColleague).IsPersonal(TestData.AdminMe));
-
-
 }
