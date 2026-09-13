@@ -29,6 +29,24 @@
     "*.webhook.office.com",
     "*.office.com"
   ],
+  "riskAreas": [
+    "src/Core/Entriqa.Application/Pipeline/",
+    "src/Core/Entriqa.Application/Consent/",
+    "src/Core/Entriqa.Application/Security/",
+    "src/Core/Entriqa.Application/UseCases/ConfirmSubmissionUseCase.cs",
+    "src/Core/Entriqa.Application/UseCases/RunHousekeepingUseCase.cs",
+    "src/Core/Entriqa.Domain/Consent/",
+    "src/Core/Entriqa.Data/",
+    "src/Core/Entriqa.Infrastructure/Brevo/",
+    "src/Core/Entriqa.Infrastructure/Storage/",
+    "src/Hosts/Entriqa.Functions/Public/",
+    "src/Hosts/Entriqa.Functions/Ops/",
+    "src/Hosts/Entriqa.KeyTool/",
+    "scripts/verify.mjs"
+  ],
+  "implementationMode": {
+    "ask": "when-reasoned"
+  },
   "skills": {
     "local-dev": "Read .claude/skills/local-dev/SKILL.md before starting, driving or debugging the running app.",
     "test-conventions": "Read .claude/skills/test-conventions/SKILL.md before writing or changing any test, including a story's failing proof.",
