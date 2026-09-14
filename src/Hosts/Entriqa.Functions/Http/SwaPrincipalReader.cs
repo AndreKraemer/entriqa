@@ -33,7 +33,16 @@ public sealed class SwaPrincipalReader(IOptions<EntriqaOptions> options)
     /// erasure audit row. <see cref="UserName"/>'s literal "admin" cannot be told apart from a real
     /// account of that name, so it would record a person for something nobody signed in did.
     /// </summary>
-    public string? TryUserName(HttpRequest req) => throw new NotImplementedException();
+    public string? TryUserName(HttpRequest req)
+    {
+        if (!req.Headers.TryGetValue("x-ms-client-principal", out var header) || string.IsNullOrEmpty(header)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(header!)));
+            return doc.RootElement.TryGetProperty("userDetails", out var d) && d.GetString() is { Length: > 0 } name ? name : null;
+        }
+        catch (Exception ex) when (ex is FormatException or JsonException) { return null; }
+    }
 
     /// <summary>
     /// Display name of the signed-in admin (userDetails), falling back to "admin".

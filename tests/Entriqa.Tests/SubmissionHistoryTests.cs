@@ -408,8 +408,8 @@ public class SubmissionHistoryTests
     /// and in the erasure audit row, where it is a GDPR record.
     /// </summary>
     [Theory]
-    [InlineData("AdminSaveDraft")]
-    [InlineData("AdminPublish")]
+    [InlineData("AdminSaveFormDraft")]
+    [InlineData("AdminPublishForm")]
     [InlineData("AdminDeleteContact")]
     [InlineData("AdminDeleteConsentProof")]
     public void GivenAnAuditedAdminOperation_WhenItIsRead_ThenItAttributesThroughTheNullableReader(string function) =>

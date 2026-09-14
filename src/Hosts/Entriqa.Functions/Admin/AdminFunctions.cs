@@ -67,7 +67,7 @@ public sealed class AdminFunctions(
         principal.RequireRole(req, "admin");
         var email = req.Query["email"].FirstOrDefault() ?? "";
         if (email.Length == 0) return new BadRequestResult();
-        return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, principal.UserName(req), ct) });
+        return new OkObjectResult(new { deleted = await deleteContact.ExecuteAsync(email, principal.TryUserName(req) ?? "", ct) });
     }
 
     /// <summary>The consent proofs on file for one address (#2) - the evidence an Art. 15 enquiry needs.</summary>
@@ -88,7 +88,7 @@ public sealed class AdminFunctions(
         var email = req.Query["email"].FirstOrDefault() ?? "";
         var submissionId = req.Query["submission"].FirstOrDefault() ?? "";
         if (email.Length == 0 || submissionId.Length == 0) return new BadRequestResult();
-        return new OkObjectResult(new { deleted = await deleteConsentProof.ExecuteAsync(email, submissionId, principal.UserName(req), ct) });
+        return new OkObjectResult(new { deleted = await deleteConsentProof.ExecuteAsync(email, submissionId, principal.TryUserName(req) ?? "", ct) });
     }
 
     /// <summary>Time-limited download link to a visitor upload (a value of one submission).</summary>
@@ -162,7 +162,7 @@ public sealed class AdminFunctions(
         if (def is null) return new BadRequestResult();
         if (!string.Equals(def.Slug, slug, StringComparison.Ordinal))
             throw new Entriqa.Domain.Errors.AppException(Entriqa.Domain.Errors.ErrorCodes.Validation, "Slug in URL und Definition stimmen nicht überein.");
-        await saveDraft.ExecuteAsync(def, principal.UserName(req), ct);
+        await saveDraft.ExecuteAsync(def, principal.TryUserName(req) ?? "", ct);
         return new NoContentResult();
     }
 
@@ -170,7 +170,7 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> Publish([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/forms/{slug}/publish")] HttpRequest req, string slug, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
-        return new OkObjectResult(await publish.ExecuteAsync(slug, principal.UserName(req), ct));
+        return new OkObjectResult(await publish.ExecuteAsync(slug, principal.TryUserName(req) ?? "", ct));
     }
 
     [Function("AdminGetSubmission")]
@@ -185,7 +185,7 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         var body = await JsonSerializer.DeserializeAsync<HandlingBody>(req.Body, Json, ct) ?? new HandlingBody(null);
-        await setHandling.ExecuteAsync(id, body.Handling ?? "", null, ct);
+        await setHandling.ExecuteAsync(id, body.Handling ?? "", principal.TryUserName(req), ct);
         return new NoContentResult();
     }
 
@@ -194,7 +194,7 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         var body = await JsonSerializer.DeserializeAsync<AssigneeBody>(req.Body, Json, ct) ?? new AssigneeBody(null);
-        await setAssignee.ExecuteAsync(id, body.Assignee, null, ct);
+        await setAssignee.ExecuteAsync(id, body.Assignee, principal.TryUserName(req), ct);
         return new NoContentResult();
     }
 
@@ -259,7 +259,7 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> ResendDoi([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/submissions/{id}/resend-doi")] HttpRequest req, string id, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
-        await resendDoi.ExecuteAsync(id, null, ct);
+        await resendDoi.ExecuteAsync(id, principal.TryUserName(req), ct);
         return new AcceptedResult();
     }
 
@@ -278,7 +278,7 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> Retry([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/submissions/{id}/steps/{stepId}/retry")] HttpRequest req, string id, string stepId, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
-        await retry.ExecuteAsync(id, stepId, null, ct);
+        await retry.ExecuteAsync(id, stepId, principal.TryUserName(req), ct);
         return new AcceptedResult();
     }
 
