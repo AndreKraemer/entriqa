@@ -26,10 +26,10 @@ public static class HistoryOrigins
 public readonly record struct HistoryActor(string Origin, string? By)
 {
     /// <summary>An admin acting. A blank name means the request carried no identity - not an admin called "".</summary>
-    public static HistoryActor Admin(string? name) => throw new NotImplementedException();
+    public static HistoryActor Admin(string? name) => new(HistoryOrigins.Admin, name);
 
     /// <summary>Housekeeping and anything else nobody clicked.</summary>
-    public static HistoryActor System => throw new NotImplementedException();
+    public static HistoryActor System => new(HistoryOrigins.System, null);
 
     public bool IsAutomatic => Origin == HistoryOrigins.System;
 }
@@ -71,5 +71,9 @@ public sealed class SubmissionHistory
     /// <summary>Oldest first, the order they were appended in. The detail view reverses it (AC5).</summary>
     public IReadOnlyList<SubmissionHistoryEntry> Entries => _entries;
 
-    public void Append(SubmissionHistoryEntry entry) => throw new NotImplementedException();
+    public void Append(SubmissionHistoryEntry entry)
+    {
+        _entries.Add(entry);
+        while (_entries.Count > Max) _entries.RemoveAt(0);
+    }
 }
