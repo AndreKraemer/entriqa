@@ -30,7 +30,7 @@ public class SubmissionAssignmentTests
         var get = Substitute.For<ITryGetSubmissionQuery>();
         var save = Substitute.For<ISaveSubmissionCommand>();
         get.ExecuteAsync(stored.Id, Arg.Any<CancellationToken>()).Returns(stored);
-        return (new SetSubmissionAssigneeUseCase(get, save), get, save);
+        return (new SetSubmissionAssigneeUseCase(get, save, TestData.Time), get, save);
     }
 
     private static Submission Stored(string handling = HandlingStates.Open, string? assignee = null) => new()
@@ -145,7 +145,7 @@ public class SubmissionAssignmentTests
         var save = Substitute.For<ISaveSubmissionCommand>();
         get.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((Submission?)null);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => new SetSubmissionAssigneeUseCase(get, save).ExecuteAsync(Id, Me, Me));
+        await Assert.ThrowsAsync<NotFoundException>(() => new SetSubmissionAssigneeUseCase(get, save, TestData.Time).ExecuteAsync(Id, Me, Me));
         Assert.Empty(save.ReceivedCalls());
     }
 

@@ -53,8 +53,11 @@ public sealed class SubmissionPipelineService(
     public async Task<bool> RunAsync(Submission submission, FormDefinition form, int version, RunMode mode, string? onlyStepId = null, HistoryActor? repeatedBy = null, CancellationToken ct = default)
     {
         if (mode == RunMode.Retry)
+        {
             foreach (var r in submission.StepRuns.Where(r => r.Status is StepRunStatus.Failed or StepRunStatus.Blocked && (onlyStepId is null || r.StepId == onlyStepId || r.Status == StepRunStatus.Blocked)))
             { r.Status = StepRunStatus.Pending; r.Error = null; }
+            if (repeatedBy is { } by) submission.Record(HistoryTypes.StepRetry, by, time.GetUtcNow(), onlyStepId);
+        }
 
         var ctx = new StepContext { Submission = submission, Form = form, FormVersion = version, Options = options.Value };
         var broken = false;

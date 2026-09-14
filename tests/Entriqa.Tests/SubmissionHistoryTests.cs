@@ -65,7 +65,7 @@ public class SubmissionHistoryTests
     {
         var (get, save) = Ports(Stored());
 
-        await new SetSubmissionHandlingUseCase(get, save).ExecuteAsync(Id, HandlingStates.Done, Me);
+        await new SetSubmissionHandlingUseCase(get, save, TestData.Time).ExecuteAsync(Id, HandlingStates.Done, Me);
 
         var entry = Assert.Single(Written(save));
         Assert.Equal(HistoryTypes.Handling, entry.Type);
@@ -81,7 +81,7 @@ public class SubmissionHistoryTests
     {
         var (get, save) = Ports(Stored());
 
-        await new SetSubmissionAssigneeUseCase(get, save).ExecuteAsync(Id, Colleague, Me);
+        await new SetSubmissionAssigneeUseCase(get, save, TestData.Time).ExecuteAsync(Id, Colleague, Me);
 
         var entry = Assert.Single(Written(save));
         Assert.Equal(HistoryTypes.Assignee, entry.Type);
@@ -99,7 +99,7 @@ public class SubmissionHistoryTests
     {
         var (get, save) = Ports(Stored(assignee: Colleague));
 
-        await new SetSubmissionAssigneeUseCase(get, save).ExecuteAsync(Id, null, Me);
+        await new SetSubmissionAssigneeUseCase(get, save, TestData.Time).ExecuteAsync(Id, null, Me);
 
         var entry = Assert.Single(Written(save));
         Assert.Equal(HistoryTypes.Assignee, entry.Type);
@@ -185,7 +185,7 @@ public class SubmissionHistoryTests
     {
         var (get, save) = Ports(Stored());
 
-        await new SetSubmissionHandlingUseCase(get, save).ExecuteAsync(Id, HandlingStates.Done, null);
+        await new SetSubmissionHandlingUseCase(get, save, TestData.Time).ExecuteAsync(Id, HandlingStates.Done, null);
 
         var entry = Assert.Single(Written(save));
         Assert.Equal(HistoryOrigins.Admin, entry.Origin);
@@ -210,11 +210,11 @@ public class SubmissionHistoryTests
         var entries = new List<SubmissionHistoryEntry>();
 
         var (g1, s1) = Ports(Stored());
-        await new SetSubmissionHandlingUseCase(g1, s1).ExecuteAsync(Id, HandlingStates.Done, Me);
+        await new SetSubmissionHandlingUseCase(g1, s1, TestData.Time).ExecuteAsync(Id, HandlingStates.Done, Me);
         entries.AddRange(Written(s1));
 
         var (g2, s2) = Ports(Stored());
-        await new SetSubmissionAssigneeUseCase(g2, s2).ExecuteAsync(Id, Colleague, null);
+        await new SetSubmissionAssigneeUseCase(g2, s2, TestData.Time).ExecuteAsync(Id, Colleague, null);
         entries.AddRange(Written(s2));
 
         var (g3, s3) = Ports(Stored());

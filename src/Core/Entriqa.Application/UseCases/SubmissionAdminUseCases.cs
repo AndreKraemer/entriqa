@@ -49,14 +49,15 @@ internal sealed class GetSubmissionDetailUseCase(
 
         return new SubmissionDetailView(s.Id, s.Slug, s.Version, s.CreatedAt, s.Locale, s.Email, s.FirstName,
             s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns,
-            s.History.Entries, s.Handling, s.State,
+            s.History.Entries.Reverse().ToList(), s.Handling, s.State,
             s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee);
     }
 }
 
 internal sealed class SetSubmissionHandlingUseCase(
     ITryGetSubmissionQuery getSubmission,
-    ISaveSubmissionCommand save) : ISetSubmissionHandlingUseCase
+    ISaveSubmissionCommand save,
+    TimeProvider time) : ISetSubmissionHandlingUseCase
 {
     public async Task ExecuteAsync(string submissionId, string handling, string? by, CancellationToken ct = default)
     {
@@ -67,6 +68,7 @@ internal sealed class SetSubmissionHandlingUseCase(
         if (s.Handling == HandlingStates.None)
             throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingUnsupported);
         s.Handling = handling;
+        s.Record(HistoryTypes.Handling, HistoryActor.Admin(by), time.GetUtcNow(), handling);
         await save.ExecuteAsync(s, ct);
     }
 }
@@ -97,7 +99,8 @@ internal sealed class DeleteSubmissionAdminUseCase(
 /// </summary>
 internal sealed class SetSubmissionAssigneeUseCase(
     ITryGetSubmissionQuery getSubmission,
-    ISaveSubmissionCommand save) : ISetSubmissionAssigneeUseCase
+    ISaveSubmissionCommand save,
+    TimeProvider time) : ISetSubmissionAssigneeUseCase
 {
     public async Task ExecuteAsync(string submissionId, string? assignee, string? by, CancellationToken ct = default)
     {
@@ -108,6 +111,7 @@ internal sealed class SetSubmissionAssigneeUseCase(
         // A <select> sends "" for its "nobody" option and an empty body degrades to the same, so a
         // blank name means nobody rather than an admin whose name is blank.
         s.Assignee = string.IsNullOrWhiteSpace(assignee) ? null : assignee.Trim();
+        s.Record(HistoryTypes.Assignee, HistoryActor.Admin(by), time.GetUtcNow(), s.Assignee);
         await save.ExecuteAsync(s, ct);
     }
 }

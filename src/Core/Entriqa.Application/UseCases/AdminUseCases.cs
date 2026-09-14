@@ -25,7 +25,7 @@ internal sealed class RetryStepUseCase(
             ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
         var v = await getVersion.ExecuteAsync(s.Slug, s.Version, ct)
             ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormVersionNotFound);
-        await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Retry, stepId, null, ct);
+        await pipeline.RunAsync(s, v.Definition.Localize(s.Locale), v.Version, RunMode.Retry, stepId, HistoryActor.Admin(by), ct);
         await save.ExecuteAsync(s, ct);
     }
 }
