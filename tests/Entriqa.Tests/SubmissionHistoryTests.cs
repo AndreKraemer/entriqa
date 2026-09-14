@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Entriqa.Admin.Services;
 using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;
 using Entriqa.Application.UseCases;
@@ -335,10 +336,10 @@ public class SubmissionHistoryTests
     {
         var source = DataSource("Mapping", "SubmissionMapper.cs");
 
-        Assert.Matches(new Regex(@"^[^\S\r\n]*HistoryJson = ", RegexOptions.Multiline),
+        Assert.Matches(new Regex(@"^[^\S\r\n]*HistoryJson = JsonSerializer\.Serialize\(s\.History\b", RegexOptions.Multiline),
             SourceText.Block(source, "public static SubmissionEntity ToEntity",
                 "SubmissionMapper no longer has ToEntity - update this guard."));
-        Assert.Matches(new Regex(@"^[^\S\r\n]*History = ", RegexOptions.Multiline),
+        Assert.Matches(new Regex(@"^[^\S\r\n]*History = new SubmissionHistory\([\s\S]*e\.HistoryJson\b", RegexOptions.Multiline),
             SourceText.Block(source, "public static Submission ToDomain",
                 "SubmissionMapper no longer has ToDomain - update this guard."));
     }
@@ -398,6 +399,8 @@ public class SubmissionHistoryTests
             "SwaPrincipalReader no longer has TryUserName - update this guard.");
 
         Assert.Contains("return null", body, StringComparison.Ordinal);
+        Assert.Contains("x-ms-client-principal", body, StringComparison.Ordinal);
+        Assert.Contains("userDetails", body, StringComparison.Ordinal);
         Assert.DoesNotContain("\"admin\"", body, StringComparison.Ordinal);
         Assert.DoesNotContain("NotImplementedException", body, StringComparison.Ordinal);
     }
@@ -445,6 +448,58 @@ public class SubmissionHistoryTests
         Assert.Contains("@T[\"Verlauf\"]", markup, StringComparison.Ordinal);
         Assert.Matches(new Regex(@"foreach\s*\(var\s+\w+\s+in\s+_s\.History\s*\)"), markup);
         Assert.DoesNotMatch(new Regex(@"_s\.History[\s\S]{0,40}(OrderBy|Reverse)"), markup);
+        Assert.Contains("Labels.HistoryText(", markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// What each entry reads as - executing, not a source guard, since Labels lives in the admin project
+    /// the test host loads (#3). AC4's visible half: a system entry has to read as automatic, never as a
+    /// person, and an admin without a name reads as unknown rather than silently as nobody-in-particular.
+    /// </summary>
+    [Theory]
+    [InlineData(HistoryTypes.Handling, HandlingStates.Done, "Erledigt")]
+    [InlineData(HistoryTypes.Handling, HandlingStates.Open, "Offen")]
+    [InlineData(HistoryTypes.StepRetry, "s1", "Schritt wiederholt: s1")]
+    [InlineData(HistoryTypes.DoiResend, null, "Bestätigungsmail erneut gesendet")]
+    public void GivenAHistoryEntry_WhenItIsDescribed_ThenTheGermanTextNamesWhatHappened(string type, string? detail, string expectedWhat)
+    {
+        var entry = new HistoryEntry(TestData.Time.GetUtcNow(), type, HistoryOrigins.Admin, Me, detail);
+
+        Assert.Contains(expectedWhat, Labels.HistoryText(entry, new Ui()), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Colleague, "Zugewiesen an " + Colleague)]
+    [InlineData(null, "Zuweisung entfernt")]
+    public void GivenAnAssigneeEntry_WhenItIsDescribed_ThenTheGermanTextNamesTheTargetOrItsAbsence(string? target, string expectedWhat)
+    {
+        var entry = new HistoryEntry(TestData.Time.GetUtcNow(), HistoryTypes.Assignee, HistoryOrigins.Admin, Me, target);
+
+        Assert.Contains(expectedWhat, Labels.HistoryText(entry, new Ui()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenASystemEntry_WhenItIsDescribed_ThenTheActorReadsAutomaticRatherThanAPerson()
+    {
+        var entry = new HistoryEntry(TestData.Time.GetUtcNow(), HistoryTypes.StepRetry, HistoryOrigins.System, null, null);
+
+        Assert.Contains("automatisch", Labels.HistoryText(entry, new Ui()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenAnAdminEntryWithoutAName_WhenItIsDescribed_ThenTheActorReadsUnknownRatherThanNobody()
+    {
+        var entry = new HistoryEntry(TestData.Time.GetUtcNow(), HistoryTypes.Handling, HistoryOrigins.Admin, null, HandlingStates.Done);
+
+        Assert.Contains("unbekannt", Labels.HistoryText(entry, new Ui()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenAnAdminEntryWithAName_WhenItIsDescribed_ThenTheActorNamesThem()
+    {
+        var entry = new HistoryEntry(TestData.Time.GetUtcNow(), HistoryTypes.Handling, HistoryOrigins.Admin, Me, HandlingStates.Done);
+
+        Assert.Contains(Me, Labels.HistoryText(entry, new Ui()), StringComparison.Ordinal);
     }
 
     /// <summary>
