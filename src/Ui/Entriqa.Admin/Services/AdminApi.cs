@@ -243,8 +243,12 @@ public sealed record SubmissionListItem(string Id, string Slug, int Version, Dat
 
 public sealed record SubmissionDetail(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale,
     string? Email, string? FirstName, string? Source, List<SubmissionValue> Values, QuizInfo? Quiz, string? QuizResultTitle,
-    string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns, string Handling, int State,
+    string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns,
+    List<HistoryEntry>? History, string Handling, int State,
     string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null);
+
+/// <summary>One entry of a submission's history (#14), newest first as the API delivers it.</summary>
+public sealed record HistoryEntry(DateTimeOffset At, string Type, string Origin, string? By, string? Detail);
 
 public sealed record IntegrationDirectory(bool BrevoConfigured, List<DirectoryEntry> BrevoLists, List<DirectoryEntry> BrevoTemplates,
     bool ReportingCloudConfigured, List<string> ReportTemplates, List<LeadMagnetInfo> LeadMagnets,
@@ -309,5 +313,23 @@ public static class Labels
         return parts.Length >= 2
             ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}"
             : clean[..Math.Min(2, clean.Length)].ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Turns one history entry (#14) into a German sentence - the stable "handling"/"assignee"/… keys the
+    /// server sends are never prose, or the wording would be frozen and untranslatable.
+    /// </summary>
+    public static string HistoryText(HistoryEntry e, Ui t)
+    {
+        var what = e.Type switch
+        {
+            "handling" => t.F("Status geändert zu {0}", e.Detail == "done" ? t["Erledigt"] : t["Offen"]),
+            "assignee" => e.Detail is { Length: > 0 } target ? t.F("Zugewiesen an {0}", target) : t["Zuweisung entfernt"],
+            "step.retry" => e.Detail is { Length: > 0 } step ? t.F("Schritt wiederholt: {0}", step) : t["Fehlgeschlagene Schritte wiederholt"],
+            "doi.resend" => t["Bestätigungsmail erneut gesendet"],
+            _ => e.Type,
+        };
+        var who = e.Origin == "system" ? t["automatisch"] : e.By is { Length: > 0 } by ? by : t["unbekannt"];
+        return $"{what} – {who}";
     }
 }

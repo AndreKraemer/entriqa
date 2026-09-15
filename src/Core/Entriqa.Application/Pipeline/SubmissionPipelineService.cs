@@ -45,11 +45,19 @@ public sealed class SubmissionPipelineService(
     }
 
     /// <summary>Returns true when deferred steps are still pending afterwards (-> run token for the client).</summary>
-    public async Task<bool> RunAsync(Submission submission, FormDefinition form, int version, RunMode mode, string? onlyStepId = null, CancellationToken ct = default)
+    /// <param name="repeatedBy">
+    /// Who asked for a repeat (#14): an admin, or <see cref="HistoryActor.System"/> for housekeeping's
+    /// auto retry. Only consulted in <see cref="RunMode.Retry"/> - a first run is not a repeat and writes
+    /// no entry. This is the one place both halves of AC3/AC4 pass through.
+    /// </param>
+    public async Task<bool> RunAsync(Submission submission, FormDefinition form, int version, RunMode mode, string? onlyStepId = null, HistoryActor? repeatedBy = null, CancellationToken ct = default)
     {
         if (mode == RunMode.Retry)
+        {
             foreach (var r in submission.StepRuns.Where(r => r.Status is StepRunStatus.Failed or StepRunStatus.Blocked && (onlyStepId is null || r.StepId == onlyStepId || r.Status == StepRunStatus.Blocked)))
             { r.Status = StepRunStatus.Pending; r.Error = null; }
+            if (repeatedBy is { } by) submission.Record(HistoryTypes.StepRetry, by, time.GetUtcNow(), onlyStepId);
+        }
 
         var ctx = new StepContext { Submission = submission, Form = form, FormVersion = version, Options = options.Value };
         var broken = false;

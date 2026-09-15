@@ -114,6 +114,21 @@ else
     </table>
     </div>
 
+    <h2>@T["Verlauf"]</h2>
+    @if (_s.History is { Count: > 0 })
+    {
+        <ul class="history">
+            @foreach (var h in _s.History)
+            {
+                <li>@h.At.ToLocalTime().ToString("dd.MM.yyyy HH:mm") – @Labels.HistoryText(h, T)</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="hint">@T["Noch keine Einträge."]</p>
+    }
+
     <div class="danger-zone">
         <button class="btn btn--danger" disabled="@_busy" @onclick="Delete">@T["Einsendung löschen"]</button>
     </div>

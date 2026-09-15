@@ -88,7 +88,8 @@ public interface IExportSubmissionsCsvUseCase
 public interface IResendDoiUseCase
 {
     /// <summary>Sends the DOI confirmation mail again (only while it is unconfirmed).</summary>
-    Task ExecuteAsync(string submissionId, CancellationToken ct = default);
+    /// <param name="by">The signed-in admin, null when the request carried no identity (#14).</param>
+    Task ExecuteAsync(string submissionId, string? by, CancellationToken ct = default);
 }
 
 public interface IGetFormStatsUseCase
@@ -160,7 +161,10 @@ public interface IGetSubmissionDetailUseCase
 public sealed record SubmissionDetailView(
     string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale, string? Email, string? FirstName,
     string? Source, IReadOnlyList<SubmissionValueView> Values, Quiz.QuizOutcome? Quiz, string? QuizResultTitle,
-    string? ConsentText, DateTimeOffset? ConfirmedAt, IReadOnlyList<StepRun> StepRuns, string Handling, SubmissionState State,
+    string? ConsentText, DateTimeOffset? ConfirmedAt, IReadOnlyList<StepRun> StepRuns,
+    // Newest first (AC5 of #14). Not a trailing optional on purpose: #13 learned that a projection one
+    // may forget to pass still compiles - and would then report an empty history for every submission.
+    IReadOnlyList<SubmissionHistoryEntry> History, string Handling, SubmissionState State,
     string? BrevoContactId, bool CanResendDoi, IReadOnlyList<QuizAnswerView>? QuizAnswers = null,
     string? Assignee = null);
 
@@ -172,7 +176,8 @@ public sealed record QuizAnswerView(string Question, string Answer, int Points, 
 public interface ISetSubmissionAssigneeUseCase
 {
     /// <summary>Hands one submission to an admin, or to nobody (null). Notifies no one, ever.</summary>
-    Task ExecuteAsync(string submissionId, string? assignee, CancellationToken ct = default);
+    /// <param name="by">The signed-in admin, null when the request carried no identity (#14).</param>
+    Task ExecuteAsync(string submissionId, string? assignee, string? by, CancellationToken ct = default);
 }
 
 public interface IListAdminsUseCase
@@ -269,7 +274,8 @@ public sealed record SubmissionValueView(string FieldId, string Label, string Va
 
 public interface ISetSubmissionHandlingUseCase
 {
-    Task ExecuteAsync(string submissionId, string handling, CancellationToken ct = default);   // open | done
+    /// <param name="by">The signed-in admin, null when the request carried no identity (#14).</param>
+    Task ExecuteAsync(string submissionId, string handling, string? by, CancellationToken ct = default);   // open | done
 }
 
 public interface IDeleteSubmissionAdminUseCase
@@ -285,7 +291,8 @@ public interface IListSubmissionsUseCase
 
 public interface IRetryStepUseCase
 {
-    Task ExecuteAsync(string submissionId, string stepId, CancellationToken ct = default);
+    /// <param name="by">The signed-in admin, null when the request carried no identity (#14).</param>
+    Task ExecuteAsync(string submissionId, string stepId, string? by, CancellationToken ct = default);
 }
 
 public interface IGetStepCatalogUseCase

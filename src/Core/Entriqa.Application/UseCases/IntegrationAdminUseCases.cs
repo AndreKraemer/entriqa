@@ -6,6 +6,7 @@ using Entriqa.Application.Pipeline;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Errors;
 using Entriqa.Domain.Forms;
+using Entriqa.Domain.Submissions;
 using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Application.UseCases;
@@ -118,9 +119,11 @@ internal sealed class ResendDoiUseCase(
     ITryGetSubmissionQuery getSubmission,
     ITryGetFormVersionQuery getVersion,
     SubmissionPipelineService pipeline,
+    ISaveSubmissionCommand save,
+    TimeProvider time,
     IOptions<EntriqaOptions> options) : IResendDoiUseCase
 {
-    public async Task ExecuteAsync(string submissionId, CancellationToken ct = default)
+    public async Task ExecuteAsync(string submissionId, string? by, CancellationToken ct = default)
     {
         var s = await getSubmission.ExecuteAsync(submissionId, ct)
             ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
@@ -133,5 +136,9 @@ internal sealed class ResendDoiUseCase(
 
         var ctx = new StepContext { Submission = s, Form = def, FormVersion = v.Version, Options = options.Value };
         await pipeline.Resolve(doi.Step).ExecuteAsync(ctx, doi.Config, ct);   // idempotent: after the confirmation the step does nothing
+        // The mail is out by now. Recording afterwards can lose an entry; recording before would claim a
+        // mail that never left, and a false trace is worse than a missing one (#14).
+        s.Record(HistoryTypes.DoiResend, HistoryActor.Admin(by), time.GetUtcNow());
+        await save.ExecuteAsync(s, ct);
     }
 }
