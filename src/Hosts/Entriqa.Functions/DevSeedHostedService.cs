@@ -212,6 +212,20 @@ public sealed class DevSeedHostedService(
         "Tobias Ritter", "Ines Baumgartner", "Peer Johansson", "Rebecca Fuchs", "Lars Petersen",
     };
 
+    /// <summary>
+    /// The message of a demo submission. Two of the five name a company, because that is what the inbox
+    /// search (#12) is there to find: a name that lives in a free-text answer and in no column of its own.
+    /// Without one in the seed the feature has nothing to look for on a fresh environment.
+    /// </summary>
+    private static readonly string[] DemoMessages =
+    {
+        "Bitte um Rückruf zum Angebot.",
+        "Wir sind die Odysys AG und bräuchten ein Angebot für 40 Arbeitsplätze.",
+        "Bitte um Unterlagen per Post.",
+        "Anfrage im Auftrag der Odysys AG – bitte an die Buchhaltung weiterleiten.",
+        "Wann wäre ein Termin in der kommenden Woche möglich?",
+    };
+
     /// <summary>One long unbroken value, so the detail page can be checked against horizontal page scroll.</summary>
     private const string LongValue =
         "Kontext: https://intranet.example.org/projekte/2026/formularmodernisierung/anforderungen/entwurf-v3-final-freigabe-langer-pfad-ohne-trennzeichen";
@@ -225,7 +239,7 @@ public sealed class DevSeedHostedService(
             {
                 FieldTypes.Email => $"person{index:D2}@example.org",
                 FieldTypes.Text => DemoNames[index % DemoNames.Length],
-                FieldTypes.Textarea => longValue ? LongValue : "Bitte um Rückruf zum Angebot.",
+                FieldTypes.Textarea => longValue ? LongValue : DemoMessages[index % DemoMessages.Length],
                 FieldTypes.Select or FieldTypes.Multiselect =>
                     f.Options is { Count: > 0 } o ? o[index % o.Count].Resolve("de") : "",
                 FieldTypes.Consent or FieldTypes.Checkbox => "true",
