@@ -23,11 +23,22 @@ internal sealed class SearchSubmissionsUseCase(
     ISearchSubmissionsQuery search,
     IGetLastVisitQuery lastVisit) : ISearchSubmissionsUseCase
 {
-    public Task<SubmissionSearchResult> ExecuteAsync(string? slug, string term, string user, int scanMax = 5000, CancellationToken ct = default)
+    public async Task<SubmissionSearchResult> ExecuteAsync(string? slug, string term, string user, int scanMax = 5000, CancellationToken ct = default)
     {
-        _ = search;
-        _ = lastVisit;
-        throw new NotImplementedException();
+        var scan = await search.ExecuteAsync(slug, scanMax, ct);
+        var needle = term.Trim();
+        // An empty term matches every text as a substring, which would turn an unlucky paste into a hit
+        // list of the whole scan. The endpoint does not ask in that case; this is what makes it harmless
+        // when something else does.
+        IReadOnlyList<Domain.Submissions.SubmissionListItem> hits = needle.Length == 0
+            ? []
+            : [.. scan.Items
+                .Where(c => c.Texts.Any(t => t.Contains(needle, StringComparison.OrdinalIgnoreCase)))
+                .Select(c => c.Item)
+                .OrderByDescending(i => i.CreatedAt)];
+        // Scanned and Capped travel through untouched: they describe the scan, and a use case that
+        // recomputed them from the hits would report the size of the answer instead of its cost.
+        return new SubmissionSearchResult(hits, await lastVisit.ExecuteAsync(user, ct), scan.Scanned, scan.Capped);
     }
 }
 
