@@ -3,3 +3,15 @@ other = "This form needs JavaScript. Alternatively:"
 
 [eq_noscript_link]
 other = "open the form directly"
+
+[eq_doi_confirm]
+other = "Confirm email address"
+
+[eq_doi_link_incomplete]
+other = "This link is incomplete – please open the full link from the email."
+
+[eq_doi_failed]
+other = "The confirmation did not work – please try again."
+
+[eq_standalone_no_form]
+other = "No form specified."

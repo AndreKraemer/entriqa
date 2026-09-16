@@ -4,3 +4,16 @@ other = "Dieses Formular braucht JavaScript. Alternativ:"
 
 [eq_noscript_link]
 other = "Formular direkt öffnen"
+
+# Double opt-in landing page and the standalone form page (#30).
+[eq_doi_confirm]
+other = "E-Mail-Adresse bestätigen"
+
+[eq_doi_link_incomplete]
+other = "Dieser Link ist unvollständig – bitte den Link aus der E-Mail vollständig öffnen."
+
+[eq_doi_failed]
+other = "Die Bestätigung hat nicht geklappt – bitte erneut versuchen."
+
+[eq_standalone_no_form]
+other = "Kein Formular angegeben."
