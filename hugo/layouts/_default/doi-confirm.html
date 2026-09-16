@@ -30,7 +30,10 @@
     if (!token) { btn.hidden = true; say(T.incomplete, 'error'); return; }
     btn.addEventListener('click', function () {
       btn.disabled = true;
-      fetch(btn.getAttribute('data-api') + '/confirm', {
+      // The language of the PAGE, not of the browser: the API renders its error title in the
+      // language of the request, and without this parameter it falls back to Accept-Language -
+      // which would put a German title next to English buttons on the English page.
+      fetch(btn.getAttribute('data-api') + '/confirm?lang=' + encodeURIComponent({{ .Language.Lang }}), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token })
       }).then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
         .then(function (r) {
