@@ -82,7 +82,8 @@ public sealed record SubmissionSelection(
         // The assignee is not validated against the admin list on purpose: a name the list no longer
         // holds yields an empty selection, which is honest, where silently dropping the narrowing would
         // show a wider list than the address promises.
-        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page, Set(q["bearbeiter"]));
+        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page, Set(q["bearbeiter"]),
+            Set(q["suche"]), Day(q["von"]), Day(q["bis"]));
     }
 
     /// <summary>The list address this selection returns to - the form stays the route segment it is today.</summary>
@@ -97,15 +98,29 @@ public sealed record SubmissionSelection(
 
     private string Query(bool withForm)
     {
-        var parts = new List<string>(4);
+        var parts = new List<string>(7);
         if (withForm && Slug is not null) parts.Add("formular=" + Uri.EscapeDataString(Slug));
         if (Quick is not null) parts.Add("filter=" + Uri.EscapeDataString(Quick));
         if (Assignee is not null) parts.Add("bearbeiter=" + Uri.EscapeDataString(Assignee));
+        if (Search is not null) parts.Add("suche=" + Uri.EscapeDataString(Search));
+        if (From is { } from) parts.Add("von=" + Iso(from));
+        if (To is { } to) parts.Add("bis=" + Iso(to));
         if (Page > 1) parts.Add("seite=" + Page.ToString(CultureInfo.InvariantCulture));
         return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
     }
 
     private static string? Set(string? value) => string.IsNullOrEmpty(value) ? null : value;
+
+    /// <summary>
+    /// A day of the range as the address and the date input both write it. Parsed exactly rather than by
+    /// the current culture: the same address has to mean the same range in a German and an English admin.
+    /// </summary>
+    private static DateOnly? Day(string? value) =>
+        DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+            ? day
+            : null;
+
+    private static string Iso(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Names the selection the back link returns to (AC3). The form name is data and stays untranslated;
@@ -167,7 +182,21 @@ public sealed record SubmissionSelection(
                var who => s.Handling == "open" && s.Assignee == who,
            })
            .Where(s => MatchesChips(Chips(Quick), s, lastVisit))
+           .Where(s => InRange(s.CreatedAt, zone ?? TimeZoneInfo.Local))
            .ToList();
+
+    /// <summary>
+    /// Whether a submission falls into the chosen range, both ends included. Compared on the local day,
+    /// because that is the day the list prints beside it - judging by UTC would drop an evening enquiry
+    /// out of the day its reader saw it arrive. The zone is an argument so the tests do not depend on
+    /// where the suite runs.
+    /// </summary>
+    private bool InRange(DateTimeOffset at, TimeZoneInfo zone)
+    {
+        if (From is null && To is null) return true;
+        var day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(at, zone).DateTime);
+        return (From is not { } from || day >= from) && (To is not { } to || day <= to);
+    }
 
     /// <summary>
     /// Arrived since the reader last looked. One definition for the marker on the row and for the "new"
@@ -227,7 +256,8 @@ public sealed record SubmissionSelection(
     /// Only the form and the search term decide what the endpoint returns; every other narrowing happens
     /// on what is already here, so turning a chip on must not cost a round trip.
     /// </summary>
-    public bool NeedsReload(SubmissionSelection previous) => throw new NotImplementedException();
+    public bool NeedsReload(SubmissionSelection previous) =>
+        Slug != previous.Slug || !string.Equals(Search, previous.Search, StringComparison.Ordinal);
 
     /// <summary>
     /// What the list says about the search it is showing (AC5, AC6): how many submissions were looked at,
