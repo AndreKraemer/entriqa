@@ -60,7 +60,12 @@ const MESSAGE_CHANNELS = /(?:\bsay\(|\.textContent\s*=\s*|\.innerHTML\s*=\s*)\s*
 // JS comments come out before any literal is read. They are prose for the next developer, and an
 // apostrophe in one ("Don't touch this") otherwise reads as the start of a string literal and
 // produces a finding quoting half a sentence - the guard failing on its own explanatory text.
-const withoutJsComments = (body) => body.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+//
+// Only a // that STARTS its line counts, which is the shape of every comment in these templates.
+// Stripping // anywhere took the rest of the line with it, string literals included, so a single
+// https:// in a message hid the message from both rules below - the fix for the false positive
+// had opened a bigger hole than it closed.
+const withoutJsComments = (body) => body.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^[ \t]*\/\/[^\n]*/gm, " ");
 
 for (const file of layouts) {
   const src = withoutComments(readFileSync(file, "utf8"));
