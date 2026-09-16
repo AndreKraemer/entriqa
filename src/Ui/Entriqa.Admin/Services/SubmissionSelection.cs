@@ -13,7 +13,9 @@ namespace Entriqa.Admin.Services;
 /// Deliberately free of Blazor types: this is where the story's logic sits, and it is executed by
 /// the unit tests rather than scanned as source.
 /// </summary>
-public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, string? Assignee = null)
+public sealed record SubmissionSelection(
+    string? Slug, string? Quick, int Page, string? Assignee = null,
+    string? Search = null, DateOnly? From = null, DateOnly? To = null)
 {
     public const int PerPage = 15;
 
@@ -146,7 +148,8 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     /// which is what the arrows have to follow (AC4). The form is filtered here as well, although the
     /// endpoint already narrows by slug - so a caller that loaded every form can still ask for one.
     /// </summary>
-    public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit) =>
+    public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit,
+                                                   TimeZoneInfo? zone = null) =>
         all.Where(s => Slug is null || s.Slug == Slug)
            // One filter concept, not two (AC4, AC5): an assignee filter always means open *and* assigned
            // to that person. "Meine offenen" is this filter with the signed-in admin's name; the picker
@@ -175,6 +178,33 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     /// </summary>
     public static bool IsNew(SubmissionListItem item, DateTimeOffset? lastVisit) =>
         lastVisit is null || item.CreatedAt > lastVisit;
+
+    /// <summary>
+    /// Whether this selection carries that chip (#12). The chips are a set rather than one slot since
+    /// AC4 - Verarbeitungsstatus, Bearbeitungsstatus, Zeitraum and Bearbeiter have to combine - so the
+    /// single string now holds them comma separated in a canonical order.
+    /// </summary>
+    public bool HasChip(string chip) => throw new NotImplementedException();
+
+    /// <summary>The same selection with that chip switched on or off, back on page one.</summary>
+    public SubmissionSelection ToggleChip(string chip) => throw new NotImplementedException();
+
+    /// <summary>
+    /// Whether moving from <paramref name="previous"/> to this selection needs a new request (#12, AC8).
+    /// Only the form and the search term decide what the endpoint returns; every other narrowing happens
+    /// on what is already here, so turning a chip on must not cost a round trip.
+    /// </summary>
+    public bool NeedsReload(SubmissionSelection previous) => throw new NotImplementedException();
+
+    /// <summary>
+    /// What the list says about the search it is showing (AC5, AC6): how many submissions were looked at,
+    /// and - when the ceiling stopped the scan - that older ones were never searched. Null when no search
+    /// is running, which is what keeps the line out of the ordinary list.
+    /// </summary>
+    public string? SearchSummary(Ui t, int scanned, bool capped) => throw new NotImplementedException();
+
+    /// <summary>The empty list's message. During a search it names the term (AC7).</summary>
+    public string EmptyMessage(Ui t) => throw new NotImplementedException();
 
     /// <summary>The slice of the selection this page shows.</summary>
     public IReadOnlyList<SubmissionListItem> PageSlice(IReadOnlyList<SubmissionListItem> selection) =>

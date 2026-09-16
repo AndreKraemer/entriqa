@@ -14,6 +14,23 @@ internal sealed class ListRecentSubmissionsUseCase(
     }
 }
 
+/// <summary>
+/// The search behind the inbox (#12). It owns the whole match - trimming, case, which candidate texts
+/// count and the order of the hits - because this is the layer the unit tests execute; the query below
+/// it only reads rows.
+/// </summary>
+internal sealed class SearchSubmissionsUseCase(
+    ISearchSubmissionsQuery search,
+    IGetLastVisitQuery lastVisit) : ISearchSubmissionsUseCase
+{
+    public Task<SubmissionSearchResult> ExecuteAsync(string? slug, string term, string user, int scanMax = 5000, CancellationToken ct = default)
+    {
+        _ = search;
+        _ = lastVisit;
+        throw new NotImplementedException();
+    }
+}
+
 internal sealed class GetFormsActivityUseCase(IGetFormsActivityQuery query, TimeProvider time) : IGetFormsActivityUseCase
 {
     public async Task<IReadOnlyDictionary<string, FormActivity>> ExecuteAsync(CancellationToken ct = default)
