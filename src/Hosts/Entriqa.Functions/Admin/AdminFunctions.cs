@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,7 @@ public sealed class AdminFunctions(
     IRecordAdminSeenUseCase recordSeen,
     IDeleteSubmissionAdminUseCase deleteSubmission,
     IListRecentSubmissionsUseCase recent,
+    ISearchSubmissionsUseCase search,
     IMarkVisitedUseCase markVisited,
     IGetFormStatsUseCase stats,
     IGetIntegrationDirectoryUseCase directory,
@@ -121,8 +123,18 @@ public sealed class AdminFunctions(
         {
             log.LogWarning(ex, "Sichtung von {User} nicht aufgezeichnet - der Posteingang wird trotzdem geliefert", principal.UserName(req));
         }
-        var slug = req.Query["slug"].FirstOrDefault();
-        return new OkObjectResult(await recent.ExecuteAsync(string.IsNullOrEmpty(slug) ? null : slug, principal.UserName(req), 500, ct));
+        var slug = req.Query["slug"].FirstOrDefault() is { Length: > 0 } s ? s : null;
+        // The ceiling is a parameter rather than a constant so that "the search stopped early" (AC6) can
+        // be provoked at all: a store with a few dozen rows would never reach 5000, and a warning nobody
+        // can trigger is a warning nobody has seen work.
+        var max = int.TryParse(req.Query["max"].FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)
+            ? Math.Clamp(n, 1, 5000)
+            : 5000;
+        // A blank term is the ordinary inbox, not a search that matches everything - which is what keeps
+        // AC8 a matter of clearing the field rather than of a second control.
+        return req.Query["q"].FirstOrDefault() is { Length: > 0 } term && term.Trim().Length > 0
+            ? new OkObjectResult(await search.ExecuteAsync(slug, term, principal.UserName(req), max, ct))
+            : new OkObjectResult(await recent.ExecuteAsync(slug, principal.UserName(req), 500, ct));
     }
 
     [Function("AdminMarkVisited")]
