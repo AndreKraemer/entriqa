@@ -63,6 +63,22 @@ internal static class SubmissionMapper
         ETag = e.ETag.ToString() is { Length: > 0 } tag ? tag : null,
     };
 
+    /// <summary>
+    /// The row as the inbox search sees it (#12): the list item plus every text a term may match.
+    /// E-mail, first name and the field values - the company an enquiry names usually lives in a
+    /// free-text answer, and singling out a company field is impossible anyway, since each form calls
+    /// it something else. Empty strings are left out: they match every term as a substring.
+    /// </summary>
+    public static SubmissionCandidate ToCandidate(SubmissionEntity e)
+    {
+        var values = JsonSerializer.Deserialize<Dictionary<string, string>>(e.ValuesJson, TableStorage.Json) ?? new();
+        var texts = new List<string>(values.Count + 2);
+        if (e.Email is { Length: > 0 } email) texts.Add(email);
+        if (e.FirstName is { Length: > 0 } firstName) texts.Add(firstName);
+        texts.AddRange(values.Values.Where(v => !string.IsNullOrEmpty(v)));
+        return new SubmissionCandidate(ToListItem(e), texts);
+    }
+
     public static SubmissionListItem ToListItem(SubmissionEntity e)
     {
         var values = JsonSerializer.Deserialize<Dictionary<string, string>>(e.ValuesJson, TableStorage.Json) ?? new();
