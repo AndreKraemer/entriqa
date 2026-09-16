@@ -27,7 +27,9 @@ if (!existsSync(hugo)) {
 }
 
 const [first, ...rest] = process.argv.slice(2);
-const args = first === "build" ? ["--gc", "--minify", ...rest]
+// --printI18nWarnings, or a missing translation is invisible: Hugo renders the key as an empty
+// string and says nothing, so a build with half the visitor texts blank still reports success.
+const args = first === "build" ? ["--gc", "--minify", "--printI18nWarnings", ...rest]
   : first === "serve" ? ["serve", ...rest]
   : [first, ...rest].filter(Boolean);
 

@@ -53,6 +53,14 @@ path = "github.com/andrekraemer/entriqa/hugo"
 {{ partial "entriqa/embed" (dict "slug" "kontakt" "page" .) }}
 ```
 
+> **Module texts and your site's languages.** The module's visitor-facing texts — the double
+> opt-in button, its status messages, the no-script fallback — ship for `de` and `en`
+> (`hugo/i18n/`). For any other language Hugo falls back to your site's
+> `defaultContentLanguage`, so a French page on a German-default site shows the German wording.
+> The one case that renders them **blank** is a site whose own `defaultContentLanguage` is a
+> language the module does not translate. Add an `i18n/<lang>.toml` to your own site for that
+> language: your entries override the module's, key by key.
+
 ## 3. API und Admin deployen (aus den Releases)
 
 Jedes [Release](../../releases) enthält zwei Artefakte:
