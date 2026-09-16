@@ -127,6 +127,14 @@ public sealed class AdminApi(HttpClient http)
     public Task<RecentSubmissions> ListRecentAsync(string? slug) =>
         GetAsync<RecentSubmissions>("api/manage/submissions" + (slug is null ? "" : $"?slug={Uri.EscapeDataString(slug)}"));
 
+    /// <summary>
+    /// The same endpoint, asked with a term (#12). It answers with the hits instead of the newest page,
+    /// and says how many submissions it looked at on the way.
+    /// </summary>
+    public Task<SubmissionSearchResult> SearchSubmissionsAsync(string? slug, string term) =>
+        GetAsync<SubmissionSearchResult>("api/manage/submissions?q=" + Uri.EscapeDataString(term)
+            + (slug is null ? "" : $"&slug={Uri.EscapeDataString(slug)}"));
+
     public async Task<DateTimeOffset> MarkVisitedAsync()
     {
         var res = await http.PostAsync("api/manage/state/last-visit", null);
@@ -229,6 +237,8 @@ public sealed record PublishResult(int Version, List<string> Issues);
 
 public sealed record SubmissionPage(List<SubmissionListItem> Items, string? ContinuationToken);
 public sealed record RecentSubmissions(List<SubmissionListItem> Items, DateTimeOffset? LastVisitAt);
+public sealed record SubmissionSearchResult(List<SubmissionListItem> Items, DateTimeOffset? LastVisitAt,
+    int Scanned, bool Capped);
 
 public sealed record FormStats(int Total, List<int> Daily, List<int> Versions, int WithEmail, int Confirmed,
     int AwaitingConfirmation, int Failed, List<StatsBar> Sources, QuizStats? Quiz, List<FieldStats> SelectFields,

@@ -28,7 +28,7 @@
     private DateTimeOffset? _lastVisit;
     private List<FormListItem>? _forms;
     private string? _error;
-    private string? _loadedSlug;
+    private SubmissionSelection _loadedSelection = SubmissionSelection.Default;
     private bool _loaded;
     private string _path = "";
 
@@ -51,13 +51,15 @@
         var uri = new Uri(Nav.Uri);
         _path = uri.AbsolutePath;
         _selection = SubmissionSelection.FromQuery(null, uri.Query);
-        // Only the form decides what the endpoint returns, so the list is fetched once per form and then
-        // walked in memory - turning to the next submission costs no request. The quick filter is applied
-        // per render instead of cached: it can change without the form changing (browser history, a shared
-        // address), and a cached membership would leave the arrows walking the previous selection.
-        if (_loaded && _loadedSlug == _selection.Slug) return;
+        // Only the form and the search term decide what the endpoint returns, so the list is fetched once
+        // per those and then walked in memory - turning to the next submission costs no request. Every
+        // other narrowing is applied per render instead of cached: it can change without either changing
+        // (browser history, a shared address), and a cached membership would leave the arrows walking the
+        // previous selection. The rule is the list's own, so that the neighbours of a submission opened
+        // from a hit list are the hits rather than the whole inbox (#12).
+        if (_loaded && !_selection.NeedsReload(_loadedSelection)) return;
         _loaded = true;
-        _loadedSlug = _selection.Slug;
+        _loadedSelection = _selection;
         await Load();
     }
 
@@ -66,9 +68,16 @@
         try
         {
             _forms ??= await Api.ListFormsAsync();
-            var recent = await Api.ListRecentAsync(_selection.Slug);
-            _all = recent.Items;
-            _lastVisit = recent.LastVisitAt;
+            if (_selection.Search is { } term)
+            {
+                var hits = await Api.SearchSubmissionsAsync(_selection.Slug, term);
+                (_all, _lastVisit) = (hits.Items, hits.LastVisitAt);
+            }
+            else
+            {
+                var recent = await Api.ListRecentAsync(_selection.Slug);
+                (_all, _lastVisit) = (recent.Items, recent.LastVisitAt);
+            }
             _error = null;
         }
         catch (Exception ex)
