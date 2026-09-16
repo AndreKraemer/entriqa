@@ -12,7 +12,15 @@
   (function () {
     var m = window.location.pathname.match(/\/f\/([a-z0-9-]+)\/?$/);
     var host = document.getElementById('eq-standalone-host');
-    if (!m) { host.innerHTML = '<p class="eq-message eq-message--error">Kein Formular angegeben.</p>'; return; }
+    // Built as an element with textContent rather than assigned as innerHTML: the text is a
+    // translation, and a site's own translation file must not be able to inject markup here.
+    if (!m) {
+      var p = document.createElement('p');
+      p.className = 'eq-message eq-message--error';
+      p.textContent = {{ i18n "eq_standalone_no_form" }};
+      host.appendChild(p);
+      return;
+    }
     host.setAttribute('data-form', m[1]);
     if (window.eqForms) window.eqForms.init();
     else document.addEventListener('DOMContentLoaded', function () { window.eqForms && window.eqForms.init(); });
