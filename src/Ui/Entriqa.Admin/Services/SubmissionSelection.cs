@@ -25,9 +25,15 @@ public sealed record SubmissionSelection(
     /// </summary>
     public const string Nobody = "-";
 
+    /// <summary>
+    /// The quick filters the list offers, in the order the bar shows them. Since #12 a selection can carry
+    /// several at once, and the order is what makes two addresses naming the same chips equal values -
+    /// the lit chip, the badge count and the way back all key on record equality.
+    /// </summary>
+    private static readonly string[] ChipOrder = ["new", "todo", "waiting", "failed"];
+
     /// <summary>The quick filters the list offers. An address naming anything else has no filter at all.</summary>
-    public static readonly IReadOnlySet<string> QuickFilters =
-        new HashSet<string>(StringComparer.Ordinal) { "new", "todo", "waiting", "failed" };
+    public static readonly IReadOnlySet<string> QuickFilters = new HashSet<string>(ChipOrder, StringComparer.Ordinal);
 
     /// <summary>All forms, no quick filter, page one - what a bare address means (AC3, AC4).</summary>
     public static SubmissionSelection Default => new(null, null, 1);
@@ -72,7 +78,7 @@ public sealed record SubmissionSelection(
     {
         var q = HttpUtility.ParseQueryString(query);
         var page = int.TryParse(q["seite"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 1 ? n : 1;
-        var quick = Set(q["filter"]) is { } f && QuickFilters.Contains(f) ? f : null;
+        var quick = Canonical(q["filter"]);
         // The assignee is not validated against the admin list on purpose: a name the list no longer
         // holds yields an empty selection, which is honest, where silently dropping the narrowing would
         // show a wider list than the address promises.
@@ -115,7 +121,7 @@ public sealed record SubmissionSelection(
         var target = formName ?? Slug ?? t["allen Einsendungen"];
         var narrowings = new List<string>(2);
         if (AssigneeLabel(t) is { } who) narrowings.Add(who);
-        if (QuickLabel(t) is { } quick) narrowings.Add(quick);
+        narrowings.AddRange(QuickLabels(t));
         return narrowings.Count == 0
             ? t.F("Zurück zu {0}", target)
             : t.F("Zurück zu {0} · {1}", target, string.Join(" · ", narrowings));
@@ -132,15 +138,14 @@ public sealed record SubmissionSelection(
         var who => t.F("Offene von {0}", who),
     };
 
-    /// <summary>The quick filter as the list writes it; null for none and for one this version does not know.</summary>
-    private string? QuickLabel(Ui t) => Quick switch
+    /// <summary>The quick filters as the list writes them, in the order the bar shows them.</summary>
+    private IEnumerable<string> QuickLabels(Ui t) => Chips(Quick).Select(c => c switch
     {
         "new" => t["Neu seit letztem Besuch"],
         "todo" => t["Zu bearbeiten"],
         "waiting" => t["Wartet auf Bestätigung"],
-        "failed" => t["Fehler"],
-        _ => null,
-    };
+        _ => t["Fehler"],
+    });
 
     /// <summary>
     /// The submissions of this selection, in the order the list shows them. The incoming order is kept
@@ -161,14 +166,7 @@ public sealed record SubmissionSelection(
                Nobody => s.Handling == "open" && s.Assignee is null,
                var who => s.Handling == "open" && s.Assignee == who,
            })
-           .Where(s => Quick switch
-           {
-               "new" => IsNew(s, lastVisit),
-               "todo" => s.Handling == "open",
-               "waiting" => s.State == 1,
-               "failed" => s.State == 2,
-               _ => true,
-           })
+           .Where(s => MatchesChips(Chips(Quick), s, lastVisit))
            .ToList();
 
     /// <summary>
@@ -184,10 +182,45 @@ public sealed record SubmissionSelection(
     /// AC4 - Verarbeitungsstatus, Bearbeitungsstatus, Zeitraum and Bearbeiter have to combine - so the
     /// single string now holds them comma separated in a canonical order.
     /// </summary>
-    public bool HasChip(string chip) => throw new NotImplementedException();
+    public bool HasChip(string chip) => Chips(Quick).Contains(chip, StringComparer.Ordinal);
 
     /// <summary>The same selection with that chip switched on or off, back on page one.</summary>
-    public SubmissionSelection ToggleChip(string chip) => throw new NotImplementedException();
+    public SubmissionSelection ToggleChip(string chip)
+    {
+        var chips = Chips(Quick).ToList();
+        if (!chips.Remove(chip) && QuickFilters.Contains(chip)) chips.Add(chip);
+        return this with { Quick = Canonical(string.Join(',', chips)), Page = 1 };
+    }
+
+    /// <summary>
+    /// The chips of a filter value, unknown ones dropped, duplicates gone and in canonical order. An
+    /// address is something people edit and share, so it must survive that - and a chip the list does not
+    /// offer would otherwise claim a narrowing nothing applies.
+    /// </summary>
+    private static string[] Chips(string? quick)
+    {
+        if (quick is null) return [];
+        var named = quick.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return [.. ChipOrder.Where(c => named.Contains(c, StringComparer.Ordinal))];
+    }
+
+    private static string? Canonical(string? quick) =>
+        Chips(quick) is { Length: > 0 } chips ? string.Join(',', chips) : null;
+
+    /// <summary>
+    /// Whether a submission survives the chips (AC4). Two chips of the same dimension widen - no submission
+    /// is waiting and failed at once, so reading them as two conditions at the same time would make the
+    /// second click empty the list. Chips of different dimensions narrow, which is the criterion's claim.
+    /// </summary>
+    private static bool MatchesChips(string[] chips, SubmissionListItem s, DateTimeOffset? lastVisit)
+    {
+        if (chips.Length == 0) return true;
+        var states = chips.Where(c => c is "waiting" or "failed").ToArray();
+        if (states.Length > 0 && !states.Any(c => c == "waiting" ? s.State == 1 : s.State == 2)) return false;
+        if (chips.Contains("todo", StringComparer.Ordinal) && s.Handling != "open") return false;
+        if (chips.Contains("new", StringComparer.Ordinal) && !IsNew(s, lastVisit)) return false;
+        return true;
+    }
 
     /// <summary>
     /// Whether moving from <paramref name="previous"/> to this selection needs a new request (#12, AC8).
