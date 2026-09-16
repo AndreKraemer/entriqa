@@ -43,12 +43,25 @@ const hasLetter = (s) => /[A-Za-zÄÖÜäöüß]/.test(s);
 // ---------------------------------------------------------------------------------------------
 // 1. No fixed-language text in a layout.
 //
-// Two rules, because the two contexts differ. In markup, ANY letter in a text node is a finding:
-// a template that wants to show a word has an action for it, so prose between tags is always the
-// defect. In a script, that is too strict - 'button', 'application/json' and the class names are
-// letters too - so a literal counts as UI text when it carries three or more word-ish tokens and
-// is not a plain lowercase class list. That deliberately lets 'eq-message eq-message--' pass and
-// catches 'Kein Formular angegeben.'.
+// Markup is strict: ANY letter in a text node is a finding, because a template that wants to show
+// a word has an action for it. The four attributes below are text nodes for a screen reader, so
+// they are held to the same standard - role= and aria-live= carry single lowercase tokens and are
+// deliberately not in the list.
+//
+// A script cannot be held to that: 'button', 'application/json' and the class names are letters
+// too. Two rules there instead. The message channels - what actually reaches the visitor - may
+// never take a literal at all, whatever its length. Everything else falls back to a heuristic: a
+// literal reads as UI text when it carries three or more word-ish tokens and is not a plain
+// lowercase class list, which lets 'eq-message eq-message--' pass. The heuristic alone would miss
+// a short message like 'Bestätigung fehlgeschlagen', which is exactly why the channel rule exists.
+const UI_ATTRIBUTES = /\b(?:aria-label|title|placeholder|alt)\s*=\s*"([^"]*)"/g;
+const MESSAGE_CHANNELS = /(?:\bsay\(|\.textContent\s*=\s*|\.innerHTML\s*=\s*)\s*('((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)")/g;
+
+// JS comments come out before any literal is read. They are prose for the next developer, and an
+// apostrophe in one ("Don't touch this") otherwise reads as the start of a string literal and
+// produces a finding quoting half a sentence - the guard failing on its own explanatory text.
+const withoutJsComments = (body) => body.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+
 for (const file of layouts) {
   const src = withoutComments(readFileSync(file, "utf8"));
   const masked = maskActions(src);
@@ -60,7 +73,18 @@ for (const file of layouts) {
     if (hasLetter(text)) fail(file, `text in the template instead of i18n: ${JSON.stringify(text.trim())}`);
   }
 
-  for (const [, body] of scripts) {
+  for (const [, value] of markup.matchAll(UI_ATTRIBUTES)) {
+    if (hasLetter(value)) fail(file, `attribute text instead of i18n: ${JSON.stringify(value.trim())}`);
+  }
+
+  for (const [, rawBody] of scripts) {
+    const body = withoutJsComments(rawBody);
+
+    for (const m of body.matchAll(MESSAGE_CHANNELS)) {
+      const literal = m[2] ?? m[3] ?? "";
+      if (hasLetter(literal)) fail(file, `text handed to the visitor instead of i18n: ${JSON.stringify(literal)}`);
+    }
+
     for (const m of body.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"/g)) {
       const literal = m[1] ?? m[2] ?? "";
       const words = literal.split(/\s+/).filter(hasLetter);
@@ -97,8 +121,19 @@ if (!fetchCall) {
 // language - no error, no warning, a green build and a button with no label.
 const i18nDir = join(root, "hugo", "i18n");
 const keysOf = (lang) => {
+  // The VALUE, not just the section: a key present with other = "" is worse than a missing one.
+  // Hugo then falls back to the default language, so the English page renders the German wording
+  // while this guard, the gate and the build all stay green - the exact defect #30 exists to fix.
   const toml = readFileSync(join(i18nDir, `${lang}.toml`), "utf8");
-  return new Set([...toml.matchAll(/^\[([A-Za-z0-9_]+)\]/gm)].map((m) => m[1]));
+  const translated = new Set();
+  let section = null;
+  for (const line of toml.split(/\r?\n/)) {
+    const header = line.match(/^\[([A-Za-z0-9_]+)\]/);
+    if (header) { section = header[1]; continue; }
+    const value = line.match(/^\s*other\s*=\s*"(.*)"\s*$/);
+    if (value && section && value[1].trim().length > 0) translated.add(section);
+  }
+  return translated;
 };
 const translations = { de: keysOf("de"), en: keysOf("en") };
 
@@ -110,7 +145,7 @@ for (const file of layouts) {
 }
 for (const [key, file] of used) {
   for (const lang of ["de", "en"]) {
-    if (!translations[lang].has(key)) fail(file, `i18n key "${key}" is missing from hugo/i18n/${lang}.toml`);
+    if (!translations[lang].has(key)) fail(file, `i18n key "${key}" is missing or empty in hugo/i18n/${lang}.toml`);
   }
 }
 

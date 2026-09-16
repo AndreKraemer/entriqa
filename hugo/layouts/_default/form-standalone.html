@@ -12,8 +12,11 @@
   (function () {
     var m = window.location.pathname.match(/\/f\/([a-z0-9-]+)\/?$/);
     var host = document.getElementById('eq-standalone-host');
-    // Built as an element with textContent rather than assigned as innerHTML: the text is a
-    // translation, and a site's own translation file must not be able to inject markup here.
+    // Built as an element with textContent rather than assigned as innerHTML, so the translation
+    // is text at the DOM level and not markup. Not a security boundary, and deliberately not
+    // claimed as one: the build minifies, which undoes html/template's escaping, so a closing
+    // script tag inside a translation still ends this element. Only a site's own i18n file can
+    // put one there, and a site that can write i18n can write layouts too.
     if (!m) {
       var p = document.createElement('p');
       p.className = 'eq-message eq-message--error';

@@ -86,7 +86,10 @@ Deliberate deviations from the standard, as complete as it is currently known:
 | Build the sample site alone | `npm run sample:build` |
 
 The fast gate builds `Entriqa.slnx` in Debug, runs all tests against that build, checks the
-`eq-*` class reference against `forms.js` (`scripts/check-eq-classes.mjs`), and refuses a tracked
+`eq-*` class reference against `forms.js` (`scripts/check-eq-classes.mjs`), holds the Hugo module's
+visitor texts to `i18n` in both shipped languages (`scripts/check-hugo-i18n.mjs` — a text written
+into a layout is served in one language to everyone, and a missing or empty key renders blank
+without Hugo saying a word), and refuses a tracked
 file that still carries a merge conflict (`scripts/check-conflict-markers.mjs` — only C# fails to
 compile on one, so a leftover marker in Markdown, JSON or a `.razor` template would otherwise ship). It does **not** build
 the sample site — that needs Hugo and Go, which the release workflow does not have; run
