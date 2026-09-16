@@ -17,6 +17,16 @@ public sealed record SubmissionSelection(
     string? Slug, string? Quick, int Page, string? Assignee = null,
     string? Search = null, DateOnly? From = null, DateOnly? To = null)
 {
+    private readonly string? _quick = Canonical(Quick);
+
+    /// <summary>
+    /// The chips this selection carries, comma separated. Canonicalised on the way in - by the constructor
+    /// and by every <c>with</c> - so that the same set is always the same value: a record compares what it
+    /// stores, and two addresses naming the same chips in another order would otherwise be unequal
+    /// selections that render identically.
+    /// </summary>
+    public string? Quick { get => _quick; init => _quick = Canonical(value); }
+
     public const int PerPage = 15;
 
     /// <summary>
@@ -264,10 +274,16 @@ public sealed record SubmissionSelection(
     /// and - when the ceiling stopped the scan - that older ones were never searched. Null when no search
     /// is running, which is what keeps the line out of the ordinary list.
     /// </summary>
-    public string? SearchSummary(Ui t, int scanned, bool capped) => throw new NotImplementedException();
+    public string? SearchSummary(Ui t, int scanned, bool capped) => Search is null
+        ? null
+        : capped
+            ? t.F("Die neuesten {0} Einsendungen durchsucht – ältere wurden nicht einbezogen.", scanned)
+            : t.F("{0} Einsendungen durchsucht.", scanned);
 
     /// <summary>The empty list's message. During a search it names the term (AC7).</summary>
-    public string EmptyMessage(Ui t) => throw new NotImplementedException();
+    public string EmptyMessage(Ui t) => Search is { } term
+        ? t.F("Nichts gefunden für „{0}“.", term)
+        : t["Nichts in dieser Auswahl."];
 
     /// <summary>The slice of the selection this page shows.</summary>
     public IReadOnlyList<SubmissionListItem> PageSlice(IReadOnlyList<SubmissionListItem> selection) =>
