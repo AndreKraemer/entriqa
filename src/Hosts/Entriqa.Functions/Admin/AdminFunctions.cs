@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +42,7 @@ public sealed class AdminFunctions(
     IListConsentProofsUseCase listConsentProofs,
     IDeleteConsentProofUseCase deleteConsentProof,
     Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks,
+    Microsoft.Extensions.Options.IOptions<Entriqa.Application.EntriqaOptions> options,
     ILogger<AdminFunctions> log)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -124,12 +124,10 @@ public sealed class AdminFunctions(
             log.LogWarning(ex, "Sichtung von {User} nicht aufgezeichnet - der Posteingang wird trotzdem geliefert", principal.UserName(req));
         }
         var slug = req.Query["slug"].FirstOrDefault() is { Length: > 0 } s ? s : null;
-        // The ceiling is a parameter rather than a constant so that "the search stopped early" (AC6) can
-        // be provoked at all: a store with a few dozen rows would never reach 5000, and a warning nobody
-        // can trigger is a warning nobody has seen work.
-        var max = int.TryParse(req.Query["max"].FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)
-            ? Math.Clamp(n, 1, 5000)
-            : 5000;
+        // The ceiling is the operator's setting, not the caller's wish. As a query parameter it let anyone
+        // signed in ask for a scan of the whole table, and it made "the scan stopped early" (AC6)
+        // observable only to whoever knew the parameter - never to a reader using the inbox.
+        var max = options.Value.EffectiveSearchScanMax;
         // A blank term is the ordinary inbox, not a search that matches everything - which is what keeps
         // AC8 a matter of clearing the field rather than of a second control.
         return req.Query["q"].FirstOrDefault() is { Length: > 0 } term && term.Trim().Length > 0

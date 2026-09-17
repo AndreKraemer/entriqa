@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Entriqa.Admin.Services;
+using Entriqa.Application;
 using Entriqa.Application.Ports;
 using Entriqa.Application.UseCases;
 using Entriqa.Domain.Submissions;
@@ -413,13 +414,38 @@ public class SubmissionSearchTests
         Assert.Contains(">= scanMax", body, StringComparison.Ordinal);
     }
 
+    // ---- The ceiling one search honours (AC6) ----
+
+    /// <summary>
+    /// The ceiling is configuration, so an operator can lower it - and so the "the scan stopped early"
+    /// hint can be reached at all. Without a setting it stays at the value the endpoint used to hard-code.
+    /// </summary>
+    [Fact]
+    public void GivenNoConfiguredSearchCeiling_WhenReadingTheEffectiveOne_ThenItIsFiveThousand() =>
+        Assert.Equal(5000, new EntriqaOptions().EffectiveSearchScanMax);
+
+    [Fact]
+    public void GivenAConfiguredSearchCeiling_WhenReadingTheEffectiveOne_ThenItIsThatValue() =>
+        Assert.Equal(5, new EntriqaOptions { SearchScanMax = 5 }.EffectiveSearchScanMax);
+
+    /// <summary>
+    /// A ceiling of zero is the misconfiguration that costs nothing to make and everything to diagnose:
+    /// every search would scan nothing, find nothing, and report that it searched no submissions at all -
+    /// an empty result that looks exactly like a term nobody matches.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public void GivenACeilingBelowOne_WhenReadingTheEffectiveOne_ThenItIsOne(int configured) =>
+        Assert.Equal(1, new EntriqaOptions { SearchScanMax = configured }.EffectiveSearchScanMax);
+
     /// <summary>
     /// The endpoint. Entriqa.Functions is deliberately unreferenced here (the worker SDK does not load in
     /// this test host), so the one line that decides whether a term is answered by a search at all can
     /// only be read.
     /// </summary>
     [Fact]
-    public void GivenTheInboxEndpoint_WhenReadingIt_ThenATermIsAnsweredByTheSearchAndTheCeilingIsClamped()
+    public void GivenTheInboxEndpoint_WhenReadingIt_ThenATermIsAnsweredByTheSearchAtTheConfiguredCeiling()
     {
         var body = SourceText.Block(
             File.ReadAllText(Path.Combine(SourceText.RepoDirectory("src", "Hosts", "Entriqa.Functions"), "Admin", "AdminFunctions.cs")),
@@ -428,7 +454,10 @@ public class SubmissionSearchTests
 
         Assert.Contains("\"q\"", body, StringComparison.Ordinal);
         Assert.Contains("search.ExecuteAsync", body, StringComparison.Ordinal);
-        Assert.Contains("Math.Clamp(n, 1, 5000)", body, StringComparison.Ordinal);
+        Assert.Contains("EffectiveSearchScanMax", body, StringComparison.Ordinal);
+        // The ceiling is an operator's setting, never a caller's wish - otherwise anyone signed in can
+        // ask the inbox for a scan of the whole table, and the setting protects nothing.
+        Assert.DoesNotContain("req.Query[\"max\"]", body, StringComparison.Ordinal);
     }
 
     /// <summary>
