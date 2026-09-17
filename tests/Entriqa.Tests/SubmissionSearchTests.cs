@@ -368,6 +368,9 @@ public class SubmissionSearchTests
         var selection = Term("Odysys");
 
         Assert.NotEqual(selection.SearchSummary(new Ui(), 120, capped: false), selection.SearchSummary(en, 120, capped: false));
+        // The capped sentence is its own key, so it needs its own entry - and the duplicate-key guard in
+        // AdminTranslationKeyTests catches a key defined twice, never one that is missing.
+        Assert.NotEqual(selection.SearchSummary(new Ui(), 5000, capped: true), selection.SearchSummary(en, 5000, capped: true));
         Assert.NotEqual(selection.EmptyMessage(new Ui()), selection.EmptyMessage(en));
     }
 
@@ -499,6 +502,10 @@ public class SubmissionSearchTests
             "the inbox no longer has OnSlugChange - update this guard.");
         Assert.Contains("_selection with", slugChange, StringComparison.Ordinal);
         Assert.DoesNotContain("new SubmissionSelection", slugChange, StringComparison.Ordinal);
+        // Deriving is not enough: a with-expression that lists the new state resets it just as thoroughly
+        // as the positional constructor did, and reads as if it were carrying it.
+        foreach (var carried in new[] { "Search =", "From =", "To =" })
+            Assert.DoesNotContain(carried, slugChange, StringComparison.Ordinal);
 
         var markVisited = SourceText.Block(markup, "private async Task MarkVisited",
             "the inbox no longer has MarkVisited - update this guard.");
