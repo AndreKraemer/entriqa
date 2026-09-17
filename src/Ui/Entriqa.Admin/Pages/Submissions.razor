@@ -247,10 +247,11 @@ else
         </button>
     };
 
-    // The personal filter survives a change of form - "my open ones in this form" is a narrowing a
-    // reader asks for, and silently dropping it would widen the list they are looking at.
+    // Every narrowing survives a change of form - "my open ones in this form", "what I searched for, in
+    // this form" - because silently dropping one would widen the list the reader is looking at. Only the
+    // quick filters go, since the form picker is how a reader leaves them behind.
     private void OnSlugChange(ChangeEventArgs e) =>
-        Go(new SubmissionSelection(e.Value?.ToString() is { Length: > 0 } s ? s : null, null, 1, _selection.Assignee));
+        Go(_selection with { Slug = e.Value?.ToString() is { Length: > 0 } s ? s : null, Quick = null, Page = 1 });
 
     private void OnAssigneeChange(ChangeEventArgs e) =>
         Go(_selection with { Assignee = e.Value?.ToString() is { Length: > 0 } a ? a : null, Page = 1 });
@@ -260,7 +261,7 @@ else
         try
         {
             _lastVisit = await Api.MarkVisitedAsync();
-            if (_selection.Quick == "new") Go(_selection with { Quick = null, Page = 1 });
+            if (_selection.HasChip("new")) Go(_selection.ToggleChip("new"));
         }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
     }

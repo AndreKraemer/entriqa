@@ -120,9 +120,11 @@ public class SubmissionSearchTests
     {
         var useCase = Search(out var query, candidates: []);
 
-        await useCase.ExecuteAsync(slug, "odysys", TestData.AdminMe);
+        await useCase.ExecuteAsync(slug, "odysys", TestData.AdminMe, scanMax: 250);
 
-        await query.Received(1).ExecuteAsync(slug, Arg.Any<int>(), Arg.Any<CancellationToken>());
+        // The ceiling is asserted here rather than waved through with Arg.Any: it arrives from the endpoint,
+        // where it is clamped, and a use case that substituted one of its own would make that clamp a lie.
+        await query.Received(1).ExecuteAsync(slug, 250, Arg.Any<CancellationToken>());
     }
 
     /// <summary>AC5 and AC6: both facts come from the scan and must survive the use case unchanged.</summary>
@@ -165,15 +167,16 @@ public class SubmissionSearchTests
     }
 
     /// <summary>
-    /// A term of nothing but spaces is what an unlucky paste leaves behind. Matching it as a substring
-    /// would return the whole scan and call it a hit list.
+    /// A term of nothing but space is what an unlucky paste leaves behind. Matching it as a substring would
+    /// return the whole scan and call it a hit list - so the term is a single space, which the fixture text
+    /// does contain. Three of them would miss on their own and the test would pass without any trimming.
     /// </summary>
     [Fact]
     public async Task GivenATermOfOnlyWhitespace_WhenSearching_ThenNothingMatches()
     {
         var useCase = Search(out _, candidates: [Candidate("hit", 0, "Rückruf für die Odysys AG erbeten.")]);
 
-        Assert.Empty((await useCase.ExecuteAsync(null, "   ", TestData.AdminMe)).Items);
+        Assert.Empty((await useCase.ExecuteAsync(null, " ", TestData.AdminMe)).Items);
     }
 
     // ---- Combining the narrowings (AC4) ----
@@ -206,6 +209,24 @@ public class SubmissionSearchTests
     public void GivenARangeOfTwoDays_WhenSelecting_ThenBothItsEndsAreIncluded() =>
         Assert.Equal(["c", "d"], Selected(new SubmissionSelection(null, null, 1, null, null, DayOf(2), DayOf(1))));
 
+    /// <summary>
+    /// The range is about the day the list prints beside a submission, which is the reader's day. An
+    /// enquiry that arrives at half past midnight in Berlin belongs to that day - judged in UTC it falls
+    /// into the one before, and drops out of a range that names it.
+    /// </summary>
+    [Fact]
+    public void GivenASubmissionWhoseLocalDayIsNotItsUtcDay_WhenSelectingThatLocalDay_ThenItIsInTheRange()
+    {
+        var berlin = TimeZoneInfo.CreateCustomTimeZone("test-berlin", TimeSpan.FromHours(2), "test", "test");
+        var item = new AdminItem("late", "kontakt", 1, new DateTimeOffset(2026, 8, 20, 22, 30, 0, TimeSpan.Zero),
+            null, "Person late", 3, "open", null);
+        var localDay = new DateOnly(2026, 8, 21);
+
+        var selection = new SubmissionSelection(null, null, 1, null, null, localDay, localDay);
+
+        Assert.Equal(["late"], Ids(selection.Select([item], lastVisit: null, berlin)));
+    }
+
     /// <summary>Each end works on its own; an open end never narrows.</summary>
     [Theory]
     [InlineData(1, null, new[] { "a", "b", "c" })]
@@ -233,9 +254,17 @@ public class SubmissionSearchTests
     /// the lit chip, the badge count and the way back all key on equality.
     /// </summary>
     [Fact]
-    public void GivenTheSameChipsInEitherOrder_WhenReadingThemBack_ThenTheSelectionsAreEqual() =>
+    public void GivenTheSameChipsInEitherOrder_WhenReadingThemBack_ThenTheSelectionsAreEqual()
+    {
         Assert.Equal(SubmissionSelection.FromQuery(null, "?filter=todo,failed"),
                      SubmissionSelection.FromQuery(null, "?filter=failed,todo"));
+
+        // The three ways a selection comes into being, because they do not share one line of code: the
+        // address, the constructor's field initialiser, and the init accessor a with-expression takes.
+        Assert.Equal(new SubmissionSelection(null, "todo,failed", 1), new SubmissionSelection(null, "failed,todo", 1));
+        Assert.Equal(SubmissionSelection.Default with { Quick = "todo,failed" },
+                     SubmissionSelection.Default with { Quick = "failed,todo" });
+    }
 
     /// <summary>A hand-edited address must not smuggle a narrowing the list cannot apply.</summary>
     [Fact]
@@ -377,7 +406,8 @@ public class SubmissionSearchTests
             "SubmissionQueries has no SearchSubmissionsQuery - update this guard.");
 
         Assert.Contains("PartitionKey == slug", body, StringComparison.Ordinal);
-        Assert.Contains("scanMax", body, StringComparison.Ordinal);
+        // The comparison, not the name: "scanMax" alone is satisfied by the signature the block starts with.
+        Assert.Contains(">= scanMax", body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -395,7 +425,7 @@ public class SubmissionSearchTests
 
         Assert.Contains("\"q\"", body, StringComparison.Ordinal);
         Assert.Contains("search.ExecuteAsync", body, StringComparison.Ordinal);
-        Assert.Contains("Math.Clamp", body, StringComparison.Ordinal);
+        Assert.Contains("Math.Clamp(n, 1, 5000)", body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -406,10 +436,14 @@ public class SubmissionSearchTests
     [Fact]
     public void GivenTheInbox_WhenReadingItsChips_ThenTheyToggleIndependently()
     {
-        var markup = AdminMarkup.Read("Pages", "Submissions.razor");
+        // The chip itself, not the file: the same two names appear in the badge count above it, so a whole
+        // file scan is satisfied while the button goes back to replacing one chip with the next.
+        var button = SourceText.Block(AdminMarkup.Read("Pages", "Submissions.razor"),
+            "private RenderFragment QuickButton", "the inbox no longer has QuickButton - update this guard.");
 
-        Assert.Contains("ToggleChip", markup, StringComparison.Ordinal);
-        Assert.Contains("HasChip", markup, StringComparison.Ordinal);
+        Assert.Contains("_selection.HasChip(key)", button, StringComparison.Ordinal);
+        Assert.Contains("_selection.ToggleChip(key)", button, StringComparison.Ordinal);
+        Assert.DoesNotContain("Quick =", button, StringComparison.Ordinal);
     }
 
     /// <summary>The search box and the two date inputs are state, so they belong in the address (#11).</summary>
@@ -434,9 +468,42 @@ public class SubmissionSearchTests
     public void GivenTheInbox_WhenReadingIt_ThenItRendersTheSearchSummaryAndTheEmptyMessage()
     {
         var markup = AdminMarkup.Read("Pages", "Submissions.razor");
+        var refresh = SourceText.Block(markup, "private async Task Refresh",
+            "the inbox no longer has Refresh - update this guard.");
 
-        Assert.Contains("SearchSummary", markup, StringComparison.Ordinal);
+        // What the scan cost has to reach the fields the summary reads. Hard-coding them away leaves the
+        // bar reading "0 Einsendungen durchsucht" and never reporting a ceiling - AC5 and AC6 both dead.
+        Assert.Contains("hits.Scanned", refresh, StringComparison.Ordinal);
+        Assert.Contains("hits.Capped", refresh, StringComparison.Ordinal);
+
+        // And the line is rendered on nothing but the summary being there. Any further condition can hide
+        // a capped result, which is exactly what AC6 forbids.
+        Assert.Contains("@if (_selection.SearchSummary(T, _scanned, _capped) is { } summary)", markup,
+            StringComparison.Ordinal);
         Assert.Contains("EmptyMessage", markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The two handlers that rebuild or compare a selection instead of deriving one, which is where the
+    /// chip set and the new address state each left a hole. The form picker has to keep every narrowing
+    /// the reader set - dropping the term empties the search box mid-search - and marking everything as
+    /// seen has to put out the "new" chip through the set, or the comparison is false the moment "new" is
+    /// combined with another chip and the list stays narrowed to nothing.
+    /// </summary>
+    [Fact]
+    public void GivenTheInbox_WhenReadingItsHandlers_ThenTheyDeriveTheSelectionInsteadOfRebuildingIt()
+    {
+        var markup = AdminMarkup.Read("Pages", "Submissions.razor");
+
+        var slugChange = AdminMarkup.Between(markup, "private void OnSlugChange", ";",
+            "the inbox no longer has OnSlugChange - update this guard.");
+        Assert.Contains("_selection with", slugChange, StringComparison.Ordinal);
+        Assert.DoesNotContain("new SubmissionSelection", slugChange, StringComparison.Ordinal);
+
+        var markVisited = SourceText.Block(markup, "private async Task MarkVisited",
+            "the inbox no longer has MarkVisited - update this guard.");
+        Assert.Contains("HasChip(\"new\")", markVisited, StringComparison.Ordinal);
+        Assert.DoesNotContain("Quick ==", markVisited, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -277,7 +277,7 @@ public sealed record SubmissionSelection(
     public string? SearchSummary(Ui t, int scanned, bool capped) => Search is null
         ? null
         : capped
-            ? t.F("Die neuesten {0} Einsendungen durchsucht – ältere wurden nicht einbezogen.", scanned)
+            ? t.F("{0} Einsendungen durchsucht – die Obergrenze wurde erreicht, weitere blieben ungesucht.", scanned)
             : t.F("{0} Einsendungen durchsucht.", scanned);
 
     /// <summary>The empty list's message. During a search it names the term (AC7).</summary>

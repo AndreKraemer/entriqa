@@ -374,8 +374,8 @@ public sealed class Ui
         ["Nichts in dieser Auswahl."] = "Nothing in this selection.",
         ["Nichts gefunden für „{0}“."] = "Nothing found for “{0}”.",
         ["{0} Einsendungen durchsucht."] = "Searched {0} submissions.",
-        ["Die neuesten {0} Einsendungen durchsucht – ältere wurden nicht einbezogen."] =
-            "Searched the {0} most recent submissions - older ones were not included.",
+        ["{0} Einsendungen durchsucht – die Obergrenze wurde erreicht, weitere blieben ungesucht."] =
+            "Searched {0} submissions - the ceiling was reached, others were left unsearched.",
         ["{0} Einsendungen · Seite {1} von {2}"] = "{0} submissions · page {1} of {2}",
         ["‹ Zurück"] = "‹ Back",
         ["Weiter ›"] = "Next ›",
