@@ -35,6 +35,7 @@ internal static class SubmissionMapper
             ConfirmedAt = s.ConfirmedAt,
             ConfirmedIpHash = s.ConfirmedIpHash,
             BrevoContactId = s.BrevoContactId,
+            RetainUntil = s.RetainUntil,
         };
     }
 
@@ -60,6 +61,7 @@ internal static class SubmissionMapper
         ConfirmedAt = e.ConfirmedAt,
         ConfirmedIpHash = e.ConfirmedIpHash,
         BrevoContactId = e.BrevoContactId,
+        RetainUntil = e.RetainUntil,
         ETag = e.ETag.ToString() is { Length: > 0 } tag ? tag : null,
     };
 

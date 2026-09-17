@@ -183,7 +183,9 @@ public sealed record SubmissionDetailView(
     // may forget to pass still compiles - and would then report an empty history for every submission.
     IReadOnlyList<SubmissionHistoryEntry> History, string Handling, SubmissionState State,
     string? BrevoContactId, bool CanResendDoi, IReadOnlyList<QuizAnswerView>? QuizAnswers = null,
-    string? Assignee = null);
+    string? Assignee = null,
+    // #15: see SubmissionListItem for what ExpiresAt/RetainedIndefinitely mean.
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false);
 
 public sealed record QuizAnswerView(string Question, string Answer, int Points, bool Jumped);
 
@@ -293,6 +295,16 @@ public interface ISetSubmissionHandlingUseCase
 {
     /// <param name="by">The signed-in admin, null when the request carried no identity (#14).</param>
     Task ExecuteAsync(string submissionId, string handling, string? by, CancellationToken ct = default);   // open | done
+}
+
+/// <summary>The three ways an admin can change a submission's retention (#15). No date field to type -
+/// the issue is explicit that the occasion to extend almost never has a known end date.</summary>
+public enum SubmissionRetentionAction { RetainPermanently, Extend, Lift }
+
+public interface ISetSubmissionRetentionUseCase
+{
+    /// <param name="by">The signed-in admin, null when the request carried no identity (#14).</param>
+    Task ExecuteAsync(string submissionId, SubmissionRetentionAction action, string? by, CancellationToken ct = default);
 }
 
 public interface IDeleteSubmissionAdminUseCase

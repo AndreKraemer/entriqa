@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Errors;
 using Entriqa.Domain.Forms;
@@ -70,6 +71,26 @@ internal sealed class SetSubmissionHandlingUseCase(
         s.Handling = handling;
         s.Record(HistoryTypes.Handling, HistoryActor.Admin(by), time.GetUtcNow(), handling);
         await save.ExecuteAsync(s, ct);
+    }
+}
+
+/// <summary>
+/// Retain permanently, extend by a fixed period, or lift the exception (#15) - one field, three ways to
+/// change it, mirroring <see cref="SetSubmissionHandlingUseCase"/>. Skeleton: not implemented yet.
+/// </summary>
+internal sealed class SetSubmissionRetentionUseCase(
+    ITryGetSubmissionQuery getSubmission,
+    ISaveSubmissionCommand save,
+    IOptions<EntriqaOptions> options,
+    TimeProvider time) : ISetSubmissionRetentionUseCase
+{
+    public Task ExecuteAsync(string submissionId, SubmissionRetentionAction action, string? by, CancellationToken ct = default)
+    {
+        _ = getSubmission;
+        _ = save;
+        _ = options;
+        _ = time;
+        throw new NotImplementedException(); // #15
     }
 }
 

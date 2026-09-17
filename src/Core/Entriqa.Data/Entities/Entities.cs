@@ -59,6 +59,9 @@ internal sealed class SubmissionEntity : ITableEntity
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? ConfirmedIpHash { get; set; }
     public string? BrevoContactId { get; set; }
+    // #15. Missing on every row written before this feature, which deserializes to null - no override,
+    // the regular deadline. No migration.
+    public DateTimeOffset? RetainUntil { get; set; }
 }
 
 internal sealed class AdminStateEntity : ITableEntity

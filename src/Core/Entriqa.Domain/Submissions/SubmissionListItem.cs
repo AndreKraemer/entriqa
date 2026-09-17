@@ -2,7 +2,10 @@ namespace Entriqa.Domain.Submissions;
 
 public sealed record SubmissionListItem(
     string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Email, string Summary,
-    SubmissionState State, string Handling, string? QuizResultId, string? Assignee = null);
+    SubmissionState State, string Handling, string? QuizResultId, string? Assignee = null,
+    // #15: ExpiresAt is SubmissionRetention.EffectiveExpiry(...); DateTimeOffset.MaxValue there means
+    // RetainedIndefinitely, so a caller only needs the flag first and never compares against MaxValue itself.
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false);
 
 public sealed record SubmissionPage(IReadOnlyList<SubmissionListItem> Items, string? ContinuationToken);
 
