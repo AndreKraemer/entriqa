@@ -53,6 +53,23 @@ public interface IListRecentSubmissionsUseCase
 
 public sealed record RecentSubmissions(IReadOnlyList<SubmissionListItem> Items, DateTimeOffset? LastVisitAt);
 
+public interface ISearchSubmissionsUseCase
+{
+    /// <summary>
+    /// The submissions whose e-mail, name or field values contain <paramref name="term"/>, newest first,
+    /// out of at most <paramref name="scanMax"/> scanned rows (#12). The last visit travels with them
+    /// exactly as it does for the plain inbox, so a hit list can still mark what is new.
+    /// </summary>
+    Task<SubmissionSearchResult> ExecuteAsync(string? slug, string term, string user, int scanMax = 5000, CancellationToken ct = default);
+}
+
+/// <summary>
+/// A hit list together with what it cost: <paramref name="Scanned"/> is what AC5 shows the reader, and
+/// <paramref name="Capped"/> says the ceiling cut the scan short, which AC6 forbids hiding.
+/// </summary>
+public sealed record SubmissionSearchResult(
+    IReadOnlyList<SubmissionListItem> Items, DateTimeOffset? LastVisitAt, int Scanned, bool Capped);
+
 public interface IMarkVisitedUseCase
 {
     /// <summary>Sets the admin's "last visit" to now. Afterwards nothing counts as new any more.</summary>

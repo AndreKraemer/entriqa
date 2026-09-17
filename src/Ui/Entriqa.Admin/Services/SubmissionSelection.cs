@@ -13,8 +13,20 @@ namespace Entriqa.Admin.Services;
 /// Deliberately free of Blazor types: this is where the story's logic sits, and it is executed by
 /// the unit tests rather than scanned as source.
 /// </summary>
-public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, string? Assignee = null)
+public sealed record SubmissionSelection(
+    string? Slug, string? Quick, int Page, string? Assignee = null,
+    string? Search = null, DateOnly? From = null, DateOnly? To = null)
 {
+    private readonly string? _quick = Canonical(Quick);
+
+    /// <summary>
+    /// The chips this selection carries, comma separated. Canonicalised on the way in - by the constructor
+    /// and by every <c>with</c> - so that the same set is always the same value: a record compares what it
+    /// stores, and two addresses naming the same chips in another order would otherwise be unequal
+    /// selections that render identically.
+    /// </summary>
+    public string? Quick { get => _quick; init => _quick = Canonical(value); }
+
     public const int PerPage = 15;
 
     /// <summary>
@@ -23,9 +35,15 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     /// </summary>
     public const string Nobody = "-";
 
+    /// <summary>
+    /// The quick filters the list offers, in the order the bar shows them. Since #12 a selection can carry
+    /// several at once, and the order is what makes two addresses naming the same chips equal values -
+    /// the lit chip, the badge count and the way back all key on record equality.
+    /// </summary>
+    private static readonly string[] ChipOrder = ["new", "todo", "waiting", "failed"];
+
     /// <summary>The quick filters the list offers. An address naming anything else has no filter at all.</summary>
-    public static readonly IReadOnlySet<string> QuickFilters =
-        new HashSet<string>(StringComparer.Ordinal) { "new", "todo", "waiting", "failed" };
+    public static readonly IReadOnlySet<string> QuickFilters = new HashSet<string>(ChipOrder, StringComparer.Ordinal);
 
     /// <summary>All forms, no quick filter, page one - what a bare address means (AC3, AC4).</summary>
     public static SubmissionSelection Default => new(null, null, 1);
@@ -70,11 +88,12 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     {
         var q = HttpUtility.ParseQueryString(query);
         var page = int.TryParse(q["seite"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 1 ? n : 1;
-        var quick = Set(q["filter"]) is { } f && QuickFilters.Contains(f) ? f : null;
+        var quick = Canonical(q["filter"]);
         // The assignee is not validated against the admin list on purpose: a name the list no longer
         // holds yields an empty selection, which is honest, where silently dropping the narrowing would
         // show a wider list than the address promises.
-        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page, Set(q["bearbeiter"]));
+        return new SubmissionSelection(slug ?? Set(q["formular"]), quick, page, Set(q["bearbeiter"]),
+            Set(q["suche"]), Day(q["von"]), Day(q["bis"]));
     }
 
     /// <summary>The list address this selection returns to - the form stays the route segment it is today.</summary>
@@ -89,15 +108,29 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
 
     private string Query(bool withForm)
     {
-        var parts = new List<string>(4);
+        var parts = new List<string>(7);
         if (withForm && Slug is not null) parts.Add("formular=" + Uri.EscapeDataString(Slug));
         if (Quick is not null) parts.Add("filter=" + Uri.EscapeDataString(Quick));
         if (Assignee is not null) parts.Add("bearbeiter=" + Uri.EscapeDataString(Assignee));
+        if (Search is not null) parts.Add("suche=" + Uri.EscapeDataString(Search));
+        if (From is { } from) parts.Add("von=" + Iso(from));
+        if (To is { } to) parts.Add("bis=" + Iso(to));
         if (Page > 1) parts.Add("seite=" + Page.ToString(CultureInfo.InvariantCulture));
         return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
     }
 
     private static string? Set(string? value) => string.IsNullOrEmpty(value) ? null : value;
+
+    /// <summary>
+    /// A day of the range as the address and the date input both write it. Parsed exactly rather than by
+    /// the current culture: the same address has to mean the same range in a German and an English admin.
+    /// </summary>
+    private static DateOnly? Day(string? value) =>
+        DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+            ? day
+            : null;
+
+    private static string Iso(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Names the selection the back link returns to (AC3). The form name is data and stays untranslated;
@@ -113,7 +146,7 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
         var target = formName ?? Slug ?? t["allen Einsendungen"];
         var narrowings = new List<string>(2);
         if (AssigneeLabel(t) is { } who) narrowings.Add(who);
-        if (QuickLabel(t) is { } quick) narrowings.Add(quick);
+        narrowings.AddRange(QuickLabels(t));
         return narrowings.Count == 0
             ? t.F("Zurück zu {0}", target)
             : t.F("Zurück zu {0} · {1}", target, string.Join(" · ", narrowings));
@@ -130,15 +163,14 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
         var who => t.F("Offene von {0}", who),
     };
 
-    /// <summary>The quick filter as the list writes it; null for none and for one this version does not know.</summary>
-    private string? QuickLabel(Ui t) => Quick switch
+    /// <summary>The quick filters as the list writes them, in the order the bar shows them.</summary>
+    private IEnumerable<string> QuickLabels(Ui t) => Chips(Quick).Select(c => c switch
     {
         "new" => t["Neu seit letztem Besuch"],
         "todo" => t["Zu bearbeiten"],
         "waiting" => t["Wartet auf Bestätigung"],
-        "failed" => t["Fehler"],
-        _ => null,
-    };
+        _ => t["Fehler"],
+    });
 
     /// <summary>
     /// The submissions of this selection, in the order the list shows them. The incoming order is kept
@@ -146,7 +178,8 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     /// which is what the arrows have to follow (AC4). The form is filtered here as well, although the
     /// endpoint already narrows by slug - so a caller that loaded every form can still ask for one.
     /// </summary>
-    public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit) =>
+    public IReadOnlyList<SubmissionListItem> Select(IReadOnlyList<SubmissionListItem> all, DateTimeOffset? lastVisit,
+                                                   TimeZoneInfo? zone = null) =>
         all.Where(s => Slug is null || s.Slug == Slug)
            // One filter concept, not two (AC4, AC5): an assignee filter always means open *and* assigned
            // to that person. "Meine offenen" is this filter with the signed-in admin's name; the picker
@@ -158,15 +191,22 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
                Nobody => s.Handling == "open" && s.Assignee is null,
                var who => s.Handling == "open" && s.Assignee == who,
            })
-           .Where(s => Quick switch
-           {
-               "new" => IsNew(s, lastVisit),
-               "todo" => s.Handling == "open",
-               "waiting" => s.State == 1,
-               "failed" => s.State == 2,
-               _ => true,
-           })
+           .Where(s => MatchesChips(Chips(Quick), s, lastVisit))
+           .Where(s => InRange(s.CreatedAt, zone ?? TimeZoneInfo.Local))
            .ToList();
+
+    /// <summary>
+    /// Whether a submission falls into the chosen range, both ends included. Compared on the local day,
+    /// because that is the day the list prints beside it - judging by UTC would drop an evening enquiry
+    /// out of the day its reader saw it arrive. The zone is an argument so the tests do not depend on
+    /// where the suite runs.
+    /// </summary>
+    private bool InRange(DateTimeOffset at, TimeZoneInfo zone)
+    {
+        if (From is null && To is null) return true;
+        var day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(at, zone).DateTime);
+        return (From is not { } from || day >= from) && (To is not { } to || day <= to);
+    }
 
     /// <summary>
     /// Arrived since the reader last looked. One definition for the marker on the row and for the "new"
@@ -175,6 +215,75 @@ public sealed record SubmissionSelection(string? Slug, string? Quick, int Page, 
     /// </summary>
     public static bool IsNew(SubmissionListItem item, DateTimeOffset? lastVisit) =>
         lastVisit is null || item.CreatedAt > lastVisit;
+
+    /// <summary>
+    /// Whether this selection carries that chip (#12). The chips are a set rather than one slot since
+    /// AC4 - Verarbeitungsstatus, Bearbeitungsstatus, Zeitraum and Bearbeiter have to combine - so the
+    /// single string now holds them comma separated in a canonical order.
+    /// </summary>
+    public bool HasChip(string chip) => Chips(Quick).Contains(chip, StringComparer.Ordinal);
+
+    /// <summary>The same selection with that chip switched on or off, back on page one.</summary>
+    public SubmissionSelection ToggleChip(string chip)
+    {
+        var chips = Chips(Quick).ToList();
+        if (!chips.Remove(chip) && QuickFilters.Contains(chip)) chips.Add(chip);
+        return this with { Quick = Canonical(string.Join(',', chips)), Page = 1 };
+    }
+
+    /// <summary>
+    /// The chips of a filter value, unknown ones dropped, duplicates gone and in canonical order. An
+    /// address is something people edit and share, so it must survive that - and a chip the list does not
+    /// offer would otherwise claim a narrowing nothing applies.
+    /// </summary>
+    private static string[] Chips(string? quick)
+    {
+        if (quick is null) return [];
+        var named = quick.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return [.. ChipOrder.Where(c => named.Contains(c, StringComparer.Ordinal))];
+    }
+
+    private static string? Canonical(string? quick) =>
+        Chips(quick) is { Length: > 0 } chips ? string.Join(',', chips) : null;
+
+    /// <summary>
+    /// Whether a submission survives the chips (AC4). Two chips of the same dimension widen - no submission
+    /// is waiting and failed at once, so reading them as two conditions at the same time would make the
+    /// second click empty the list. Chips of different dimensions narrow, which is the criterion's claim.
+    /// </summary>
+    private static bool MatchesChips(string[] chips, SubmissionListItem s, DateTimeOffset? lastVisit)
+    {
+        if (chips.Length == 0) return true;
+        var states = chips.Where(c => c is "waiting" or "failed").ToArray();
+        if (states.Length > 0 && !states.Any(c => c == "waiting" ? s.State == 1 : s.State == 2)) return false;
+        if (chips.Contains("todo", StringComparer.Ordinal) && s.Handling != "open") return false;
+        if (chips.Contains("new", StringComparer.Ordinal) && !IsNew(s, lastVisit)) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Whether moving from <paramref name="previous"/> to this selection needs a new request (#12, AC8).
+    /// Only the form and the search term decide what the endpoint returns; every other narrowing happens
+    /// on what is already here, so turning a chip on must not cost a round trip.
+    /// </summary>
+    public bool NeedsReload(SubmissionSelection previous) =>
+        Slug != previous.Slug || !string.Equals(Search, previous.Search, StringComparison.Ordinal);
+
+    /// <summary>
+    /// What the list says about the search it is showing (AC5, AC6): how many submissions were looked at,
+    /// and - when the ceiling stopped the scan - that older ones were never searched. Null when no search
+    /// is running, which is what keeps the line out of the ordinary list.
+    /// </summary>
+    public string? SearchSummary(Ui t, int scanned, bool capped) => Search is null
+        ? null
+        : capped
+            ? t.F("{0} Einsendungen durchsucht – die Obergrenze wurde erreicht, weitere blieben ungesucht.", scanned)
+            : t.F("{0} Einsendungen durchsucht.", scanned);
+
+    /// <summary>The empty list's message. During a search it names the term (AC7).</summary>
+    public string EmptyMessage(Ui t) => Search is { } term
+        ? t.F("Nichts gefunden für „{0}“.", term)
+        : t["Nichts in dieser Auswahl."];
 
     /// <summary>The slice of the selection this page shows.</summary>
     public IReadOnlyList<SubmissionListItem> PageSlice(IReadOnlyList<SubmissionListItem> selection) =>

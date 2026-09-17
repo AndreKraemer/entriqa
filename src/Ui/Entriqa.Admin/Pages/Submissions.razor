@@ -1,3 +1,4 @@
+@using System.Globalization
 @page "/einsendungen"
 @page "/einsendungen/{Slug}"
 @inject AdminApi Api
@@ -40,6 +41,16 @@ else
                 <option value="@a" selected="@(_selection.Assignee == a)">@a</option>
             }
         </select>
+        @* The term is the one narrowing the endpoint applies, so it travels to the server; the range and
+           the chips narrow what is already here. Both nevertheless live in the address, or a shared link
+           would promise a selection the list does not show (#11). *@
+        <input type="search" style="min-width:240px" value="@(_selection.Search ?? "")"
+               placeholder="@T["Suchen (E-Mail, Name, Feldwerte)"]" aria-label="@T["Suchen (E-Mail, Name, Feldwerte)"]"
+               @oninput="e => Debounce(_selection with { Search = Text(e), Page = 1 })" />
+        <input type="date" title="@T["Eingang ab"]" aria-label="@T["Eingang ab"]" value="@Iso(_selection.From)"
+               @onchange="e => Go(_selection with { From = Day(e), Page = 1 })" />
+        <input type="date" title="@T["Eingang bis"]" aria-label="@T["Eingang bis"]" value="@Iso(_selection.To)"
+               @onchange="e => Go(_selection with { To = Day(e), Page = 1 })" />
         @if (Slug is not null)
         {
             <a class="btn" href="api/manage/forms/@Slug/export.csv" target="_blank">@T["CSV exportieren"]</a>
@@ -49,6 +60,11 @@ else
             <a href="" @onclick="MarkVisited" @onclick:preventDefault>@T["alles als gesehen markieren"]</a>
         </span>
     </div>
+
+    @if (_selection.SearchSummary(T, _scanned, _capped) is { } summary)
+    {
+        <p class="hint">@summary</p>
+    }
 
     <p class="hint">@T["Einsendung anklicken, um Angaben und Verarbeitungsschritte zu sehen. Der blaue Punkt markiert, was seit deinem letzten Besuch dazugekommen ist."]</p>
 
@@ -83,7 +99,7 @@ else
             }
             @if (!Paged.Any())
             {
-                <tr><td colspan="8" class="hint" style="text-align:center;padding:1.5rem">@T["Nichts in dieser Auswahl."]</td></tr>
+                <tr><td colspan="8" class="hint" style="text-align:center;padding:1.5rem">@_selection.EmptyMessage(T)</td></tr>
             }
             </tbody>
         </table>
@@ -105,6 +121,9 @@ else
     private List<string>? _admins;
     private string? _me;
     private DateTimeOffset? _lastVisit;
+    private int _scanned;
+    private bool _capped;
+    private CancellationTokenSource? _typing;
     private string? _error;
     private string _path = "";
 
@@ -114,7 +133,36 @@ else
 
     protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
 
-    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        _typing?.Cancel();
+        _typing?.Dispose();
+    }
+
+    /// <summary>
+    /// Every keystroke would otherwise cost a scan of the whole table. The last one wins: a typist who
+    /// keeps going cancels the request they have already outrun.
+    /// </summary>
+    private async Task Debounce(SubmissionSelection target)
+    {
+        _typing?.Cancel();
+        _typing?.Dispose();
+        _typing = new CancellationTokenSource();
+        var token = _typing.Token;
+        try { await Task.Delay(400, token); }
+        catch (OperationCanceledException) { return; }
+        Go(target);
+    }
+
+    private static string? Text(ChangeEventArgs e) => e.Value?.ToString()?.Trim() is { Length: > 0 } v ? v : null;
+
+    private static DateOnly? Day(ChangeEventArgs e) =>
+        DateOnly.TryParseExact(e.Value?.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? d
+            : null;
+
+    private static string Iso(DateOnly? day) => day?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
 
     protected override Task OnParametersSetAsync() => ApplyAddress();
 
@@ -137,7 +185,7 @@ else
         var selection = SubmissionSelection.FromQuery(Slug, uri.Query);
         // Only the form decides what the endpoint returns; filtering and paging happen on what is already
         // here, so switching a filter or turning a page must not cost a round trip.
-        var reload = _data is null || selection.Slug != _selection.Slug;
+        var reload = _data is null || selection.NeedsReload(_selection);
         _selection = selection;
         if (reload) await Refresh();
     }
@@ -148,7 +196,17 @@ else
         {
             _forms ??= await Api.ListFormsAsync();
             _me ??= (await Api.GetMeAsync())?.UserDetails;
-            _data = await Api.ListRecentAsync(_selection.Slug);
+            if (_selection.Search is { } term)
+            {
+                var hits = await Api.SearchSubmissionsAsync(_selection.Slug, term);
+                _data = new RecentSubmissions(hits.Items, hits.LastVisitAt);
+                (_scanned, _capped) = (hits.Scanned, hits.Capped);
+            }
+            else
+            {
+                _data = await Api.ListRecentAsync(_selection.Slug);
+                (_scanned, _capped) = (0, false);
+            }
             // After the inbox call, not before: that request is what records the caller as having been
             // here, so asking earlier would leave the signed-in admin out of their own picker until the
             // next load (#13).
@@ -163,7 +221,7 @@ else
 
     /// <summary>The badge counts come from the selection itself - a second copy of the filter here would be
     /// the one nothing tests, and the counts could then disagree with what the button shows.</summary>
-    private int CountFor(string quick) => (_selection with { Quick = quick, Page = 1 }).Select(_data!.Items, _lastVisit).Count;
+    private int CountFor(string quick) => _selection.ToggleChip(quick).Select(_data!.Items, _lastVisit).Count;
 
     /// <summary>The badge counts exactly the selection the chip leads to - one expression, so the two cannot drift.</summary>
     private int CountPersonal(string who) => SubmissionSelection.Personal(who).Select(_data!.Items, _lastVisit).Count;
@@ -183,16 +241,17 @@ else
     private RenderFragment QuickButton(string key, string label) => __builder =>
     {
         var count = CountFor(key);
-        <button class="btn @(_selection.Quick == key ? "btn--primary" : "")"
-                @onclick="() => Go(_selection with { Quick = _selection.Quick == key ? null : key, Page = 1 })">
+        <button class="btn @(_selection.HasChip(key) ? "btn--primary" : "")"
+                @onclick="() => Go(_selection.ToggleChip(key))">
             @label @if (count > 0) { <span class="count">@count</span> }
         </button>
     };
 
-    // The personal filter survives a change of form - "my open ones in this form" is a narrowing a
-    // reader asks for, and silently dropping it would widen the list they are looking at.
+    // Every narrowing survives a change of form - "my open ones in this form", "what I searched for, in
+    // this form" - because silently dropping one would widen the list the reader is looking at. Only the
+    // quick filters go, since the form picker is how a reader leaves them behind.
     private void OnSlugChange(ChangeEventArgs e) =>
-        Go(new SubmissionSelection(e.Value?.ToString() is { Length: > 0 } s ? s : null, null, 1, _selection.Assignee));
+        Go(_selection with { Slug = e.Value?.ToString() is { Length: > 0 } s ? s : null, Quick = null, Page = 1 });
 
     private void OnAssigneeChange(ChangeEventArgs e) =>
         Go(_selection with { Assignee = e.Value?.ToString() is { Length: > 0 } a ? a : null, Page = 1 });
@@ -202,7 +261,7 @@ else
         try
         {
             _lastVisit = await Api.MarkVisitedAsync();
-            if (_selection.Quick == "new") Go(_selection with { Quick = null, Page = 1 });
+            if (_selection.HasChip("new")) Go(_selection.ToggleChip("new"));
         }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
     }

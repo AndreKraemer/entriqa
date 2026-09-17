@@ -81,6 +81,16 @@ public interface IListRecentSubmissionsQuery
     Task<IReadOnlyList<SubmissionListItem>> ExecuteAsync(string? slug, int max, CancellationToken ct = default);
 }
 
+public interface ISearchSubmissionsQuery
+{
+    /// <summary>
+    /// Every submission the search may look at (#12), optionally limited to one form, newest first and
+    /// at most <paramref name="scanMax"/> rows. Table Storage knows no contains filter, so the match
+    /// itself happens above this port - here the rows are only read and made searchable.
+    /// </summary>
+    Task<SubmissionCandidates> ExecuteAsync(string? slug, int scanMax, CancellationToken ct = default);
+}
+
 public interface IListSubmissionsForStatsQuery
 {
     /// <summary>Every submission of a form as domain objects - for statistics and CSV export.</summary>

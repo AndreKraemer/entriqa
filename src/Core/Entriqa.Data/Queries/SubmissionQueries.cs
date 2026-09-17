@@ -34,3 +34,33 @@ internal sealed class ListSubmissionsQuery(TableStorage storage) : IListSubmissi
         return new SubmissionPage(Array.Empty<SubmissionListItem>(), null);
     }
 }
+
+/// <summary>
+/// The scan behind the inbox search (#12). The OData filter knows neither contains nor startswith, so a
+/// substring search can only be a scan - the trade ContactQueries and HousekeepingQueries already make at
+/// this volume. What keeps it bounded is the ceiling, and the ceiling is reported rather than hidden: a
+/// result that was cut short has to be able to say so (AC6).
+/// </summary>
+internal sealed class SearchSubmissionsQuery(TableStorage storage) : ISearchSubmissionsQuery
+{
+    public async Task<SubmissionCandidates> ExecuteAsync(string? slug, int scanMax, CancellationToken ct = default)
+    {
+        var table = await storage.GetAsync("Submissions");
+        var query = slug is null
+            ? table.QueryAsync<SubmissionEntity>(maxPerPage: 1000, cancellationToken: ct)
+            : table.QueryAsync<SubmissionEntity>(e => e.PartitionKey == slug, maxPerPage: 1000, cancellationToken: ct);
+        var candidates = new List<SubmissionCandidate>();
+        var capped = false;
+        await foreach (var e in query)
+        {
+            // Asked before adding, so the flag means "there was more" rather than "the table happened to
+            // hold exactly this many" - the difference between a warning that is true and one that cries wolf.
+            if (candidates.Count >= scanMax) { capped = true; break; }
+            candidates.Add(SubmissionMapper.ToCandidate(e));
+        }
+        // Row keys are newest-first inside a partition; across partitions the order is the scan's, so the
+        // sort happens here - as in ListRecentSubmissionsQuery, and for the same reason.
+        return new SubmissionCandidates(
+            candidates.OrderByDescending(c => c.Item.CreatedAt).ToList(), candidates.Count, capped);
+    }
+}

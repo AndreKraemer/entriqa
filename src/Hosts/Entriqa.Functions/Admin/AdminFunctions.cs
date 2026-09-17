@@ -27,6 +27,7 @@ public sealed class AdminFunctions(
     IRecordAdminSeenUseCase recordSeen,
     IDeleteSubmissionAdminUseCase deleteSubmission,
     IListRecentSubmissionsUseCase recent,
+    ISearchSubmissionsUseCase search,
     IMarkVisitedUseCase markVisited,
     IGetFormStatsUseCase stats,
     IGetIntegrationDirectoryUseCase directory,
@@ -41,6 +42,7 @@ public sealed class AdminFunctions(
     IListConsentProofsUseCase listConsentProofs,
     IDeleteConsentProofUseCase deleteConsentProof,
     Entriqa.Application.Ports.ICreateDownloadLinkPort downloadLinks,
+    Microsoft.Extensions.Options.IOptions<Entriqa.Application.EntriqaOptions> options,
     ILogger<AdminFunctions> log)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -121,8 +123,16 @@ public sealed class AdminFunctions(
         {
             log.LogWarning(ex, "Sichtung von {User} nicht aufgezeichnet - der Posteingang wird trotzdem geliefert", principal.UserName(req));
         }
-        var slug = req.Query["slug"].FirstOrDefault();
-        return new OkObjectResult(await recent.ExecuteAsync(string.IsNullOrEmpty(slug) ? null : slug, principal.UserName(req), 500, ct));
+        var slug = req.Query["slug"].FirstOrDefault() is { Length: > 0 } s ? s : null;
+        // The ceiling is the operator's setting, not the caller's wish. As a query parameter it let anyone
+        // signed in ask for a scan of the whole table, and it made "the scan stopped early" (AC6)
+        // observable only to whoever knew the parameter - never to a reader using the inbox.
+        var max = options.Value.EffectiveSearchScanMax;
+        // A blank term is the ordinary inbox, not a search that matches everything - which is what keeps
+        // AC8 a matter of clearing the field rather than of a second control.
+        return req.Query["q"].FirstOrDefault() is { Length: > 0 } term && term.Trim().Length > 0
+            ? new OkObjectResult(await search.ExecuteAsync(slug, term, principal.UserName(req), max, ct))
+            : new OkObjectResult(await recent.ExecuteAsync(slug, principal.UserName(req), 500, ct));
     }
 
     [Function("AdminMarkVisited")]
