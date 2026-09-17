@@ -454,7 +454,16 @@ public class SubmissionSearchTests
 
         Assert.Contains("\"q\"", body, StringComparison.Ordinal);
         Assert.Contains("search.ExecuteAsync", body, StringComparison.Ordinal);
-        Assert.Contains("EffectiveSearchScanMax", body, StringComparison.Ordinal);
+        // The argument, not the identifier: naming the option somewhere in the block is satisfied while the
+        // search runs on a different ceiling entirely - the setting would then be silently ignored, and
+        // AC6's hint would fire at whatever number the code happened to hand the search instead.
+        //
+        // The match stays inside the call's own parentheses, nested ones included. Scanning to the next
+        // semicolon instead walks straight past the closing bracket and into the other branch of the same
+        // ternary, where "max" also appears - which is how the first attempt at this guard passed while
+        // the search ran on a hard-coded ceiling.
+        Assert.Contains("var max = options.Value.EffectiveSearchScanMax;", body, StringComparison.Ordinal);
+        Assert.Matches(new Regex(@"search\.ExecuteAsync\((?:[^()]|\([^()]*\))*\bmax\b"), body);
         // The ceiling is an operator's setting, never a caller's wish - otherwise anyone signed in can
         // ask the inbox for a scan of the whole table, and the setting protects nothing.
         Assert.DoesNotContain("req.Query[\"max\"]", body, StringComparison.Ordinal);
