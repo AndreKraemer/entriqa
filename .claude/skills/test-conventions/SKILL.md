@@ -123,6 +123,20 @@ a path you have seen report a known-red case correctly: a harness that swallows 
 every mutant as surviving, which reads as a useless guard and is not. That happened twice in #3,
 both times costing a round of chasing a guard that was fine.
 
+**Red because the member is missing proves nothing.** A guard written in the red state fails with
+"no such member" before the implementation exists. That looks like evidence and is not: what matters
+is whether it can fail once the member exists and is *wrong*. The failure has one shape — the guard
+reads a **name** where it should read a **value**. `Contains("Math.Clamp")` passes on any bound;
+`Contains("scanMax")` is satisfied by the signature the slice starts with; `Contains("ToggleChip")`
+is satisfied by the badge count two lines above the button it meant to guard. So run each guard's
+mutation **again after implementing it**, not only in the red state: in #12 eight guards were green
+and none of them could fail, and #14 and #3 are the same shape.
+
+Keep the slice tight while you are there. Matching to the next `;` walks past a call's closing
+bracket into the other branch of the same ternary, where the same identifier appears — which is how
+the fix for one of those guards survived the very mutation it was written for, twice. Match inside
+the call's own parentheses instead: `Foo\(([^()]|\([^()]*\))*\bname\b`.
+
 It is weaker than executing the code and it does not replace the acceptance gate: it catches the
 regression, not the defect. But "the admin does not load in the test host" has four times been the
 premise of a conclusion that nothing could be guarded — twice the review found a mutation that
