@@ -60,6 +60,9 @@ internal sealed class RunHousekeepingUseCase(
         // 3: retention - blobs first, then the table entry (the other way round a crash would leave orphaned blobs without a pointer).
         foreach (var s in await list.ListExpiredAsync(now.AddDays(-o.RetentionDays), now.AddDays(-o.UnconfirmedRetentionDays), 500, ct))
         {
+            // #15: the query above only ever checks CreatedAt < cutoff and does not know RetainUntil
+            // exists, so an admin's exception has to be honoured here, before anything is deleted.
+            if (SubmissionRetention.IsProtected(s.CreatedAt, s.RetainUntil, o.RetentionDays, now)) continue;
             foreach (var path in s.Artifacts.Values.Where(v => !v.Contains("://", StringComparison.Ordinal)))
                 await artifacts.DeleteAsync(path, ct);                      // blob paths only; "download" is a URL
             await delete.ExecuteAsync(s, ct);
