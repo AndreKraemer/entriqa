@@ -407,6 +407,9 @@ public sealed class Ui
         ["Schritt wiederholt: {0}"] = "Step retried: {0}",
         ["Fehlgeschlagene Schritte wiederholt"] = "Retried failed steps",
         ["Bestätigungsmail erneut gesendet"] = "Confirmation email resent",
+        ["Dauerhaft aufbewahrt"] = "Retained permanently",
+        ["Aufbewahrung verlängert"] = "Retention extended",
+        ["Ausnahme aufgehoben"] = "Exception lifted",
         ["automatisch"] = "automatic",
         ["unbekannt"] = "unknown",
         // Status-Chips (Labels.cs)

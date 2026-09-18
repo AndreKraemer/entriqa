@@ -377,6 +377,7 @@ public class SubmissionHistoryTests
     [Theory]
     [InlineData("AdminSetHandling", "setHandling")]
     [InlineData("AdminSetAssignee", "setAssignee")]
+    [InlineData("AdminSetRetention", "setRetention")]
     [InlineData("AdminRetryStep", "retry")]
     [InlineData("AdminResendDoi", "resendDoi")]
     public void GivenAnAdminOperationThatLeavesATrace_WhenItsEndpointIsRead_ThenItPassesTheSignedInName(
