@@ -76,7 +76,7 @@ internal sealed class SetSubmissionHandlingUseCase(
 
 /// <summary>
 /// Retain permanently, extend by a fixed period, or lift the exception (#15) - one field, three ways to
-/// change it, mirroring <see cref="SetSubmissionHandlingUseCase"/>. Skeleton: not implemented yet.
+/// change it, mirroring <see cref="SetSubmissionHandlingUseCase"/>.
 /// </summary>
 internal sealed class SetSubmissionRetentionUseCase(
     ITryGetSubmissionQuery getSubmission,
@@ -84,13 +84,33 @@ internal sealed class SetSubmissionRetentionUseCase(
     IOptions<EntriqaOptions> options,
     TimeProvider time) : ISetSubmissionRetentionUseCase
 {
-    public Task ExecuteAsync(string submissionId, SubmissionRetentionAction action, string? by, CancellationToken ct = default)
+    /// <summary>The fixed period behind "extend" (comprehension check, #15): a year, not a typed-in date.</summary>
+    private const int ExtensionDays = 365;
+
+    public async Task ExecuteAsync(string submissionId, SubmissionRetentionAction action, string? by, CancellationToken ct = default)
     {
-        _ = getSubmission;
-        _ = save;
-        _ = options;
-        _ = time;
-        throw new NotImplementedException(); // #15
+        var s = await getSubmission.ExecuteAsync(submissionId, ct)
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
+        var now = time.GetUtcNow();
+        switch (action)
+        {
+            case SubmissionRetentionAction.RetainPermanently:
+                s.RetainUntil = DateTimeOffset.MaxValue;
+                s.Record(HistoryTypes.RetentionRetained, HistoryActor.Admin(by), now);
+                break;
+            case SubmissionRetentionAction.Extend:
+                var current = SubmissionRetention.EffectiveExpiry(s.CreatedAt, s.RetainUntil, options.Value.RetentionDays);
+                s.RetainUntil = current.AddDays(ExtensionDays);
+                s.Record(HistoryTypes.RetentionExtended, HistoryActor.Admin(by), now, s.RetainUntil.Value.ToString("O"));
+                break;
+            case SubmissionRetentionAction.Lift:
+                s.RetainUntil = null;
+                s.Record(HistoryTypes.RetentionLifted, HistoryActor.Admin(by), now);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(action), action, null);
+        }
+        await save.ExecuteAsync(s, ct);
     }
 }
 
