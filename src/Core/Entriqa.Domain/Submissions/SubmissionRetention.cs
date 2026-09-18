@@ -10,9 +10,9 @@ public static class SubmissionRetention
 {
     /// <summary>The date housekeeping would delete on. <see cref="DateTimeOffset.MaxValue"/> means never.</summary>
     public static DateTimeOffset EffectiveExpiry(DateTimeOffset createdAt, DateTimeOffset? retainUntil, int retentionDays) =>
-        throw new NotImplementedException(); // #15: retainUntil ?? createdAt.AddDays(retentionDays)
+        retainUntil ?? createdAt.AddDays(retentionDays);
 
     /// <summary>True while an override still shields the submission from housekeeping at <paramref name="now"/>.</summary>
     public static bool IsProtected(DateTimeOffset createdAt, DateTimeOffset? retainUntil, int retentionDays, DateTimeOffset now) =>
-        throw new NotImplementedException(); // #15: EffectiveExpiry(...) > now
+        retainUntil is { } until && until > now;
 }
