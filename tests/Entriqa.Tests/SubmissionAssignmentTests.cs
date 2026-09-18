@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Entriqa.Admin.Services;
 using Entriqa.Application.Ports;
@@ -115,7 +116,7 @@ public class SubmissionAssignmentTests
         var get = Substitute.For<ITryGetSubmissionQuery>();
         get.ExecuteAsync(Id, Arg.Any<CancellationToken>()).Returns(Stored(assignee: Me));
 
-        var view = await new GetSubmissionDetailUseCase(get, Substitute.For<ITryGetFormVersionQuery>()).ExecuteAsync(Id);
+        var view = await new GetSubmissionDetailUseCase(get, Substitute.For<ITryGetFormVersionQuery>(), Options.Create(TestData.Options())).ExecuteAsync(Id);
 
         Assert.Equal(Me, view.Assignee);
     }

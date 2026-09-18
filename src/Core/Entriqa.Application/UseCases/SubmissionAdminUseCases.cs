@@ -9,7 +9,8 @@ namespace Entriqa.Application.UseCases;
 
 internal sealed class GetSubmissionDetailUseCase(
     ITryGetSubmissionQuery getSubmission,
-    ITryGetFormVersionQuery getVersion) : IGetSubmissionDetailUseCase
+    ITryGetFormVersionQuery getVersion,
+    IOptions<EntriqaOptions> options) : IGetSubmissionDetailUseCase
 {
     public async Task<SubmissionDetailView> ExecuteAsync(string submissionId, CancellationToken ct = default)
     {
@@ -48,10 +49,12 @@ internal sealed class GetSubmissionDetailUseCase(
             }
         }
 
+        var expiresAt = SubmissionRetention.EffectiveExpiry(s.CreatedAt, s.RetainUntil, options.Value.RetentionDays);
         return new SubmissionDetailView(s.Id, s.Slug, s.Version, s.CreatedAt, s.Locale, s.Email, s.FirstName,
             s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns,
             s.History.Entries.Reverse().ToList(), s.Handling, s.State,
-            s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee);
+            s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee,
+            expiresAt, expiresAt == DateTimeOffset.MaxValue);
     }
 }
 

@@ -151,6 +151,38 @@ public class SubmissionRetentionTests
         await delete.Received(1).ExecuteAsync(expired, Arg.Any<CancellationToken>());
     }
 
+    // ---- AC1: the detail view and the inbox queries surface the effective deadline ------------------
+
+    [Fact]
+    public async Task GivenASubmissionRetainedPermanently_WhenTheDetailViewIsBuilt_ThenItReportsRetainedIndefinitely()
+    {
+        var get = Substitute.For<ITryGetSubmissionQuery>();
+        get.ExecuteAsync(Id, Arg.Any<CancellationToken>())
+            .Returns(Stored(TestData.Time.GetUtcNow().AddDays(-10), retainUntil: DateTimeOffset.MaxValue));
+        var uc = new GetSubmissionDetailUseCase(get, Substitute.For<ITryGetFormVersionQuery>(), Options.Create(TestData.Options()));
+
+        var view = await uc.ExecuteAsync(Id);
+
+        Assert.True(view.RetainedIndefinitely);
+        Assert.Equal(DateTimeOffset.MaxValue, view.ExpiresAt);
+    }
+
+    /// <summary>
+    /// The two queries behind the inbox (#12: search, and the default listing) read entities straight from
+    /// Table Storage, which this test host cannot exercise - no Azurite here. The wiring is read from
+    /// source instead, precedent <see cref="SubmissionHistoryTests"/>'s data-layer guards.
+    /// </summary>
+    [Theory]
+    [InlineData("AdminOverviewQueries.cs", "class ListRecentSubmissionsQuery")]
+    [InlineData("SubmissionQueries.cs", "class SearchSubmissionsQuery")]
+    public void GivenAnInboxQuery_WhenItMapsARow_ThenItProjectsTheEffectiveRetentionOntoIt(string file, string marker)
+    {
+        var source = File.ReadAllText(Path.Combine(SourceText.RepoDirectory("src", "Core", "Entriqa.Data"), "Queries", file));
+
+        Assert.Contains("SubmissionRetention.Project(", SourceText.Block(source, marker,
+            $"{marker} is gone - update this guard."), StringComparison.Ordinal);
+    }
+
     // ---- AC7: lifting the exception restores the regular deadline, and AC6 records it --------------
 
     /// <summary>
