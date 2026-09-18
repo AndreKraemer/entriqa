@@ -2,7 +2,8 @@ namespace Entriqa.Domain.Consent;
 
 /// <summary>
 /// The evidence for one consent (Art. 7(1) GDPR), deliberately kept apart from the submission (#1):
-/// the submission dies with its retention period, the proof lives until the consent itself ends
+/// the submission dies with its retention period, or later still if an admin overrides it (#15) -
+/// the proof lives until the consent itself ends
 /// (revocation, erasure request, contact deletion). It therefore carries the evidence and nothing
 /// else - never field values, quiz outcomes or attachments.
 /// </summary>

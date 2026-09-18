@@ -102,6 +102,8 @@ internal sealed class SetSubmissionRetentionUseCase(
                 s.Record(HistoryTypes.RetentionRetained, HistoryActor.Admin(by), now);
                 break;
             case SubmissionRetentionAction.Extend:
+                if (s.RetainUntil == DateTimeOffset.MaxValue)
+                    throw new AppException(ErrorCodes.Validation, ErrorMessages.RetentionAlreadyPermanent);
                 var current = SubmissionRetention.EffectiveExpiry(s.CreatedAt, s.RetainUntil, options.Value.RetentionDays);
                 s.RetainUntil = current.AddDays(ExtensionDays);
                 s.Record(HistoryTypes.RetentionExtended, HistoryActor.Admin(by), now, s.RetainUntil.Value.ToString("O"));

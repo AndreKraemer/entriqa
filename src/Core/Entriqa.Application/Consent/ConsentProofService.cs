@@ -12,8 +12,9 @@ namespace Entriqa.Application.Consent;
 /// Writes, amends and ends the consent proof (#1). The one place that knows when a proof comes into
 /// existence, what it may carry and what ends it - the use cases only call in at their events.
 ///
-/// The proof has its own clock: the submission dies with RetentionDays, the proof is ended by an
-/// event - the GDPR erasure of the contact - and only by a timer where one is deliberately configured.
+/// The proof has its own clock: the submission dies with RetentionDays or an admin's override (#15),
+/// the proof is ended by an event - the GDPR erasure of the contact - and only by a timer where one is
+/// deliberately configured.
 /// </summary>
 public sealed class ConsentProofService(
     IStoreConsentProofCommand store,

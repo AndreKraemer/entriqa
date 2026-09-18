@@ -419,6 +419,7 @@ public sealed class Ui
         ["Bestätigungsmail erneut gesendet"] = "Confirmation email resent",
         ["Dauerhaft aufbewahrt"] = "Retained permanently",
         ["Aufbewahrung verlängert"] = "Retention extended",
+        ["Aufbewahrung verlängert bis {0}"] = "Retention extended to {0}",
         ["Ausnahme aufgehoben"] = "Exception lifted",
         ["automatisch"] = "automatic",
         ["unbekannt"] = "unknown",

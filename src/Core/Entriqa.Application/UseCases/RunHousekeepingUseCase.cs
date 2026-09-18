@@ -13,7 +13,8 @@ namespace Entriqa.Application.UseCases;
 /// The guaranteed fallback of the system (every 15 min via DevOps schedule):
 /// 1. Sweep - pick up stalled deferred runs (browser gone, sendBeacon lost).
 /// 2. Auto retry - try failed steps again up to AutoRetryMax; after that they belong to the admin.
-/// 3. Retention - delete submissions after RetentionDays (PDF blobs included), unconfirmed DOI after UnconfirmedRetentionDays.
+/// 3. Retention - delete submissions after RetentionDays (PDF blobs included), unconfirmed DOI after
+///    UnconfirmedRetentionDays - unless an admin's override still protects one of them (#15).
 /// 4. Security tables - dispose of expired nonces and old rate-limit windows.
 /// All idempotent and conflict tolerant: a parallel confirm or run simply wins.
 /// </summary>

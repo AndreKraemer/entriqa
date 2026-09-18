@@ -348,7 +348,9 @@ public static class Labels
             "step.retry" => e.Detail is { Length: > 0 } step ? t.F("Schritt wiederholt: {0}", step) : t["Fehlgeschlagene Schritte wiederholt"],
             "doi.resend" => t["Bestätigungsmail erneut gesendet"],
             "retention.retained" => t["Dauerhaft aufbewahrt"],
-            "retention.extended" => t["Aufbewahrung verlängert"],
+            "retention.extended" => DateTimeOffset.TryParse(e.Detail, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var until)
+                ? t.F("Aufbewahrung verlängert bis {0}", until.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture))
+                : t["Aufbewahrung verlängert"],
             "retention.lifted" => t["Ausnahme aufgehoben"],
             _ => e.Type,
         };

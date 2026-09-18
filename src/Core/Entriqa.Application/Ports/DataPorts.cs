@@ -181,8 +181,8 @@ public interface ISaveFormDraftCommand
     Task ExecuteAsync(FormDefinition definition, string savedBy, CancellationToken ct = default);
 }
 
-// Consent proofs (#1). Own table, own clock: the submission expires after RetentionDays,
-// the proof outlives it and ends on an event, not on a timer.
+// Consent proofs (#1). Own table, own clock: the submission expires after RetentionDays or an
+// admin's override (#15), the proof outlives it either way and ends on an event, not on a timer.
 
 public interface IStoreConsentProofCommand
 {

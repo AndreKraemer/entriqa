@@ -24,15 +24,18 @@ internal sealed class TryGetSubmissionQuery(TableStorage storage) : ITryGetSubmi
     }
 }
 
-internal sealed class ListSubmissionsQuery(TableStorage storage) : IListSubmissionsQuery
+internal sealed class ListSubmissionsQuery(TableStorage storage, IOptions<EntriqaOptions> options) : IListSubmissionsQuery
 {
     public async Task<SubmissionPage> ExecuteAsync(string slug, string? continuationToken, int pageSize, CancellationToken ct = default)
     {
         var table = await storage.GetAsync("Submissions");
+        var retentionDays = options.Value.RetentionDays;
         var pages = table.QueryAsync<SubmissionEntity>(e => e.PartitionKey == slug, maxPerPage: pageSize, cancellationToken: ct)
             .AsPages(continuationToken, pageSize);
         await foreach (var page in pages)
-            return new SubmissionPage(page.Values.Select(SubmissionMapper.ToListItem).ToList(), page.ContinuationToken);
+            return new SubmissionPage(
+                page.Values.Select(e => SubmissionRetention.Project(SubmissionMapper.ToListItem(e), e.RetainUntil, retentionDays)).ToList(),
+                page.ContinuationToken);
         return new SubmissionPage(Array.Empty<SubmissionListItem>(), null);
     }
 }
