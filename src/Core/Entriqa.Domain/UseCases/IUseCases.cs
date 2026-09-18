@@ -185,7 +185,7 @@ public sealed record SubmissionDetailView(
     string? BrevoContactId, bool CanResendDoi, IReadOnlyList<QuizAnswerView>? QuizAnswers = null,
     string? Assignee = null,
     // #15: see SubmissionListItem for what ExpiresAt/RetainedIndefinitely mean.
-    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false);
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false, bool HasRetentionOverride = false);
 
 public sealed record QuizAnswerView(string Question, string Answer, int Points, bool Jumped);
 

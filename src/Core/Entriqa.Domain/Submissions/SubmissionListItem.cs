@@ -5,7 +5,9 @@ public sealed record SubmissionListItem(
     SubmissionState State, string Handling, string? QuizResultId, string? Assignee = null,
     // #15: ExpiresAt is SubmissionRetention.EffectiveExpiry(...); DateTimeOffset.MaxValue there means
     // RetainedIndefinitely, so a caller only needs the flag first and never compares against MaxValue itself.
-    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false);
+    // HasRetentionOverride is true for both a permanent and a merely extended deadline - AC5 protects
+    // both alike, and both alike need the "lift" action, not only the permanent one.
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false, bool HasRetentionOverride = false);
 
 public sealed record SubmissionPage(IReadOnlyList<SubmissionListItem> Items, string? ContinuationToken);
 

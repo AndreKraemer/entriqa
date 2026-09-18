@@ -257,7 +257,7 @@ public sealed record QuestionStats(string Question, int Seen, List<StatsBar> Opt
 public sealed record FieldStats(string Label, List<StatsBar> Options);
 public sealed record SubmissionListItem(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Email,
     string Summary, int State, string Handling, string? QuizResultId, string? Assignee = null,
-    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false);
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false, bool HasRetentionOverride = false);
 
 public sealed record SubmissionDetail(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale,
     string? Email, string? FirstName, string? Source, List<SubmissionValue> Values, QuizInfo? Quiz, string? QuizResultTitle,
@@ -265,7 +265,7 @@ public sealed record SubmissionDetail(string Id, string Slug, int Version, DateT
     List<HistoryEntry>? History, string Handling, int State,
     string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null,
     // #15: DateTimeOffset.MaxValue there means RetainedIndefinitely - check the flag first.
-    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false);
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false, bool HasRetentionOverride = false);
 
 /// <summary>One entry of a submission's history (#14), newest first as the API delivers it.</summary>
 public sealed record HistoryEntry(DateTimeOffset At, string Type, string Origin, string? By, string? Detail);

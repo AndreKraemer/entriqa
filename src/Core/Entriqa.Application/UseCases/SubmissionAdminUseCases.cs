@@ -54,7 +54,7 @@ internal sealed class GetSubmissionDetailUseCase(
             s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns,
             s.History.Entries.Reverse().ToList(), s.Handling, s.State,
             s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee,
-            expiresAt, expiresAt == DateTimeOffset.MaxValue);
+            expiresAt, expiresAt == DateTimeOffset.MaxValue, s.RetainUntil.HasValue);
     }
 }
 

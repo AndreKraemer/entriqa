@@ -70,7 +70,7 @@ else
 
     <div class="table-scroll">
         <table>
-            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Bearbeiter"]</th><th>@T["Quiz"]</th></tr></thead>
+            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Bearbeiter"]</th><th>@T["Quiz"]</th><th>@T["Aufbewahrung"]</th></tr></thead>
             <tbody>
             @foreach (var s in Paged)
             {
@@ -95,11 +95,25 @@ else
                         else { <span class="hint">–</span> }
                     </td>
                     <td>@(item.QuizResultId ?? "–")</td>
+                    <td>
+                        @if (item.RetainedIndefinitely)
+                        {
+                            <span class="chip chip--ok">@T["Dauerhaft"]</span>
+                        }
+                        else if (ExpiresWithin14Days(item))
+                        {
+                            <span class="chip chip--wait">@T.F("Läuft in {0} Tagen ab", DaysUntil(item))</span>
+                        }
+                        else
+                        {
+                            <span class="hint">@item.ExpiresAt.ToLocalTime().ToString("dd.MM.yyyy")</span>
+                        }
+                    </td>
                 </tr>
             }
             @if (!Paged.Any())
             {
-                <tr><td colspan="8" class="hint" style="text-align:center;padding:1.5rem">@_selection.EmptyMessage(T)</td></tr>
+                <tr><td colspan="9" class="hint" style="text-align:center;padding:1.5rem">@_selection.EmptyMessage(T)</td></tr>
             }
             </tbody>
         </table>
@@ -130,6 +144,15 @@ else
     /// <summary>Form, quick filter and page - read from the address, never held here. That is what lets the
     /// detail page hand the same selection back when the reader returns (AC2).</summary>
     private SubmissionSelection _selection = SubmissionSelection.Default;
+
+    /// <summary>AC2: highlight what expires within the next 14 days - not what is already overdue, which
+    /// housekeeping would already have removed by the next run, and not a permanent retention.</summary>
+    private static bool ExpiresWithin14Days(SubmissionListItem item) =>
+        !item.RetainedIndefinitely && item.ExpiresAt > DateTimeOffset.UtcNow
+        && item.ExpiresAt - DateTimeOffset.UtcNow <= TimeSpan.FromDays(14);
+
+    private static int DaysUntil(SubmissionListItem item) =>
+        (int)Math.Ceiling((item.ExpiresAt - DateTimeOffset.UtcNow).TotalDays);
 
     protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
 

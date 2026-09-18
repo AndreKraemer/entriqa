@@ -16,10 +16,15 @@ public static class SubmissionRetention
     public static bool IsProtected(DateTimeOffset createdAt, DateTimeOffset? retainUntil, int retentionDays, DateTimeOffset now) =>
         retainUntil is { } until && until > now;
 
-    /// <summary>Fills a list row's ExpiresAt/RetainedIndefinitely from the raw override the query read.</summary>
+    /// <summary>Fills a list row's ExpiresAt/RetainedIndefinitely/HasRetentionOverride from the raw override the query read.</summary>
     public static SubmissionListItem Project(SubmissionListItem item, DateTimeOffset? retainUntil, int retentionDays)
     {
         var expiresAt = EffectiveExpiry(item.CreatedAt, retainUntil, retentionDays);
-        return item with { ExpiresAt = expiresAt, RetainedIndefinitely = expiresAt == DateTimeOffset.MaxValue };
+        return item with
+        {
+            ExpiresAt = expiresAt,
+            RetainedIndefinitely = expiresAt == DateTimeOffset.MaxValue,
+            HasRetentionOverride = retainUntil.HasValue,
+        };
     }
 }

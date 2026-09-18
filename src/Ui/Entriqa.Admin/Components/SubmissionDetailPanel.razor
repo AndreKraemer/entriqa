@@ -44,6 +44,35 @@ else
         </p>
     }
 
+    <p>
+        @T["Aufbewahrung:"]
+        @if (_s.RetainedIndefinitely)
+        {
+            <span>@T["Dauerhaft aufbewahrt"]</span>
+        }
+        else if (_s.HasRetentionOverride)
+        {
+            <span>@T.F("Verlängert bis {0}", _s.ExpiresAt.ToLocalTime().ToString("dd.MM.yyyy"))</span>
+        }
+        else
+        {
+            <span>@T.F("Läuft ab am {0}", _s.ExpiresAt.ToLocalTime().ToString("dd.MM.yyyy"))</span>
+        }
+        @if (_s.HasRetentionOverride)
+        {
+            <button class="btn" disabled="@_busy" @onclick="LiftRetention">@T["Ausnahme aufheben"]</button>
+        }
+        else
+        {
+            <button class="btn btn--primary" disabled="@_busy" @onclick="RetainPermanently">@T["Dauerhaft aufbewahren"]</button>
+        }
+        @if (!_s.RetainedIndefinitely)
+        {
+            <button class="btn" disabled="@_busy" @onclick="ExtendRetention">@T["Um ein Jahr verlängern"]</button>
+        }
+        <span class="hint">@T["Der Einwilligungsnachweis bleibt unabhängig davon erhalten."]</span>
+    </p>
+
     <h2>@T["Werte"]</h2>
     <table class="values">
         <tbody>
@@ -202,6 +231,27 @@ else
     private async Task SetHandling(string handling) => await Guarded(async () =>
     {
         await Api.SetHandlingAsync(Id, handling);
+        await Reload();
+        await OnChanged.InvokeAsync();
+    });
+
+    private async Task RetainPermanently() => await Guarded(async () =>
+    {
+        await Api.SetRetentionAsync(Id, "retain");
+        await Reload();
+        await OnChanged.InvokeAsync();
+    });
+
+    private async Task ExtendRetention() => await Guarded(async () =>
+    {
+        await Api.SetRetentionAsync(Id, "extend");
+        await Reload();
+        await OnChanged.InvokeAsync();
+    });
+
+    private async Task LiftRetention() => await Guarded(async () =>
+    {
+        await Api.SetRetentionAsync(Id, "lift");
         await Reload();
         await OnChanged.InvokeAsync();
     });
