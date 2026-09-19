@@ -1,0 +1,14 @@
+@* #18 skeleton - the reusable icon component. The real rendering (an inline <svg> that inherits
+   colour and size from the surrounding text via currentColor and 1em, its glyph pulled from
+   IconLibrary.Path, its accessibility from IconAttributes) arrives with the implementation. Only
+   the public surface - the Name and Size parameters - exists here. *@
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+
+    /// <summary>A CSS length; when omitted the icon takes 1em, the size of the surrounding text.</summary>
+    [Parameter] public string? Size { get; set; }
+
+    /// <summary>A screen-reader label and tooltip for a standalone icon; omit it when text accompanies the icon.</summary>
+    [Parameter] public string? Label { get; set; }
+}
