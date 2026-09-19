@@ -105,7 +105,7 @@ body {
     .whoami-name { display: none; }                          /* Initialen reichen, der Name steht im title */
     .content { margin: 16px auto; padding: 0 12px; }
     .card, .modal { padding: 14px 14px; }
-    .actions, .filters, .new-form { gap: 6px; }
+    .actions, .filters { gap: 6px; }
     .actions .btn { padding: 0 10px; }
     .kv { grid-template-columns: 1fr; gap: 2px 0; }
     .kv dt { margin-top: 8px; }
@@ -210,7 +210,27 @@ th { background: var(--panel-2); font-weight: 700; font-size: 11px; text-transfo
 td.label { font-weight: 600; width: 30%; }
 td.consent { font-size: 13px; color: var(--muted); }
 .rowlink { cursor: pointer; }
-.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Split button: primary + chevron toggle, joined, never wrapping - a row keeps one height whatever
+   its actions (#19, AC 1/2). The menu itself is a fixed overlay (.row-menu), out of the row's flow. */
+.row-actions { display: inline-flex; }
+.row-actions .split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.row-actions .split-toggle { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; padding: 0 8px; }
+/* A native popover: it renders in the top layer (escapes the table's overflow clip) and anchors under
+   the toggle via CSS anchor positioning, flipping above when there is no room below. No JS. */
+.row-menu {
+    min-width: 190px; padding: 4px; margin: 4px 0 0;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-s); box-shadow: var(--shadow-pop);
+    position-area: bottom span-left;
+    position-try-fallbacks: flip-block;
+}
+.row-menu:popover-open { display: flex; flex-direction: column; gap: 2px; }
+.row-menu__item {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    padding: 7px 10px; border: 0; border-radius: var(--radius-s); background: none;
+    color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.row-menu__item:hover:not(:disabled), .row-menu__item:focus-visible { background: var(--panel-2); }
+.row-menu__item:disabled { opacity: .45; cursor: default; }
 .rowlink:hover td { background: var(--panel-2); }
 .row--sel td { background: var(--akzent-soft); }
 
@@ -373,8 +393,11 @@ td.consent { font-size: 13px; color: var(--muted); }
 /* ---------- Aktionsleiste ---------- */
 .actions { display: flex; gap: 8px; align-items: center; margin: 24px 0; }
 .actions .spacer { flex: 1; }
-.new-form { display: flex; gap: 8px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
-.new-form input { min-width: 240px; }
+/* Header row: the title on the left, "Neues Formular" pushed to the right (#19). */
+.page-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.page-head > .btn { margin-left: auto; }
+.create-field { margin-bottom: 12px; }
+.create-field > input, .create-field > select { width: 100%; }
 .err-text { color: var(--err-ink); font-size: 12.5px; max-width: 260px; }
 .danger-zone { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); }
 
