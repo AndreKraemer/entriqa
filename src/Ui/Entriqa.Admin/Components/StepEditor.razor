@@ -16,7 +16,7 @@
         <span class="spacer"></span>
         <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">▲</button>
         <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">▼</button>
-        <button class="btn btn--icon btn--danger" title="@T["Entfernen"]" @onclick="() => OnRemove.InvokeAsync()">✕</button>
+        <button class="btn btn--icon btn--danger" @onclick="() => OnRemove.InvokeAsync()"><Icon Name="x" Label="@T["Entfernen"]" /></button>
     </div>
     @if (Descriptor is not null) { <p class="hint">@T[Descriptor.Description]</p> }
     @if (_error is not null) { <p class="error">@_error</p> }

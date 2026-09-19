@@ -48,9 +48,9 @@ else
                 <td>@f.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                 <td>
                     <div class="row-actions">
-                        <a class="btn" href="forms/@f.Slug">@T["Bearbeiten"]</a>
-                        <a class="btn" href="einsendungen/@f.Slug">@T["Einsendungen"]</a>
-                        <button class="btn" disabled="@(f.Status != "published")" @onclick="() => _snippetSlug = f.Slug">@T["Einbetten"]</button>
+                        <a class="btn" href="forms/@f.Slug"><Icon Name="pencil" /> @T["Bearbeiten"]</a>
+                        <a class="btn" href="einsendungen/@f.Slug"><Icon Name="inbox" /> @T["Einsendungen"]</a>
+                        <button class="btn" disabled="@(f.Status != "published")" @onclick="() => _snippetSlug = f.Slug"><Icon Name="code" /> @T["Einbetten"]</button>
                     </div>
                 </td>
             </tr>

@@ -18,7 +18,7 @@
             <span class="spacer"></span>
             <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">▲</button>
             <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">▼</button>
-            <button class="btn btn--icon btn--danger" title="@T["Entfernen"]" @onclick="() => OnRemove.InvokeAsync()">✕</button>
+            <button class="btn btn--icon btn--danger" @onclick="() => OnRemove.InvokeAsync()"><Icon Name="x" Label="@T["Entfernen"]" /></button>
         }
     </div>
 
@@ -61,8 +61,8 @@
             var index = i;
             <div class="option-row">
                 <LTextInput Model="opt" Locales="Locales" ActiveLocale="@ActiveLocale" Changed="Notify" />
-                <button class="btn btn--icon btn--danger" title="@T["Option entfernen"]"
-                        @onclick="() => { Field.Options.RemoveAt(index); Notify(); }">✕</button>
+                <button class="btn btn--icon btn--danger"
+                        @onclick="() => { Field.Options.RemoveAt(index); Notify(); }"><Icon Name="x" Label="@T["Option entfernen"]" /></button>
             </div>
         }
         <button class="btn" @onclick="() => { Field.Options.Add(new LTextModel()); Notify(); }">@T["Option hinzufügen"]</button>

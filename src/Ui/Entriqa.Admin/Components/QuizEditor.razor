@@ -36,7 +36,7 @@ else
             <span class="spacer"></span>
             <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => MoveQuestion(qIndex, -1)">▲</button>
             <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => MoveQuestion(qIndex, 1)">▼</button>
-            <button class="btn btn--icon btn--danger" title="@T["Frage entfernen"]" @onclick="() => { Quiz.Questions.RemoveAt(qIndex); Notify(); }">✕</button>
+            <button class="btn btn--icon btn--danger" @onclick="() => { Quiz.Questions.RemoveAt(qIndex); Notify(); }"><Icon Name="x" Label="@T["Frage entfernen"]" /></button>
         </div>
         <LTextInput Model="question.Text" Locales="Locales" Label="@T["Fragetext"]" Changed="Notify" />
         @if (Quiz.HasFindings)
@@ -70,8 +70,8 @@ else
                             }
                         </select>
                     </label>
-                    <button class="btn btn--icon btn--danger" title="@T["Antwort entfernen"]"
-                            @onclick="() => { question.Options.RemoveAt(oIndex); Notify(); }">✕</button>
+                    <button class="btn btn--icon btn--danger"
+                            @onclick="() => { question.Options.RemoveAt(oIndex); Notify(); }"><Icon Name="x" Label="@T["Antwort entfernen"]" /></button>
                 </div>
                 @if (Quiz.HasFindings)
                 {
@@ -98,7 +98,7 @@ else
             <span class="spacer"></span>
             <label>@T["Von %"] <input class="small" value="@result.MinPct" @onchange="e => { result.MinPct = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
             <label>@T["Bis %"] <input class="small" value="@result.MaxPct" @onchange="e => { result.MaxPct = e.Value?.ToString() ?? string.Empty; Notify(); }" /></label>
-            <button class="btn btn--icon btn--danger" title="@T["Ergebnis entfernen"]" @onclick="() => { Quiz.Results.RemoveAt(rIndex); Notify(); }">✕</button>
+            <button class="btn btn--icon btn--danger" @onclick="() => { Quiz.Results.RemoveAt(rIndex); Notify(); }"><Icon Name="x" Label="@T["Ergebnis entfernen"]" /></button>
         </div>
         <LTextInput Model="result.Title" Locales="Locales" Label="@T["Titel"]" Changed="Notify" />
         <LTextInput Model="result.Body" Locales="Locales" Label="@T["Text"]" Multiline="true" Changed="Notify" />
