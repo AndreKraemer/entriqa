@@ -24,6 +24,9 @@ public sealed class WebhookCallStep(IPostWebhookPort webhook) : ISubmissionStep
         if (!Uri.TryCreate(config.GetString("url"), UriKind.Absolute, out var u) || u.Scheme != "https") yield return "URL fehlt oder ist kein https.";
     }
 
+    public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config) =>   // #21
+        new[] { new Entriqa.Domain.UseCases.TestNote("Zieladresse", config.GetString("url") ?? "") };
+
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {
         object payload = config.ValueKind == JsonValueKind.Object && config.TryGetProperty("payload", out var tpl) && tpl.ValueKind == JsonValueKind.Object

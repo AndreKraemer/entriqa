@@ -41,6 +41,14 @@ public sealed class ReportingCloudPdfStep(IMergeDocumentPort merge, IStoreArtifa
         else if (string.IsNullOrWhiteSpace(config.GetString("template", form.DefaultLocale))) yield return "keine Vorlage gewählt.";
     }
 
+    public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config)   // #21
+    {
+        var template = ctx.Form.Quiz is not null
+            ? config.GetStringMap("templates", ctx.Submission.Locale).GetValueOrDefault(ctx.Submission.Quiz?.ResultId ?? "")
+            : config.GetString("template", ctx.Submission.Locale);
+        return new[] { new Entriqa.Domain.UseCases.TestNote("Vorlage", template ?? "") };
+    }
+
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {
         var template = ctx.Form.Quiz is not null

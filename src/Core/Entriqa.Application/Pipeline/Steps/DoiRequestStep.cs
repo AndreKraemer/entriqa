@@ -19,6 +19,7 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
     public string Description => "Verschickt eine neutrale Bestätigungsmail mit Link. Alles, was danach kommt, läuft erst nach dem Klick.";
     public StepMode Mode => StepMode.Inline;
     public bool SplitsPhase => true;
+    public StepTestBehavior TestBehavior => StepTestBehavior.Redirected;    // #21: the confirmation mail goes to the admin
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField, StepNeed.ConsentField };
     public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Bestätigungsmail (Brevo-Vorlage)","format":"brevo-template","localizable":true}}}""";
     public IReadOnlyList<MailParam> MailParams => new MailParam[]
@@ -38,7 +39,9 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {
         if (ctx.Submission.IsConfirmed) return StepResult.Ok;              // another run after confirmation: nothing to do
-        var token = tokens.Issue(FormTokenService.KindConfirm, ctx.Submission.Id);
+        // In a test the link carries a test-confirm token: clicking it confirms nothing and shows a test hint (#21, AC9).
+        var kind = ctx.Test is null ? FormTokenService.KindConfirm : FormTokenService.KindConfirmTest;
+        var token = tokens.Issue(kind, ctx.Submission.Id);
         // The link points at the static confirmation page; only its button posts to /api/confirm.
         // Never straight at a GET endpoint - link scanners (Outlook SafeLinks and friends) would confirm the opt-in.
         var confirmUrl = $"{ctx.Options.BaseUrl.TrimEnd('/')}{ctx.Options.ConfirmPagePathFor(ctx.Submission.Locale)}?t={Uri.EscapeDataString(token)}";
@@ -51,7 +54,8 @@ public sealed class DoiRequestStep(ISendTransactionalMailPort mail, FormTokenSer
             ["site"] = ctx.Options.SiteName,
             ["validDays"] = ctx.Options.ConfirmTokenDays,
         };
-        await mail.SendAsync(ctx.Email!, ctx.FirstName, config.GetInt("templateId", ctx.Submission.Locale)!.Value, parameters, null, ct);
+        var to = ctx.Test?.MailTo ?? ctx.Email!;                            // #21: in a test the mail goes to the admin
+        await mail.SendAsync(to, ctx.FirstName, config.GetInt("templateId", ctx.Submission.Locale)!.Value, parameters, null, ct);
         return StepResult.Ok;
     }
 }

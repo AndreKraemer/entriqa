@@ -31,6 +31,12 @@ public sealed class BrevoCompanyStep(IUpsertBrevoCompanyPort companies) : ISubmi
             yield return "braucht einen \"Kontakt in Brevo anlegen\"-Schritt davor, damit der Kontakt existiert.";
     }
 
+    public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config)   // #21
+    {
+        ctx.Submission.Values.TryGetValue(config.GetString("field") ?? "", out var name);
+        return new[] { new Entriqa.Domain.UseCases.TestNote("Firma", name ?? "") };
+    }
+
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {
         var fieldId = config.GetString("field") ?? "";
