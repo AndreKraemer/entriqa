@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Entriqa.Application.Ports;
 using Entriqa.Domain.Errors;
 using Entriqa.Domain.Forms;
@@ -8,7 +9,8 @@ namespace Entriqa.Application.UseCases;
 
 internal sealed class GetSubmissionDetailUseCase(
     ITryGetSubmissionQuery getSubmission,
-    ITryGetFormVersionQuery getVersion) : IGetSubmissionDetailUseCase
+    ITryGetFormVersionQuery getVersion,
+    IOptions<EntriqaOptions> options) : IGetSubmissionDetailUseCase
 {
     public async Task<SubmissionDetailView> ExecuteAsync(string submissionId, CancellationToken ct = default)
     {
@@ -47,10 +49,12 @@ internal sealed class GetSubmissionDetailUseCase(
             }
         }
 
+        var expiresAt = SubmissionRetention.EffectiveExpiry(s.CreatedAt, s.RetainUntil, options.Value.RetentionDays);
         return new SubmissionDetailView(s.Id, s.Slug, s.Version, s.CreatedAt, s.Locale, s.Email, s.FirstName,
             s.Source, values, s.Quiz, resultTitle, s.ConsentText, s.ConfirmedAt, s.StepRuns,
             s.History.Entries.Reverse().ToList(), s.Handling, s.State,
-            s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee);
+            s.BrevoContactId, canResendDoi, quizAnswers, s.Assignee,
+            expiresAt, expiresAt == DateTimeOffset.MaxValue, s.RetainUntil.HasValue);
     }
 }
 
@@ -69,6 +73,48 @@ internal sealed class SetSubmissionHandlingUseCase(
             throw new AppException(ErrorCodes.Validation, ErrorMessages.HandlingUnsupported);
         s.Handling = handling;
         s.Record(HistoryTypes.Handling, HistoryActor.Admin(by), time.GetUtcNow(), handling);
+        await save.ExecuteAsync(s, ct);
+    }
+}
+
+/// <summary>
+/// Retain permanently, extend by a fixed period, or lift the exception (#15) - one field, three ways to
+/// change it, mirroring <see cref="SetSubmissionHandlingUseCase"/>.
+/// </summary>
+internal sealed class SetSubmissionRetentionUseCase(
+    ITryGetSubmissionQuery getSubmission,
+    ISaveSubmissionCommand save,
+    IOptions<EntriqaOptions> options,
+    TimeProvider time) : ISetSubmissionRetentionUseCase
+{
+    /// <summary>The fixed period behind "extend" (comprehension check, #15): a year, not a typed-in date.</summary>
+    private const int ExtensionDays = 365;
+
+    public async Task ExecuteAsync(string submissionId, SubmissionRetentionAction action, string? by, CancellationToken ct = default)
+    {
+        var s = await getSubmission.ExecuteAsync(submissionId, ct)
+            ?? throw new NotFoundException(ErrorCodes.SubmissionNotFound, ErrorMessages.SubmissionNotFound);
+        var now = time.GetUtcNow();
+        switch (action)
+        {
+            case SubmissionRetentionAction.RetainPermanently:
+                s.RetainUntil = DateTimeOffset.MaxValue;
+                s.Record(HistoryTypes.RetentionRetained, HistoryActor.Admin(by), now);
+                break;
+            case SubmissionRetentionAction.Extend:
+                if (s.RetainUntil == DateTimeOffset.MaxValue)
+                    throw new AppException(ErrorCodes.Validation, ErrorMessages.RetentionAlreadyPermanent);
+                var current = SubmissionRetention.EffectiveExpiry(s.CreatedAt, s.RetainUntil, options.Value.RetentionDays);
+                s.RetainUntil = current.AddDays(ExtensionDays);
+                s.Record(HistoryTypes.RetentionExtended, HistoryActor.Admin(by), now, s.RetainUntil.Value.ToString("O"));
+                break;
+            case SubmissionRetentionAction.Lift:
+                s.RetainUntil = null;
+                s.Record(HistoryTypes.RetentionLifted, HistoryActor.Admin(by), now);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(action), action, null);
+        }
         await save.ExecuteAsync(s, ct);
     }
 }

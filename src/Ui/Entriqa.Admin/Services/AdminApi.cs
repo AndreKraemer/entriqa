@@ -169,6 +169,13 @@ public sealed class AdminApi(HttpClient http)
         await ThrowIfError(res);
     }
 
+    /// <summary>Retain permanently, extend by the fixed period, or lift the exception (#15) - "retain" | "extend" | "lift".</summary>
+    public async Task SetRetentionAsync(string id, string action)
+    {
+        var res = await http.PostAsJsonAsync($"api/manage/submissions/{Uri.EscapeDataString(id)}/retention", new { action }, Json);
+        await ThrowIfError(res);
+    }
+
     /// <summary>The admins an assignment can choose from - those the application has seen at least once (#13).</summary>
     public Task<List<string>> ListAdminsAsync() => GetAsync<List<string>>("api/manage/admins");
 
@@ -249,13 +256,16 @@ public sealed record QuizStats(List<StatsBar> Results, int AvgPct, int EndedByJu
 public sealed record QuestionStats(string Question, int Seen, List<StatsBar> Options);
 public sealed record FieldStats(string Label, List<StatsBar> Options);
 public sealed record SubmissionListItem(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Email,
-    string Summary, int State, string Handling, string? QuizResultId, string? Assignee = null);
+    string Summary, int State, string Handling, string? QuizResultId, string? Assignee = null,
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false, bool HasRetentionOverride = false);
 
 public sealed record SubmissionDetail(string Id, string Slug, int Version, DateTimeOffset CreatedAt, string? Locale,
     string? Email, string? FirstName, string? Source, List<SubmissionValue> Values, QuizInfo? Quiz, string? QuizResultTitle,
     string? ConsentText, DateTimeOffset? ConfirmedAt, List<StepRunInfo> StepRuns,
     List<HistoryEntry>? History, string Handling, int State,
-    string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null);
+    string? BrevoContactId, bool CanResendDoi, List<QuizAnswer>? QuizAnswers, string? Assignee = null,
+    // #15: DateTimeOffset.MaxValue there means RetainedIndefinitely - check the flag first.
+    DateTimeOffset ExpiresAt = default, bool RetainedIndefinitely = false, bool HasRetentionOverride = false);
 
 /// <summary>One entry of a submission's history (#14), newest first as the API delivers it.</summary>
 public sealed record HistoryEntry(DateTimeOffset At, string Type, string Origin, string? By, string? Detail);
@@ -337,6 +347,11 @@ public static class Labels
             "assignee" => e.Detail is { Length: > 0 } target ? t.F("Zugewiesen an {0}", target) : t["Zuweisung entfernt"],
             "step.retry" => e.Detail is { Length: > 0 } step ? t.F("Schritt wiederholt: {0}", step) : t["Fehlgeschlagene Schritte wiederholt"],
             "doi.resend" => t["Bestätigungsmail erneut gesendet"],
+            "retention.retained" => t["Dauerhaft aufbewahrt"],
+            "retention.extended" => DateTimeOffset.TryParse(e.Detail, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var until)
+                ? t.F("Aufbewahrung verlängert bis {0}", until.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture))
+                : t["Aufbewahrung verlängert"],
+            "retention.lifted" => t["Ausnahme aufgehoben"],
             _ => e.Type,
         };
         var who = e.Origin == "system" ? t["automatisch"] : e.By is { Length: > 0 } by ? by : t["unbekannt"];

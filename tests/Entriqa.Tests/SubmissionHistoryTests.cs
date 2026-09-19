@@ -249,7 +249,7 @@ public class SubmissionHistoryTests
         var get = Substitute.For<ITryGetSubmissionQuery>();
         get.ExecuteAsync(Id, Arg.Any<CancellationToken>()).Returns(Stored(history: [older, newer]));
 
-        var view = await new GetSubmissionDetailUseCase(get, Substitute.For<ITryGetFormVersionQuery>()).ExecuteAsync(Id);
+        var view = await new GetSubmissionDetailUseCase(get, Substitute.For<ITryGetFormVersionQuery>(), Options.Create(TestData.Options())).ExecuteAsync(Id);
 
         Assert.Equal([newer.At, older.At], view.History.Select(e => e.At));
     }
@@ -377,6 +377,7 @@ public class SubmissionHistoryTests
     [Theory]
     [InlineData("AdminSetHandling", "setHandling")]
     [InlineData("AdminSetAssignee", "setAssignee")]
+    [InlineData("AdminSetRetention", "setRetention")]
     [InlineData("AdminRetryStep", "retry")]
     [InlineData("AdminResendDoi", "resendDoi")]
     public void GivenAnAdminOperationThatLeavesATrace_WhenItsEndpointIsRead_ThenItPassesTheSignedInName(

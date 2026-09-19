@@ -8,6 +8,9 @@ public static class HistoryTypes
     public const string Assignee = "assignee";      // Detail: who it went to, null = nobody
     public const string StepRetry = "step.retry";   // Detail: the step id, null = every failed step
     public const string DoiResend = "doi.resend";   // Detail: none
+    public const string RetentionRetained = "retention.retained";   // Detail: none
+    public const string RetentionExtended = "retention.extended";   // Detail: the new effective deadline (round-trip "O")
+    public const string RetentionLifted = "retention.lifted";       // Detail: none
 }
 
 /// <summary>Where an entry came from. See <see cref="HistoryActor"/> for why these are two values, not three.</summary>

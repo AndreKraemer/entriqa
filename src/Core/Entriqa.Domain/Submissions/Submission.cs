@@ -29,6 +29,12 @@ public sealed class Submission
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? ConfirmedIpHash { get; set; }
     public string? BrevoContactId { get; set; }
+    /// <summary>
+    /// The admin's override of the regular deadline (#15): null means none, <see cref="DateTimeOffset.MaxValue"/>
+    /// means retained permanently, any other value replaces the regular CreatedAt + RetentionDays deadline.
+    /// See <see cref="Submissions.SubmissionRetention"/> for how this combines with RetentionDays.
+    /// </summary>
+    public DateTimeOffset? RetainUntil { get; set; }
     public string? ETag { get; set; }                              // optimistic concurrency; set by the data layer
 
     public bool IsConfirmed => ConfirmedAt.HasValue;

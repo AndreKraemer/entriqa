@@ -23,6 +23,7 @@ public sealed class AdminFunctions(
     IGetSubmissionDetailUseCase getSubmission,
     ISetSubmissionHandlingUseCase setHandling,
     ISetSubmissionAssigneeUseCase setAssignee,
+    ISetSubmissionRetentionUseCase setRetention,
     IListAdminsUseCase listAdmins,
     IRecordAdminSeenUseCase recordSeen,
     IDeleteSubmissionAdminUseCase deleteSubmission,
@@ -208,6 +209,22 @@ public sealed class AdminFunctions(
         return new NoContentResult();
     }
 
+    [Function("AdminSetRetention")]
+    public async Task<IActionResult> SetRetention([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/submissions/{id}/retention")] HttpRequest req, string id, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var body = await JsonSerializer.DeserializeAsync<RetentionBody>(req.Body, Json, ct) ?? new RetentionBody(null);
+        var action = body.Action switch
+        {
+            "retain" => SubmissionRetentionAction.RetainPermanently,
+            "extend" => SubmissionRetentionAction.Extend,
+            "lift" => SubmissionRetentionAction.Lift,
+            _ => throw new Entriqa.Domain.Errors.AppException(Entriqa.Domain.Errors.ErrorCodes.Validation, Entriqa.Domain.Errors.ErrorMessages.RetentionActionInvalid),
+        };
+        await setRetention.ExecuteAsync(id, action, principal.TryUserName(req), ct);
+        return new NoContentResult();
+    }
+
     [Function("AdminListAdmins")]
     public async Task<IActionResult> Admins([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/admins")] HttpRequest req, CancellationToken ct)
     {
@@ -275,6 +292,7 @@ public sealed class AdminFunctions(
 
     private sealed record HandlingBody(string? Handling);
     private sealed record AssigneeBody(string? Assignee);
+    private sealed record RetentionBody(string? Action);
 
     [Function("AdminListSubmissions")]
     public async Task<IActionResult> List([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/forms/{slug}/submissions")] HttpRequest req, string slug, CancellationToken ct)

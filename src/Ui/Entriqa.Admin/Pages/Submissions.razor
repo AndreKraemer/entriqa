@@ -70,7 +70,7 @@ else
 
     <div class="table-scroll">
         <table>
-            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Bearbeiter"]</th><th>@T["Quiz"]</th></tr></thead>
+            <thead><tr><th></th><th>@T["Eingang"]</th>@if (Slug is null) { <th>@T["Formular"]</th> }<th>@T["Absender"]</th><th>@T["Status"]</th><th>@T["Bearbeitung"]</th><th>@T["Bearbeiter"]</th><th>@T["Quiz"]</th><th>@T["Aufbewahrung"]</th></tr></thead>
             <tbody>
             @foreach (var s in Paged)
             {
@@ -95,11 +95,25 @@ else
                         else { <span class="hint">–</span> }
                     </td>
                     <td>@(item.QuizResultId ?? "–")</td>
+                    <td>
+                        @if (item.RetainedIndefinitely)
+                        {
+                            <span class="chip chip--ok">@T["Dauerhaft"]</span>
+                        }
+                        else if (SubmissionRetentionDisplay.ExpiresWithinHighlightWindow(item, DateTimeOffset.UtcNow))
+                        {
+                            <span class="chip chip--wait">@T.F("Läuft in {0} Tagen ab", SubmissionRetentionDisplay.DaysUntilExpiry(item, DateTimeOffset.UtcNow))</span>
+                        }
+                        else
+                        {
+                            <span class="hint">@item.ExpiresAt.ToLocalTime().ToString("dd.MM.yyyy")</span>
+                        }
+                    </td>
                 </tr>
             }
             @if (!Paged.Any())
             {
-                <tr><td colspan="8" class="hint" style="text-align:center;padding:1.5rem">@_selection.EmptyMessage(T)</td></tr>
+                <tr><td colspan="9" class="hint" style="text-align:center;padding:1.5rem">@_selection.EmptyMessage(T)</td></tr>
             }
             </tbody>
         </table>

@@ -1,4 +1,6 @@
 using Azure;
+using Microsoft.Extensions.Options;
+using Entriqa.Application;
 using Entriqa.Application.Ports;
 using Entriqa.Data.Entities;
 using Entriqa.Data.Mapping;
@@ -6,7 +8,7 @@ using Entriqa.Domain.Submissions;
 
 namespace Entriqa.Data.Queries;
 
-internal sealed class ListRecentSubmissionsQuery(TableStorage storage) : IListRecentSubmissionsQuery
+internal sealed class ListRecentSubmissionsQuery(TableStorage storage, IOptions<EntriqaOptions> options) : IListRecentSubmissionsQuery
 {
     public async Task<IReadOnlyList<SubmissionListItem>> ExecuteAsync(string? slug, int max, CancellationToken ct = default)
     {
@@ -17,9 +19,10 @@ internal sealed class ListRecentSubmissionsQuery(TableStorage storage) : IListRe
         var query = slug is null
             ? table.QueryAsync<SubmissionEntity>(cancellationToken: ct)
             : table.QueryAsync<SubmissionEntity>(e => e.PartitionKey == slug, cancellationToken: ct);
+        var retentionDays = options.Value.RetentionDays;
         await foreach (var e in query)
         {
-            result.Add(SubmissionMapper.ToListItem(e));
+            result.Add(SubmissionRetention.Project(SubmissionMapper.ToListItem(e), e.RetainUntil, retentionDays));
             if (result.Count >= 5000) break;                     // emergency brake, far above the real volume
         }
         return result.OrderByDescending(s => s.CreatedAt).Take(max).ToList();

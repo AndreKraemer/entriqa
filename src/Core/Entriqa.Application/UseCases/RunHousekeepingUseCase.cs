@@ -13,7 +13,8 @@ namespace Entriqa.Application.UseCases;
 /// The guaranteed fallback of the system (every 15 min via DevOps schedule):
 /// 1. Sweep - pick up stalled deferred runs (browser gone, sendBeacon lost).
 /// 2. Auto retry - try failed steps again up to AutoRetryMax; after that they belong to the admin.
-/// 3. Retention - delete submissions after RetentionDays (PDF blobs included), unconfirmed DOI after UnconfirmedRetentionDays.
+/// 3. Retention - delete submissions after RetentionDays (PDF blobs included), unconfirmed DOI after
+///    UnconfirmedRetentionDays - unless an admin's override still protects one of them (#15).
 /// 4. Security tables - dispose of expired nonces and old rate-limit windows.
 /// All idempotent and conflict tolerant: a parallel confirm or run simply wins.
 /// </summary>
@@ -60,6 +61,9 @@ internal sealed class RunHousekeepingUseCase(
         // 3: retention - blobs first, then the table entry (the other way round a crash would leave orphaned blobs without a pointer).
         foreach (var s in await list.ListExpiredAsync(now.AddDays(-o.RetentionDays), now.AddDays(-o.UnconfirmedRetentionDays), 500, ct))
         {
+            // #15: the query above only ever checks CreatedAt < cutoff and does not know RetainUntil
+            // exists, so an admin's exception has to be honoured here, before anything is deleted.
+            if (SubmissionRetention.IsProtected(s.CreatedAt, s.RetainUntil, o.RetentionDays, now)) continue;
             foreach (var path in s.Artifacts.Values.Where(v => !v.Contains("://", StringComparison.Ordinal)))
                 await artifacts.DeleteAsync(path, ct);                      // blob paths only; "download" is a URL
             await delete.ExecuteAsync(s, ct);
