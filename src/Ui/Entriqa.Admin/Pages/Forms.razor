@@ -47,11 +47,24 @@ else
                 </td>
                 <td>@f.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                 <td>
+                    @* Split button: the primary opens the editor, the chevron a menu with the rest. The menu is
+                       an overlay, out of flow, so a row's height never depends on how many actions it has. *@
                     <div class="row-actions">
-                        <a class="btn" href="forms/@f.Slug"><Icon Name="pencil" /> @T["Bearbeiten"]</a>
-                        <a class="btn" href="einsendungen/@f.Slug"><Icon Name="inbox" /> @T["Einsendungen"]</a>
-                        <button class="btn" disabled="@(f.Status != "published")" @onclick="() => _snippetSlug = f.Slug"><Icon Name="code" /> @T["Einbetten"]</button>
+                        <a class="btn split-main" href="forms/@f.Slug"><Icon Name="pencil" /> @T["Bearbeiten"]</a>
+                        <button class="btn split-toggle" id="eq-menutoggle-@f.Slug" aria-haspopup="true"
+                                aria-expanded="@(_menuSlug == f.Slug ? "true" : "false")"
+                                aria-label="@T.F("Weitere Aktionen für {0}", f.Name)"
+                                @onclick="() => ToggleMenu(f.Slug)"><Icon Name="chevron-down" /></button>
                     </div>
+                    @if (_menuSlug == f.Slug)
+                    {
+                        <div class="menu-scrim" @onclick="CloseMenu"></div>
+                        <div class="row-menu" id="eq-rowmenu" role="menu" @onkeydown="OnMenuKey">
+                            <a class="row-menu__item" role="menuitem" href="einsendungen/@f.Slug"><Icon Name="inbox" /> @T["Einsendungen"]</a>
+                            <button class="row-menu__item" role="menuitem" disabled="@(f.Status != "published")"
+                                    @onclick="() => { _snippetSlug = f.Slug; CloseMenu(); }"><Icon Name="code" /> @T["Einbetten"]</button>
+                        </div>
+                    }
                 </td>
             </tr>
         }
@@ -117,7 +130,7 @@ else
 @code {
     private List<FormListItem>? _forms;
     private Dictionary<string, FormActivity>? _activity;
-    private string? _error, _snippetSlug, _importError;
+    private string? _error, _snippetSlug, _importError, _menuSlug, _placedMenu, _refocusToggle;
     private string _newName = "";
     private string _newType = "contact";
     private string _search = "";
@@ -166,6 +179,38 @@ else
             _activity = await Api.GetActivityAsync();
         }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    // Only one row menu is open at a time; the toggle opens its own and closes any other.
+    private void ToggleMenu(string slug) => _menuSlug = _menuSlug == slug ? null : slug;
+
+    private void CloseMenu() => _menuSlug = null;
+
+    // Escape closes without triggering an action, and hands focus back to the toggle it came from.
+    private void OnMenuKey(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape" || _menuSlug is null) return;
+        _refocusToggle = $"eq-menutoggle-{_menuSlug}";
+        _menuSlug = null;
+    }
+
+    // The open menu is fixed-positioned in JS so it escapes the table's clipping (see rowmenu.js).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_menuSlug is not null && _placedMenu != _menuSlug)
+        {
+            _placedMenu = _menuSlug;
+            await Js.InvokeVoidAsync("eqRowMenu.place", $"eq-menutoggle-{_menuSlug}", "eq-rowmenu");
+        }
+        else if (_menuSlug is null)
+        {
+            _placedMenu = null;
+            if (_refocusToggle is { } id)
+            {
+                _refocusToggle = null;
+                await Js.InvokeVoidAsync("eqRowMenu.focus", id);
+            }
+        }
     }
 
     private static int SparkHeight(List<int> daily, int value)

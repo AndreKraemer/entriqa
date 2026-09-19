@@ -210,7 +210,24 @@ th { background: var(--panel-2); font-weight: 700; font-size: 11px; text-transfo
 td.label { font-weight: 600; width: 30%; }
 td.consent { font-size: 13px; color: var(--muted); }
 .rowlink { cursor: pointer; }
-.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Split button: primary + chevron toggle, joined, never wrapping - a row keeps one height whatever
+   its actions (#19, AC 1/2). The menu itself is a fixed overlay (.row-menu), out of the row's flow. */
+.row-actions { display: inline-flex; }
+.row-actions .split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.row-actions .split-toggle { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; padding: 0 8px; }
+.row-menu {
+    position: fixed; z-index: 50; min-width: 190px; padding: 4px;
+    display: flex; flex-direction: column; gap: 2px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-s); box-shadow: var(--shadow-pop);
+}
+.row-menu__item {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    padding: 7px 10px; border: 0; border-radius: var(--radius-s); background: none;
+    color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.row-menu__item:hover:not(:disabled), .row-menu__item:focus-visible { background: var(--panel-2); }
+.row-menu__item:disabled { opacity: .45; cursor: default; }
+.menu-scrim { position: fixed; inset: 0; z-index: 45; background: transparent; }
 .rowlink:hover td { background: var(--panel-2); }
 .row--sel td { background: var(--akzent-soft); }
 
