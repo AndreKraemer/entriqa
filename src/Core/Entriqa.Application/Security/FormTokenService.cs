@@ -13,6 +13,7 @@ namespace Entriqa.Application.Security;
 public sealed class FormTokenService
 {
     public const string KindForm = "form", KindRun = "run", KindConfirm = "confirm";
+    public const string KindConfirmTest = "confirm-test";   // #21: the confirm link inside a test mail - it confirms nothing
 
     private readonly byte[] _secret;
     private readonly TimeProvider _time;

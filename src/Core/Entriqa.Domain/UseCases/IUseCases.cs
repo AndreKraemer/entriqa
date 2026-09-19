@@ -33,7 +33,33 @@ public interface IConfirmSubmissionUseCase
     Task<ConfirmResult> ExecuteAsync(string confirmToken, string? clientIp, CancellationToken ct = default);
 }
 
-public sealed record ConfirmResult(string Slug, string RedirectUrl, bool AlreadyConfirmed);
+/// <summary><paramref name="IsTest"/> is true when the confirm link came from a test mail (#21): the page
+/// then shows a hint that it belonged to a test, and nothing is looked up or confirmed.</summary>
+public sealed record ConfirmResult(string Slug, string RedirectUrl, bool AlreadyConfirmed, bool IsTest = false);
+
+// Test mode (#21): run a draft through the pipeline without side effects.
+
+/// <summary>
+/// Runs a draft through validation, quiz scoring and every pipeline step without any side effect (#21):
+/// the draft is loaded (never the published version), mail steps go to the signed-in admin, steps with an
+/// external write are suppressed and describe what they would have done, and nothing is ever stored.
+/// </summary>
+public interface IRunFormTestUseCase
+{
+    Task<FormTestResult> ExecuteAsync(FormTestRequest request, CancellationToken ct = default);
+}
+
+/// <summary><paramref name="AdminEmail"/> is where mail steps are redirected; null when the principal carried none.</summary>
+public sealed record FormTestRequest(string Slug, string? Lang, Dictionary<string, string> Values, Dictionary<string, string>? Answers, string? AdminEmail);
+
+/// <summary>The protocol of a test run: one verdict per step, plus the address mail steps were sent to.</summary>
+public sealed record FormTestResult(IReadOnlyList<TestStepOutcome> Steps, string? MailTo);
+
+/// <summary>One step's verdict in a test run (#21): whether it would have run, was skipped or failed, with resolved values.</summary>
+public sealed record TestStepOutcome(string StepId, string StepKey, StepRunStatus Status, string? Error, IReadOnlyList<TestNote> Notes);
+
+/// <summary>A resolved value a suppressed step would have used - a list, template, file or target address (#21).</summary>
+public sealed record TestNote(string Label, string Value);
 
 /// <summary>Housekeeping (every 15 min via DevOps schedule): deferred sweep, auto retry, retention, cleaning up the security tables.</summary>
 public interface IRunHousekeepingUseCase

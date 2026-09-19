@@ -106,6 +106,19 @@ public sealed class SubmissionPipelineService(
         return deferredLeft;
     }
 
+    /// <summary>
+    /// Walks the whole pipeline for a test (#21) without any side effect: mail steps send to
+    /// <paramref name="adminMailTo"/>, steps with an external write are suppressed and describe what they
+    /// would have done, and every step - including those after the confirmation gate - gets a verdict.
+    /// Returns one <see cref="TestStepOutcome"/> per step; the submission is never persisted by this method.
+    /// </summary>
+    public Task<IReadOnlyList<Domain.UseCases.TestStepOutcome>> RunTestAsync(
+        Submission submission, FormDefinition form, int version, string? adminMailTo, CancellationToken ct = default)
+    {
+        _ = _steps;     // skeleton (#21): the real walk resolves steps from the registry; no logic yet
+        return Task.FromResult<IReadOnlyList<Domain.UseCases.TestStepOutcome>>(Array.Empty<Domain.UseCases.TestStepOutcome>());
+    }
+
     private static bool ConditionMet(string when, Submission s) => when switch
     {
         StepConditions.Always or "" or null => true,
