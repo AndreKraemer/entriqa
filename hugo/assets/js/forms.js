@@ -582,6 +582,7 @@
   // #21: the test protocol. Deliberately NOT eq-* classes - this is an admin-only view, not part of the
   // theme markup contract (check-eq-classes.mjs guards eq-* only). Steps: [{stepKey, statusName, error, notes:[{label,value}]}].
   FormWidget.prototype.renderTestReport = function (report) {
+    var self = this;    // captured once for the step/note callbacks below (strict mode: `this` is undefined inside forEach)
     var keep = this.form.querySelector('.eq-form__intro');
     this.form.innerHTML = '';
     if (keep) this.form.appendChild(keep);
@@ -601,7 +602,6 @@
       // Error and note labels are catalogue keys (a suppressed step's label, the no-address message); the
       // server sends the key and this renders it in the form's language. Raw exception text is not a key,
       // so t() returns it unchanged as the fallback.
-      var self = this;
       if (s.error) li.appendChild(el('div', { 'class': 'eqtest-step__error' }, self.t(s.error, s.error)));
       if (s.notes && s.notes.length) {
         var nl = el('ul', { 'class': 'eqtest-notes' });
