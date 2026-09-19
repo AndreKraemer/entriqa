@@ -27,7 +27,64 @@ else
         <span class="hint" style="margin-left:auto">@T["Zeitraum Verlauf: letzte 14 Tage"]</span>
     </div>
 
-    @if (Slug is null) { <p class="hint">@T["Wähle ein veröffentlichtes Formular."]</p> }
+    @if (Slug is null)
+    {
+        @if (_overall is null) { <p>@T["Lade …"]</p> }
+        else if (_overall.Forms.Count == 0)
+        {
+            <p class="hint">@T["Noch kein Formular veröffentlicht – sobald eines veröffentlicht ist, erscheint hier die übergreifende Auswertung."]</p>
+        }
+        else
+        {
+            <div class="kpis">
+                <div class="kpi"><div class="kpi-v">@_overall.Total</div><div class="kpi-l">@T["Einsendungen gesamt"]</div></div>
+                <div class="kpi"><div class="kpi-v">@Pct(_overall.Confirmed, _overall.WithEmail) %</div><div class="kpi-l">@T.F("DOI-Quote gesamt (bestätigt {0} / mit E-Mail {1})", _overall.Confirmed, _overall.WithEmail)</div></div>
+                <div class="kpi"><div class="kpi-v">@_overall.Failed</div><div class="kpi-l">@T["mit fehlgeschlagenen Schritten"]</div></div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top:0">@T["Einsendungen pro Tag"]</h2>
+                <div class="day-bars">
+                    @foreach (var (d, i) in _overall.Daily.Select((d, i) => (d, i)))
+                    {
+                        <div class="day-col">
+                            <span class="hint">@(d > 0 ? d.ToString() : "")</span>
+                            <div class="day-bar @(i >= 7 ? "day-bar--recent" : "")" style="height:@(BarHeight(d, _overall.Daily))px"></div>
+                        </div>
+                    }
+                </div>
+                <div class="day-legend"><span>@T["vor 14 Tagen"]</span><span>@T["heute"]</span></div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top:0">@T["Formulare nach Einsendungen"]</h2>
+                @{ var maxForm = Math.Max(_overall.Forms.Max(f => f.Total), 1); }
+                @foreach (var f in _overall.Forms) { @Bar(f.Name, f.Total, maxForm) }
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top:0">@T["Aufrufe und Abschlussquote je Formular"]</h2>
+                <p class="hint">@T["Aufrufe und Abschlussquote der letzten 14 Tage."]</p>
+                <table>
+                    <thead><tr><th>@T["Formular"]</th><th>@T["Aufrufe"]</th><th>@T["Abschlussquote"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var f in _overall.Forms)
+                        {
+                            <tr><td>@f.Name</td><td>@f.Views</td><td>@Pct(f.Recent, Math.Max(f.Starts, 1)) %</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (_overall.Sources.Count > 0)
+            {
+                <div class="card">
+                    <h2 style="margin-top:0">@T["Herkunft (utm_source)"]</h2>
+                    @foreach (var b in _overall.Sources) { @Bar(b.Label, b.Count, _overall.Total) }
+                </div>
+            }
+        }
+    }
     else if (_stats is null) { <p>@T["Lade …"]</p> }
     else
     {
@@ -110,6 +167,7 @@ else
 
     private List<FormListItem>? _forms;
     private FormStats? _stats;
+    private OverallStats? _overall;
     private int? _version;
     private string? _error;
 
@@ -127,16 +185,23 @@ else
     private async Task LoadStats()
     {
         _stats = null;
-        if (Slug is null) return;
-        try { _stats = await Api.GetStatsAsync(Slug, _version); _error = null; }
+        _overall = null;
+        try
+        {
+            if (Slug is null) { _overall = await Api.GetOverallStatsAsync(); }
+            else { _stats = await Api.GetStatsAsync(Slug, _version); }
+            _error = null;
+        }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
     }
 
     private static int Pct(int part, int total) => total == 0 ? 0 : (int)Math.Round(part * 100.0 / total);
 
-    private int BarHeight(int value)
+    private int BarHeight(int value) => BarHeight(value, _stats!.Daily);
+
+    private static int BarHeight(int value, IReadOnlyList<int> series)
     {
-        var max = Math.Max(_stats!.Daily.Max(), 1);
+        var max = Math.Max(series.Max(), 1);
         return Math.Max(3, (int)Math.Round(value * 70.0 / max));
     }
 
