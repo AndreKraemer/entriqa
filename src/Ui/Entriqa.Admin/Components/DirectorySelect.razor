@@ -28,9 +28,8 @@
                 {
                     <span class="hint"> · @(Complete ? T["nicht mehr in Brevo"] : T["Verzeichnis nicht geladen"])</span>
                 }
-                <button type="button" class="btn btn--icon" title="@T["Entfernen"]"
-                        aria-label="@T.F("{0} entfernen", entry?.Name ?? chosenId.ToString())"
-                        @onclick="() => Remove(chosenId)">✕</button>
+                <button type="button" class="btn btn--icon"
+                        @onclick="() => Remove(chosenId)"><Icon Name="x" Label="@T.F("{0} entfernen", entry?.Name ?? chosenId.ToString())" /></button>
             </span>
         }
     </div>

@@ -1,0 +1,32 @@
+@* The reusable icon. It draws an inline <svg> - no external request (#18, AC 3) - whose glyph comes
+   from the bundled IconLibrary and whose colour and size follow the surrounding text (AC 5): the
+   stroke is currentColor and the box is 1em unless Size overrides it. Accessibility (AC 4) is decided
+   by IconAttributes from whether a Label was given. The <svg> carries no xmlns, matching the admin's
+   other inline SVG (MainLayout's brand mark) and keeping the markup free of any http reference. *@
+
+@{
+    var a = IconAttributes.For(Label);
+    var box = string.IsNullOrEmpty(Size) ? "1em" : Size;
+}
+<svg viewBox="0 0 24 24" width="@box" height="@box" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     class="eq-icon" focusable="false"
+     role="@(a.AriaHidden ? null : "img")"
+     aria-hidden="@(a.AriaHidden ? "true" : null)"
+     aria-label="@a.AriaLabel">
+    @if (a.Title is not null)
+    {
+        <title>@a.Title</title>
+    }
+    @((MarkupString)IconLibrary.Path(Name))
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+
+    /// <summary>A CSS length; when omitted the icon takes 1em, the size of the surrounding text.</summary>
+    [Parameter] public string? Size { get; set; }
+
+    /// <summary>A screen-reader label and tooltip for a standalone icon; omit it when text accompanies the icon.</summary>
+    [Parameter] public string? Label { get; set; }
+}

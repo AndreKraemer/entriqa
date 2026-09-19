@@ -16,9 +16,9 @@
         @if (!Panel)
         {
             <span class="spacer"></span>
-            <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">▲</button>
-            <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">▼</button>
-            <button class="btn btn--icon btn--danger" title="@T["Entfernen"]" @onclick="() => OnRemove.InvokeAsync()">✕</button>
+            <button class="btn btn--icon" @onclick="() => OnMove.InvokeAsync(-1)"><Icon Name="chevron-up" Label="@T["Nach oben"]" /></button>
+            <button class="btn btn--icon" @onclick="() => OnMove.InvokeAsync(1)"><Icon Name="chevron-down" Label="@T["Nach unten"]" /></button>
+            <button class="btn btn--icon btn--danger" @onclick="() => OnRemove.InvokeAsync()"><Icon Name="x" Label="@T["Entfernen"]" /></button>
         }
     </div>
 
@@ -61,8 +61,8 @@
             var index = i;
             <div class="option-row">
                 <LTextInput Model="opt" Locales="Locales" ActiveLocale="@ActiveLocale" Changed="Notify" />
-                <button class="btn btn--icon btn--danger" title="@T["Option entfernen"]"
-                        @onclick="() => { Field.Options.RemoveAt(index); Notify(); }">✕</button>
+                <button class="btn btn--icon btn--danger"
+                        @onclick="() => { Field.Options.RemoveAt(index); Notify(); }"><Icon Name="x" Label="@T["Option entfernen"]" /></button>
             </div>
         }
         <button class="btn" @onclick="() => { Field.Options.Add(new LTextModel()); Notify(); }">@T["Option hinzufügen"]</button>
@@ -156,8 +156,8 @@
     @if (Panel)
     {
         <div class="panel-remove">
-            <button class="btn" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">@T["▲ Hoch"]</button>
-            <button class="btn" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">@T["▼ Runter"]</button>
+            <button class="btn" @onclick="() => OnMove.InvokeAsync(-1)"><Icon Name="chevron-up" /> @T["Hoch"]</button>
+            <button class="btn" @onclick="() => OnMove.InvokeAsync(1)"><Icon Name="chevron-down" /> @T["Runter"]</button>
             <span class="spacer"></span>
             <button class="btn btn--danger" @onclick="() => OnRemove.InvokeAsync()">@T["Entfernen"]</button>
         </div>
