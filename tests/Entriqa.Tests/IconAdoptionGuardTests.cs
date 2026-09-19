@@ -37,4 +37,18 @@ public class IconAdoptionGuardTests
 
         Assert.DoesNotContain("✕", source, StringComparison.Ordinal);
     }
+
+    // The move buttons carried bare ▲/▼ text characters - the same symptom as the times character,
+    // one that behaves like a letter rather than a glyph. Absence-asserting, red now.
+    [Theory]
+    [InlineData("Components/FieldEditor.razor")]
+    [InlineData("Components/QuizEditor.razor")]
+    [InlineData("Components/StepEditor.razor")]
+    public void GivenAMoveButton_WhenReadingItsMarkup_ThenTheBareArrowCharactersAreGone(string relativePath)
+    {
+        var source = AdminMarkup.Read(relativePath.Split('/'));
+
+        Assert.DoesNotContain("▲", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("▼", source, StringComparison.Ordinal);
+    }
 }

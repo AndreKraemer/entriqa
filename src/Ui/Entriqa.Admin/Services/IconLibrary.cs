@@ -15,6 +15,8 @@ public static class IconLibrary
     private static readonly Dictionary<string, string> Glyphs = new(StringComparer.Ordinal)
     {
         ["x"] = """<path d="M18 6 6 18"/><path d="m6 6 12 12"/>""",
+        ["chevron-up"] = """<path d="m18 15-6-6-6 6"/>""",
+        ["chevron-down"] = """<path d="m6 9 6 6 6-6"/>""",
         ["pencil"] = """<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>""",
         ["inbox"] = """<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>""",
         ["code"] = """<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>""",

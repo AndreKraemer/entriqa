@@ -14,8 +14,8 @@
         @if (Descriptor is { Mode: "deferred" }) { <span class="chip chip--wait">@T["Hintergrund"]</span> }
         @if (Descriptor is { SplitsPhase: true }) { <span class="chip chip--busy">@T["teilt: alles danach erst nach Bestätigung"]</span> }
         <span class="spacer"></span>
-        <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => OnMove.InvokeAsync(-1)">▲</button>
-        <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => OnMove.InvokeAsync(1)">▼</button>
+        <button class="btn btn--icon" @onclick="() => OnMove.InvokeAsync(-1)"><Icon Name="chevron-up" Label="@T["Nach oben"]" /></button>
+        <button class="btn btn--icon" @onclick="() => OnMove.InvokeAsync(1)"><Icon Name="chevron-down" Label="@T["Nach unten"]" /></button>
         <button class="btn btn--icon btn--danger" @onclick="() => OnRemove.InvokeAsync()"><Icon Name="x" Label="@T["Entfernen"]" /></button>
     </div>
     @if (Descriptor is not null) { <p class="hint">@T[Descriptor.Description]</p> }

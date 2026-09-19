@@ -34,8 +34,8 @@ else
             <input class="id-input" value="@question.Id" title="@T["Fragen-ID (stabil, für Sprünge)"]"
                    @onchange="e => { question.Id = e.Value?.ToString() ?? string.Empty; Notify(); }" />
             <span class="spacer"></span>
-            <button class="btn btn--icon" title="@T["Nach oben"]" @onclick="() => MoveQuestion(qIndex, -1)">▲</button>
-            <button class="btn btn--icon" title="@T["Nach unten"]" @onclick="() => MoveQuestion(qIndex, 1)">▼</button>
+            <button class="btn btn--icon" @onclick="() => MoveQuestion(qIndex, -1)"><Icon Name="chevron-up" Label="@T["Nach oben"]" /></button>
+            <button class="btn btn--icon" @onclick="() => MoveQuestion(qIndex, 1)"><Icon Name="chevron-down" Label="@T["Nach unten"]" /></button>
             <button class="btn btn--icon btn--danger" @onclick="() => { Quiz.Questions.RemoveAt(qIndex); Notify(); }"><Icon Name="x" Label="@T["Frage entfernen"]" /></button>
         </div>
         <LTextInput Model="question.Text" Locales="Locales" Label="@T["Fragetext"]" Changed="Notify" />

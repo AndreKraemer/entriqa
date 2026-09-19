@@ -47,8 +47,8 @@ public sealed class Ui
         ["Wiederholen"] = "Retry",
         ["Nach oben"] = "Move up",
         ["Nach unten"] = "Move down",
-        ["▲ Hoch"] = "▲ Up",
-        ["▼ Runter"] = "▼ Down",
+        ["Hoch"] = "Up",
+        ["Runter"] = "Down",
 
         // Formularliste
         ["Typ"] = "Type",
