@@ -14,5 +14,8 @@ public sealed record IconRendering(bool AriaHidden, string? AriaLabel, string? T
 /// </summary>
 public static class IconAttributes
 {
-    public static IconRendering For(string? label) => throw new NotImplementedException();
+    public static IconRendering For(string? label) =>
+        string.IsNullOrWhiteSpace(label)
+            ? new IconRendering(AriaHidden: true, AriaLabel: null, Title: null)
+            : new IconRendering(AriaHidden: false, AriaLabel: label, Title: label);
 }
