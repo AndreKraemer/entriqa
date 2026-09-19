@@ -97,6 +97,18 @@ public interface IListSubmissionsForStatsQuery
     Task<IReadOnlyList<Submission>> ExecuteAsync(string slug, int max, CancellationToken ct = default);
 }
 
+public interface IListAllSubmissionsForStatsQuery
+{
+    /// <summary>Every submission of every form as domain objects - for the cross-form statistics (#16).</summary>
+    Task<IReadOnlyList<Submission>> ExecuteAsync(int max, CancellationToken ct = default);
+}
+
+public interface IGetAllFunnelTotalsQuery
+{
+    /// <summary>View and start totals per form slug from <paramref name="from"/> onwards (inclusive), across all forms (#16).</summary>
+    Task<IReadOnlyDictionary<string, Domain.UseCases.FunnelStats>> ExecuteAsync(DateOnly from, CancellationToken ct = default);
+}
+
 public interface IGetLastVisitQuery
 {
     Task<DateTimeOffset?> ExecuteAsync(string user, CancellationToken ct = default);

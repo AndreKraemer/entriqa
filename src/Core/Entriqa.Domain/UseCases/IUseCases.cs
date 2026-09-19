@@ -130,6 +130,33 @@ public sealed record FormStats(
 
 public sealed record FunnelStats(int Views, int Starts);
 
+public interface IGetOverallStatsUseCase
+{
+    /// <summary>
+    /// Statistics across all published forms - the view shown when no single form is chosen (#16).
+    /// Carries no quiz metrics: questions, options and results differ per form and do not compare across forms.
+    /// </summary>
+    Task<OverallStats> ExecuteAsync(CancellationToken ct = default);
+}
+
+public sealed record OverallStats(
+    int Total,                                             // all-time submissions across all forms
+    IReadOnlyList<int> Daily,                              // 14 entries, [0] = 13 days ago … [13] = today (UTC), summed over all forms
+    int WithEmail,
+    int Confirmed,                                         // DOI confirmed
+    int AwaitingConfirmation,
+    int Failed,
+    IReadOnlyList<StatsBar> Sources,                       // utm_source across all forms
+    IReadOnlyList<FormBreakdown> Forms);                   // every published form, submissions descending; empty = no published form
+
+public sealed record FormBreakdown(
+    string Slug,
+    string Name,
+    int Total,                                             // all-time submissions of this form
+    int Recent,                                            // submissions in the last 14 days (for the completion rate)
+    int Views,                                             // funnel views, last 14 days
+    int Starts);                                           // funnel starts, last 14 days
+
 public interface ICountFormEventUseCase
 {
     /// <summary>Counts a form event (view | start) as a daily counter - without ids, without cookies, without content.</summary>
