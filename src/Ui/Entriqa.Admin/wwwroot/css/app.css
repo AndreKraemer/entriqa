@@ -215,11 +215,15 @@ td.consent { font-size: 13px; color: var(--muted); }
 .row-actions { display: inline-flex; }
 .row-actions .split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .row-actions .split-toggle { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; padding: 0 8px; }
+/* A native popover: it renders in the top layer (escapes the table's overflow clip) and anchors under
+   the toggle via CSS anchor positioning, flipping above when there is no room below. No JS. */
 .row-menu {
-    position: fixed; z-index: 50; min-width: 190px; padding: 4px;
-    display: flex; flex-direction: column; gap: 2px;
+    min-width: 190px; padding: 4px; margin: 4px 0 0;
     background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-s); box-shadow: var(--shadow-pop);
+    position-area: bottom span-left;
+    position-try-fallbacks: flip-block;
 }
+.row-menu:popover-open { display: flex; flex-direction: column; gap: 2px; }
 .row-menu__item {
     display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
     padding: 7px 10px; border: 0; border-radius: var(--radius-s); background: none;
@@ -227,7 +231,6 @@ td.consent { font-size: 13px; color: var(--muted); }
 }
 .row-menu__item:hover:not(:disabled), .row-menu__item:focus-visible { background: var(--panel-2); }
 .row-menu__item:disabled { opacity: .45; cursor: default; }
-.menu-scrim { position: fixed; inset: 0; z-index: 45; background: transparent; }
 .rowlink:hover td { background: var(--panel-2); }
 .row--sel td { background: var(--akzent-soft); }
 
