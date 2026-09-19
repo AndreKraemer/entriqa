@@ -44,6 +44,22 @@ internal sealed class ListSubmissionsForStatsQuery(TableStorage storage) : IList
     }
 }
 
+internal sealed class ListAllSubmissionsForStatsQuery(TableStorage storage) : IListAllSubmissionsForStatsQuery
+{
+    public async Task<IReadOnlyList<Submission>> ExecuteAsync(int max, CancellationToken ct = default)
+    {
+        var table = await storage.GetAsync("Submissions");
+        var result = new List<Submission>();
+        // Full-table scan across every form's partition - established at this volume (see ContactQueries).
+        await foreach (var e in table.QueryAsync<SubmissionEntity>(maxPerPage: 1000, cancellationToken: ct))
+        {
+            result.Add(SubmissionMapper.ToDomain(e));
+            if (result.Count >= max) break;
+        }
+        return result;
+    }
+}
+
 internal sealed class GetFormsActivityQuery(TableStorage storage) : IGetFormsActivityQuery
 {
     public async Task<IReadOnlyDictionary<string, Domain.UseCases.FormActivity>> ExecuteAsync(DateTimeOffset today, CancellationToken ct = default)
