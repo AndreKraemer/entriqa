@@ -437,7 +437,6 @@ public sealed class Ui
         ["Alle Versionen"] = "All versions",
         ["Version {0}"] = "Version {0}",
         ["Zeitraum Verlauf: letzte 14 Tage"] = "Trend period: last 14 days",
-        ["Wähle ein veröffentlichtes Formular."] = "Choose a published form.",
         ["{0} per Weiche beendet"] = "{0} ended via branch",
         ["mit E-Mail-Adresse ({0})"] = "with an email address ({0})",
         ["Ø normierter Punktestand"] = "Ø normalized score",

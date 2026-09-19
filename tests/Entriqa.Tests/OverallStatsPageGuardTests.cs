@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Entriqa.Tests;
@@ -19,9 +20,14 @@ public class OverallStatsPageGuardTests
     {
         var markup = Stats();
 
-        // The no-form case routes to the overview endpoint, the chosen-form case keeps the per-form one (criterion 4).
-        Assert.Contains("Slug is null", markup, StringComparison.Ordinal);
-        Assert.Contains("Api.GetOverallStatsAsync()", markup, StringComparison.Ordinal);
+        // Read the wiring, not just the names: the overview call must sit *inside the `Slug is null`
+        // branch*, so that swapping the branch condition (Slug is not null) - a miswiring the two calls
+        // being present anywhere would not reveal - fails this test. See test-conventions: "the pull is
+        // what makes it a guard rather than a grep".
+        Assert.Matches(
+            new Regex(@"Slug\s+is\s+null\s*\)\s*\{\s*_overall\s*=\s*await\s+Api\.GetOverallStatsAsync\(\)", RegexOptions.Singleline),
+            markup);
+        // Criterion 4: the chosen-form path keeps the existing per-form call.
         Assert.Contains("Api.GetStatsAsync(", markup, StringComparison.Ordinal);
     }
 
