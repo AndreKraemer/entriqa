@@ -34,7 +34,7 @@ public sealed class BrevoCompanyStep(IUpsertBrevoCompanyPort companies) : ISubmi
     public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config)   // #21
     {
         ctx.Submission.Values.TryGetValue(config.GetString("field") ?? "", out var name);
-        return new[] { new Entriqa.Domain.UseCases.TestNote("Firma", name ?? "") };
+        return new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteCompany, name ?? "") };
     }
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)

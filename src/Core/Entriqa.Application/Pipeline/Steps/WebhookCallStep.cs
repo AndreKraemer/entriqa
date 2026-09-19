@@ -25,7 +25,7 @@ public sealed class WebhookCallStep(IPostWebhookPort webhook) : ISubmissionStep
     }
 
     public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config) =>   // #21
-        new[] { new Entriqa.Domain.UseCases.TestNote("Zieladresse", config.GetString("url") ?? "") };
+        new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteTarget, config.GetString("url") ?? "") };
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {

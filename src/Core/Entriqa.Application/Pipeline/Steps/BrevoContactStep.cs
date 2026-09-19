@@ -21,7 +21,7 @@ public sealed class BrevoContactStep(IUpsertBrevoContactPort contacts, TimeProvi
     }
 
     public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config) =>   // #21
-        new[] { new Entriqa.Domain.UseCases.TestNote("Listen", string.Join(", ", config.GetIntList("listIds", ctx.Submission.Locale))) };
+        new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteList, string.Join(", ", config.GetIntList("listIds", ctx.Submission.Locale))) };
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {

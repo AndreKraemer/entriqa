@@ -21,7 +21,7 @@ public sealed class LeadMagnetLinkStep(ICreateDownloadLinkPort links) : ISubmiss
     }
 
     public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config) =>   // #21
-        new[] { new Entriqa.Domain.UseCases.TestNote("Datei", config.GetString("blob", ctx.Submission.Locale) ?? "") };
+        new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteFile, config.GetString("blob", ctx.Submission.Locale) ?? "") };
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {

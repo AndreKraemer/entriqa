@@ -25,7 +25,7 @@ public sealed class TeamsNotifyStep(IPostWebhookPort webhook) : ISubmissionStep
 
     public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config)   // #21
     {
-        return new[] { new Entriqa.Domain.UseCases.TestNote("Teams-Webhook", config.GetString("webhookUrl") ?? "") };
+        return new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteTeams, config.GetString("webhookUrl") ?? "") };
     }
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)

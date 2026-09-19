@@ -598,10 +598,14 @@
       var li = el('li', { 'class': 'eqtest-step eqtest-step--' + name });
       li.appendChild(el('span', { 'class': 'eqtest-step__key' }, s.stepKey));
       li.appendChild(el('span', { 'class': 'eqtest-step__status' }, s.statusName || ''));
-      if (s.error) li.appendChild(el('div', { 'class': 'eqtest-step__error' }, s.error));
+      // Error and note labels are catalogue keys (a suppressed step's label, the no-address message); the
+      // server sends the key and this renders it in the form's language. Raw exception text is not a key,
+      // so t() returns it unchanged as the fallback.
+      var self = this;
+      if (s.error) li.appendChild(el('div', { 'class': 'eqtest-step__error' }, self.t(s.error, s.error)));
       if (s.notes && s.notes.length) {
         var nl = el('ul', { 'class': 'eqtest-notes' });
-        s.notes.forEach(function (n) { nl.appendChild(el('li', { 'class': 'eqtest-note' }, n.label + ': ' + n.value)); });
+        s.notes.forEach(function (n) { nl.appendChild(el('li', { 'class': 'eqtest-note' }, self.t(n.label, n.label) + ': ' + n.value)); });
         li.appendChild(nl);
       }
       list.appendChild(li);

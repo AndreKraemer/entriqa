@@ -46,7 +46,7 @@ public sealed class ReportingCloudPdfStep(IMergeDocumentPort merge, IStoreArtifa
         var template = ctx.Form.Quiz is not null
             ? config.GetStringMap("templates", ctx.Submission.Locale).GetValueOrDefault(ctx.Submission.Quiz?.ResultId ?? "")
             : config.GetString("template", ctx.Submission.Locale);
-        return new[] { new Entriqa.Domain.UseCases.TestNote("Vorlage", template ?? "") };
+        return new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteTemplate, template ?? "") };
     }
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)

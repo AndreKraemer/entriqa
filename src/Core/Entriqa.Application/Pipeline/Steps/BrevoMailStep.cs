@@ -51,7 +51,12 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
         }
 
         MailAttachment? attachment = null;
-        switch (config.GetString("attach") ?? "none")
+        // In a test the producing step (reportingcloud.pdf) is suppressed, so no "report" artifact exists.
+        // Send the mail without the attachment rather than throwing a false "Failed" (#21) - the producer is
+        // shown as skipped in its own protocol row. In a real run CheckConfig guarantees the artifact is present.
+        var attach = config.GetString("attach") ?? "none";
+        if (ctx.Test is not null && attach is "report" or "reportLink" && !ctx.Artifacts.ContainsKey("report")) attach = "none";
+        switch (attach)
         {
             case "download":
                 parameters["downloadUrl"] = ctx.Artifacts.GetValueOrDefault("download");

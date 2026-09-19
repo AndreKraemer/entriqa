@@ -39,7 +39,10 @@ public class FormTestModeTests
             new NotifyMailStep(mail),
             new DoiRequestStep(mail, TestData.Tokens()),
             new BrevoContactStep(contacts, TestData.Time),
+            new BrevoCompanyStep(Substitute.For<IUpsertBrevoCompanyPort>()),
             new BrevoMailStep(mail, Substitute.For<IStoreArtifactPort>(), Substitute.For<ICreateDownloadLinkPort>()),
+            new LeadMagnetLinkStep(Substitute.For<ICreateDownloadLinkPort>()),
+            new ReportingCloudPdfStep(Substitute.For<IMergeDocumentPort>(), Substitute.For<IStoreArtifactPort>(), TestData.Time),
             new WebhookCallStep(webhook),
             new TeamsNotifyStep(webhook),
         };
@@ -73,7 +76,7 @@ public class FormTestModeTests
     {
         Id = form.Slug + ":test", Slug = form.Slug, Version = 0, CreatedAt = TestData.Time.GetUtcNow(),
         Locale = "de", Email = "visitor@example.com", FirstName = "Max",
-        Values = new() { ["name"] = "Max Mustermann", ["email"] = "visitor@example.com", ["msg"] = "Hallo", ["consent"] = "on" },
+        Values = new() { ["name"] = "Max Mustermann", ["email"] = "visitor@example.com", ["msg"] = "Hallo", ["consent"] = "on", ["topic"] = "Acme" },
         StepRuns = pipeline.CreateRuns(form),
     };
 
@@ -121,6 +124,54 @@ public class FormTestModeTests
         Assert.Equal(StepRunStatus.Skipped, outcomes.Single(o => o.StepId == "s3").Status);   // brevo.contact, after DOI
         Assert.Equal(StepRunStatus.Ok, outcomes.Single(o => o.StepId == "s4").Status);         // brevo.mail, after DOI
         Assert.DoesNotContain(outcomes, o => o.Status == StepRunStatus.Waiting);
+    }
+
+    // AC6: every suppressed writing step reports its own resolved value - not just the webhook target, but
+    // the Brevo list, the lead-magnet file, the PDF template and the company field. (The note LABEL is a
+    // locale key rendered by forms.js; the asserted VALUE is the resolved, language-neutral datum.)
+    [Fact]
+    public async Task GivenSeveralSuppressedWritingSteps_WhenRunAsATest_ThenEachReportsItsOwnResolvedValue()
+    {
+        var rig = BuildPipeline();
+        var form = TestData.Contact() with
+        {
+            Pipeline = new[]
+            {
+                new StepDefinition("c", "brevo.contact", "always", TestData.Json("""{"listIds":[7,8]}""")),
+                new StepDefinition("f", "leadmagnet.link", "always", TestData.Json("""{"blob":"leadmagnets/guide.pdf"}""")),
+                new StepDefinition("p", "reportingcloud.pdf", "always", TestData.Json("""{"template":"vorlage-a"}""")),
+                new StepDefinition("co", "brevo.company", "always", TestData.Json("""{"field":"topic"}""")),
+            },
+        };
+
+        var outcomes = await rig.Pipeline.RunTestAsync(SubmissionFor(form, rig.Pipeline), form, 0, Admin);
+
+        Assert.Contains(outcomes.Single(o => o.StepId == "c").Notes, n => n.Value == "7, 8");
+        Assert.Contains(outcomes.Single(o => o.StepId == "f").Notes, n => n.Value == "leadmagnets/guide.pdf");
+        Assert.Contains(outcomes.Single(o => o.StepId == "p").Notes, n => n.Value == "vorlage-a");
+        Assert.Contains(outcomes.Single(o => o.StepId == "co").Notes, n => n.Value == "Acme");
+    }
+
+    // AC8, regression (review round 1): a mail step that would attach an artifact from a suppressed producer
+    // (reportingcloud.pdf -> brevo.mail attach:report) must not be reported as failed - the producer is
+    // shown skipped in its own row, and the mail still "sends" to the admin without the attachment.
+    [Fact]
+    public async Task GivenAMailAttachingAProductOfASuppressedStep_WhenRunAsATest_ThenItIsNotReportedAsFailed()
+    {
+        var rig = BuildPipeline();
+        var form = TestData.Contact() with
+        {
+            Pipeline = new[]
+            {
+                new StepDefinition("p", "reportingcloud.pdf", "always", TestData.Json("""{"template":"vorlage-a"}""")),
+                new StepDefinition("m", "brevo.mail", "always", TestData.Json("""{"templateId":5,"attach":"report"}""")),
+            },
+        };
+
+        var outcomes = await rig.Pipeline.RunTestAsync(SubmissionFor(form, rig.Pipeline), form, 0, Admin);
+
+        Assert.Equal(StepRunStatus.Skipped, outcomes.Single(o => o.StepId == "p").Status);
+        Assert.Equal(StepRunStatus.Ok, outcomes.Single(o => o.StepId == "m").Status);
     }
 
     // AC8: a mail step whose send fails is reported as failed, with the error text.

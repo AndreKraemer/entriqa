@@ -136,10 +136,10 @@ public sealed class SubmissionPipelineService(
             {
                 if (string.IsNullOrWhiteSpace(adminMailTo))
                 {
-                    // The issue's rule: report it, never send into the void. Operator-facing text like a
-                    // publish-check finding, so German literal rather than a rendered ErrorMessages key.
+                    // The issue's rule: report it, never send into the void. A ValidationMessages key, so
+                    // forms.js renders it in the form's language like the rest of the protocol (#21).
                     status = StepRunStatus.Failed;
-                    error = "Keine Adresse des angemeldeten Admins – der Testversand wurde nicht ausgeführt.";
+                    error = Domain.Validation.ValidationMessages.TestNoAddress;
                 }
                 else
                 {
