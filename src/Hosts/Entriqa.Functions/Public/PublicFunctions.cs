@@ -92,7 +92,8 @@ public sealed class PublicFunctions(
     {
         var body = await JsonSerializer.DeserializeAsync<ConfirmBody>(req.Body, Json, ct) ?? new ConfirmBody(null);
         var result = await confirm.ExecuteAsync(body.Token ?? "", SwaPrincipalReader.ClientIp(req), ct);
-        return new OkObjectResult(new { redirect = result.RedirectUrl + (result.AlreadyConfirmed ? "?already=1" : ""), already = result.AlreadyConfirmed });
+        // #21: a test link confirms nothing - the page shows a hint instead of redirecting.
+        return new OkObjectResult(new { redirect = result.RedirectUrl + (result.AlreadyConfirmed ? "?already=1" : ""), already = result.AlreadyConfirmed, test = result.IsTest });
     }
 
     private sealed record SubmitBody(string? Token, Dictionary<string, string>? Values, Dictionary<string, string>? Answers, string? Website, string? Lang);

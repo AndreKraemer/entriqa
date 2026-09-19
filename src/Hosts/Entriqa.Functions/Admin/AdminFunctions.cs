@@ -36,6 +36,8 @@ public sealed class AdminFunctions(
     IUploadLeadMagnetUseCase upload,
     IExportSubmissionsCsvUseCase exportCsv,
     IResendDoiUseCase resendDoi,
+    IGetDraftFormViewUseCase draftFormView,
+    IRunFormTestUseCase runTest,
     IGetFormsActivityUseCase activity,
     IGetAdminStatusUseCase status,
     IListContactsUseCase listContacts,
@@ -299,9 +301,32 @@ public sealed class AdminFunctions(
         return new AcceptedResult();
     }
 
+    /// <summary>The draft as the view forms.js renders (#21, AC1). No-store: a draft changes between tests.</summary>
+    [Function("AdminGetTestForm")]
+    public async Task<IActionResult> TestForm([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/forms/{slug}/test-form")] HttpRequest req, string slug, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        req.HttpContext.Response.Headers.CacheControl = "no-store";
+        return new OkObjectResult(await draftFormView.ExecuteAsync(slug, req.Query["lang"].FirstOrDefault(), ct));
+    }
+
+    /// <summary>Runs the draft through the pipeline without side effects (#21). Mail goes to the signed-in
+    /// admin; when userDetails is not an address we pass null, so the run reports it instead of sending.</summary>
+    [Function("AdminRunFormTest")]
+    public async Task<IActionResult> RunTest([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/forms/{slug}/test")] HttpRequest req, string slug, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var body = await JsonSerializer.DeserializeAsync<TestBody>(req.Body, Json, ct) ?? new TestBody(null, null, null);
+        RequestLocale.Remember(req.HttpContext, body.Lang);            // validation errors speak the form's language, as on submit
+        var admin = principal.TryUserName(req) is { } u && u.Contains('@', StringComparison.Ordinal) ? u : null;
+        var request = new Entriqa.Domain.UseCases.FormTestRequest(slug, body.Lang, body.Values ?? new(), body.Answers, admin);
+        return new OkObjectResult(await runTest.ExecuteAsync(request, ct));
+    }
+
     private sealed record HandlingBody(string? Handling);
     private sealed record AssigneeBody(string? Assignee);
     private sealed record RetentionBody(string? Action);
+    private sealed record TestBody(Dictionary<string, string>? Values, Dictionary<string, string>? Answers, string? Lang);
 
     [Function("AdminListSubmissions")]
     public async Task<IActionResult> List([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/forms/{slug}/submissions")] HttpRequest req, string slug, CancellationToken ct)

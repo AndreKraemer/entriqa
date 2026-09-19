@@ -49,6 +49,13 @@ public interface IRunFormTestUseCase
     Task<FormTestResult> ExecuteAsync(FormTestRequest request, CancellationToken ct = default);
 }
 
+/// <summary>The draft as the single-language view forms.js renders (#21, AC1) - the draft counterpart of
+/// <see cref="IGetPublishedFormUseCase"/>, so the test form looks exactly like the visitor's.</summary>
+public interface IGetDraftFormViewUseCase
+{
+    Task<PublicFormView> ExecuteAsync(string slug, string? lang = null, CancellationToken ct = default);
+}
+
 /// <summary><paramref name="AdminEmail"/> is where mail steps are redirected; null when the principal carried none.</summary>
 public sealed record FormTestRequest(string Slug, string? Lang, Dictionary<string, string> Values, Dictionary<string, string>? Answers, string? AdminEmail);
 
