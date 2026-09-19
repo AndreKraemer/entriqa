@@ -105,7 +105,7 @@ body {
     .whoami-name { display: none; }                          /* Initialen reichen, der Name steht im title */
     .content { margin: 16px auto; padding: 0 12px; }
     .card, .modal { padding: 14px 14px; }
-    .actions, .filters, .new-form { gap: 6px; }
+    .actions, .filters { gap: 6px; }
     .actions .btn { padding: 0 10px; }
     .kv { grid-template-columns: 1fr; gap: 2px 0; }
     .kv dt { margin-top: 8px; }
@@ -390,8 +390,11 @@ td.consent { font-size: 13px; color: var(--muted); }
 /* ---------- Aktionsleiste ---------- */
 .actions { display: flex; gap: 8px; align-items: center; margin: 24px 0; }
 .actions .spacer { flex: 1; }
-.new-form { display: flex; gap: 8px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
-.new-form input { min-width: 240px; }
+/* Header row: the title on the left, "Neues Formular" pushed to the right (#19). */
+.page-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.page-head > .btn { margin-left: auto; }
+.create-field { margin-bottom: 12px; }
+.create-field > input, .create-field > select { width: 100%; }
 .err-text { color: var(--err-ink); font-size: 12.5px; max-width: 260px; }
 .danger-zone { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); }
 
