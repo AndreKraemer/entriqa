@@ -236,6 +236,7 @@ else
     <div class="actions">
         <button class="btn" @onclick="Save" disabled="@_busy">@T["Speichern"]</button>
         <button class="btn" @onclick="Check" disabled="@_busy">@T["Prüfen"]</button>
+        <button class="btn" @onclick="Test" disabled="@_busy" title="@T["Öffnet den Entwurf als Testformular – ohne Nebenwirkungen"]">@T["Testen"]</button>
         <a class="btn" href="einsendungen/@Slug">@T["Einsendungen"]</a>
         <span class="spacer"></span>
         <button class="btn btn--primary" @onclick="OpenPublishDialog" disabled="@_busy">@T["Veröffentlichen …"]</button>
@@ -505,6 +506,16 @@ else
         await Api.SaveDraftAsync(Slug, json);
         _savedJson = json; _everSaved = true;
         _info = T["Entwurf gespeichert."];
+    });
+
+    // #21: save the current draft, then open it as a test form (side-effect-free) in a new tab.
+    // The test always runs against the saved draft, so the save is part of the action, not a precondition.
+    private async Task Test() => await Guarded(async () =>
+    {
+        var json = CurrentJson();
+        await Api.SaveDraftAsync(Slug, json);
+        _savedJson = json; _everSaved = true;
+        await Js.InvokeVoidAsync("open", $"/f/{Uri.EscapeDataString(Slug)}/?test=1", "_blank", "noopener");
     });
 
     // Autosave: only after the draft has been saved deliberately once (a new form that was merely

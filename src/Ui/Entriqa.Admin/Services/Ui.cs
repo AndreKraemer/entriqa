@@ -38,6 +38,8 @@ public sealed class Ui
         // Gemeinsame Aktionen
         ["Speichern"] = "Save",
         ["Prüfen"] = "Check",
+        ["Testen"] = "Test",
+        ["Öffnet den Entwurf als Testformular – ohne Nebenwirkungen"] = "Opens the draft as a test form – without side effects",
         ["Hinzufügen"] = "Add",
         ["Entfernen"] = "Remove",
         ["Abbrechen"] = "Cancel",

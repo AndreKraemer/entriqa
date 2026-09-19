@@ -63,7 +63,11 @@ public sealed record FormTestRequest(string Slug, string? Lang, Dictionary<strin
 public sealed record FormTestResult(IReadOnlyList<TestStepOutcome> Steps, string? MailTo);
 
 /// <summary>One step's verdict in a test run (#21): whether it would have run, was skipped or failed, with resolved values.</summary>
-public sealed record TestStepOutcome(string StepId, string StepKey, StepRunStatus Status, string? Error, IReadOnlyList<TestNote> Notes);
+public sealed record TestStepOutcome(string StepId, string StepKey, StepRunStatus Status, string? Error, IReadOnlyList<TestNote> Notes)
+{
+    /// <summary>The status as a stable string for the JS protocol view - the enum itself serializes as a number.</summary>
+    public string StatusName => Status.ToString();
+}
 
 /// <summary>A resolved value a suppressed step would have used - a list, template, file or target address (#21).</summary>
 public sealed record TestNote(string Label, string Value);

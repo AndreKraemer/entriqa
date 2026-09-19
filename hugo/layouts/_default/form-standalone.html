@@ -25,6 +25,9 @@
       return;
     }
     host.setAttribute('data-form', m[1]);
+    // #21: ?test=1 renders the DRAFT in the admin's test mode (side-effect-free). The data behind it is
+    // admin-gated (/api/manage/*), so this is only useful to a signed-in admin; anyone else sees a load error.
+    try { if (new URLSearchParams(window.location.search).get('test') === '1') host.setAttribute('data-test', '1'); } catch (e) { /* no query */ }
     if (window.eqForms) window.eqForms.init();
     else document.addEventListener('DOMContentLoaded', function () { window.eqForms && window.eqForms.init(); });
   })();
