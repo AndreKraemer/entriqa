@@ -122,3 +122,17 @@ internal sealed class ConsentProofEntity : ITableEntity
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? ConfirmedIpHash { get; set; }
 }
+
+internal sealed class AppointmentEntity : ITableEntity
+{
+    public string PartitionKey { get; set; } = default!;    // slug - appointments are master data of a form, not a version (#6)
+    public string RowKey { get; set; } = default!;          // stable appointment id, survives edits
+    public DateTimeOffset? Timestamp { get; set; }
+    public ETag ETag { get; set; }
+    public DateTimeOffset Start { get; set; }
+    public DateTimeOffset? End { get; set; }
+    public int Capacity { get; set; }
+    public string? Title { get; set; }
+    public bool WaitlistEnabled { get; set; }
+    public bool Active { get; set; } = true;                // deactivate flips this; the row stays (#6 AC 4)
+}

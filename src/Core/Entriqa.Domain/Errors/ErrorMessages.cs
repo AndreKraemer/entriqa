@@ -49,7 +49,9 @@ public static class ErrorMessages
         FormWithoutDoi = "formWithoutDoi",
         QuizPathLoop = "quizPathLoop",
         QuizResultMissing = "quizResultMissing",
-        StepUnknown = "stepUnknown";
+        StepUnknown = "stepUnknown",
+        AppointmentEndBeforeStart = "appointmentEndBeforeStart",
+        AppointmentNotFound = "appointmentNotFound";
 
     private static readonly Dictionary<string, string> De = new()
     {
@@ -92,6 +94,8 @@ public static class ErrorMessages
         [QuizPathLoop] = "Quiz-Pfad endet nicht.",
         [QuizResultMissing] = "Sprungziel-Ergebnis '{id}' fehlt.",
         [StepUnknown] = "Unbekannter Schritt '{key}'.",
+        [AppointmentEndBeforeStart] = "Das Ende eines Termins muss nach seinem Beginn liegen.",
+        [AppointmentNotFound] = "Termin nicht gefunden.",
     };
 
     private static readonly Dictionary<string, string> En = new()
@@ -135,6 +139,8 @@ public static class ErrorMessages
         [QuizPathLoop] = "The quiz path does not end.",
         [QuizResultMissing] = "Jump target result '{id}' is missing.",
         [StepUnknown] = "Unknown step '{key}'.",
+        [AppointmentEndBeforeStart] = "An appointment's end has to be after its start.",
+        [AppointmentNotFound] = "Appointment not found.",
     };
 
     /// <summary>The reference every other locale is measured against; German is the fallback, so it defines the keys.</summary>

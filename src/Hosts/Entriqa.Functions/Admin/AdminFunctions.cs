@@ -20,6 +20,10 @@ public sealed class AdminFunctions(
     IGetFormDraftUseCase getDraft,
     ISaveFormDraftUseCase saveDraft,
     IPublishFormUseCase publish,
+    IListAppointmentsUseCase listAppointments,
+    ISaveAppointmentUseCase saveAppointment,
+    IDeactivateAppointmentUseCase deactivateAppointment,
+    IDeleteAppointmentUseCase deleteAppointment,
     IGetSubmissionDetailUseCase getSubmission,
     ISetSubmissionHandlingUseCase setHandling,
     ISetSubmissionAssigneeUseCase setAssignee,
@@ -193,6 +197,65 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         return new OkObjectResult(await publish.ExecuteAsync(slug, principal.TryUserName(req) ?? "", ct));
+    }
+
+    // Appointments of a form (#6): master data of the slug, maintained without republishing the form.
+
+    [Function("AdminListAppointments")]
+    public async Task<IActionResult> Appointments([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/forms/{slug}/appointments")] HttpRequest req, string slug, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        return new OkObjectResult(await listAppointments.ExecuteAsync(slug, ct));
+    }
+
+    [Function("AdminCreateAppointment")]
+    public async Task<IActionResult> CreateAppointment([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/forms/{slug}/appointments")] HttpRequest req, string slug, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var body = await JsonSerializer.DeserializeAsync<AppointmentBody>(req.Body, Json, ct);
+        if (body is null) return new BadRequestResult();
+        return new OkObjectResult(await saveAppointment.ExecuteAsync(body.ToDomain(slug, id: ""), ct));
+    }
+
+    [Function("AdminUpdateAppointment")]
+    public async Task<IActionResult> UpdateAppointment([HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "manage/forms/{slug}/appointments/{id}")] HttpRequest req, string slug, string id, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        var body = await JsonSerializer.DeserializeAsync<AppointmentBody>(req.Body, Json, ct);
+        if (body is null) return new BadRequestResult();
+        return new OkObjectResult(await saveAppointment.ExecuteAsync(body.ToDomain(slug, id), ct));
+    }
+
+    [Function("AdminDeactivateAppointment")]
+    public async Task<IActionResult> DeactivateAppointment([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "manage/forms/{slug}/appointments/{id}/deactivate")] HttpRequest req, string slug, string id, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        await deactivateAppointment.ExecuteAsync(slug, id, ct);
+        return new NoContentResult();
+    }
+
+    [Function("AdminDeleteAppointment")]
+    public async Task<IActionResult> DeleteAppointment([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "manage/forms/{slug}/appointments/{id}")] HttpRequest req, string slug, string id, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        await deleteAppointment.ExecuteAsync(slug, id, ct);
+        return new NoContentResult();
+    }
+
+    /// <summary>The editable fields of an appointment; the slug comes from the route and the id is server-assigned on create.</summary>
+    private sealed record AppointmentBody(DateTimeOffset Start, DateTimeOffset? End, int Capacity, string? Title, bool WaitlistEnabled, bool? Active)
+    {
+        public Appointment ToDomain(string slug, string id) => new()
+        {
+            Slug = slug,
+            Id = id,
+            Start = Start,
+            End = End,
+            Capacity = Capacity,
+            Title = Title,
+            WaitlistEnabled = WaitlistEnabled,
+            Active = Active ?? true,
+        };
     }
 
     [Function("AdminGetSubmission")]

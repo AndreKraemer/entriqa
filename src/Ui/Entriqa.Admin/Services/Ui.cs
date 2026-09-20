@@ -539,6 +539,26 @@ public sealed class Ui
             "Production use requires an Entriqa license (app setting Entriqa__LicenseKey). Get one at andrekraemer.de/entriqa.",
         ["Details"] = "Details",
 
+        // appointments (#6)
+        ["Termine"] = "Appointments",
+        ["Termine · {0}"] = "Appointments · {0}",
+        ["Neuer Termin"] = "New appointment",
+        ["Termin bearbeiten"] = "Edit appointment",
+        ["‹ Zurück zu den Formularen"] = "‹ Back to forms",
+        ["Noch keine Termine angelegt."] = "No appointments yet.",
+        ["Beginn"] = "Start",
+        ["Ende"] = "End",
+        ["Ende (optional)"] = "End (optional)",
+        ["Plätze"] = "Seats",
+        ["Titel (optional)"] = "Title (optional)",
+        ["Warteliste zulassen"] = "Allow a waiting list",
+        ["Aktiv"] = "Active",
+        ["Deaktiviert"] = "Deactivated",
+        ["Deaktivieren"] = "Deactivate",
+        ["Löschen"] = "Delete",
+        ["Das Ende muss nach dem Beginn liegen."] = "The end has to be after the start.",
+        ["Diesen Termin wirklich löschen?"] = "Really delete this appointment?",
+
         // error messages
         ["Nicht angemeldet."] = "Not signed in.",
         ["Bitte zuerst anmelden: /.auth/login/aad öffnen, Benutzername wählen und im Rollen-Feld 'admin' eintragen (lokal simuliert die SWA-CLI den Login)."] =

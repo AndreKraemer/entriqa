@@ -69,6 +69,7 @@ else
                     </div>
                     <div popover id="eq-rowmenu-@f.Slug" class="row-menu" role="menu" style="position-anchor:--eq-rowmenu-@f.Slug">
                         <a class="row-menu__item" role="menuitem" href="einsendungen/@f.Slug"><Icon Name="inbox" /> @T["Einsendungen"]</a>
+                        <a class="row-menu__item" role="menuitem" href="termine/@f.Slug"><Icon Name="calendar" /> @T["Termine"]</a>
                         <button class="row-menu__item" role="menuitem" disabled="@(f.Status != "published")"
                                 popovertarget="eq-rowmenu-@f.Slug" popovertargetaction="hide"
                                 @onclick="() => _snippetSlug = f.Slug"><Icon Name="code" /> @T["Einbetten"]</button>

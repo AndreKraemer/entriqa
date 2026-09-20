@@ -405,3 +405,30 @@ public sealed record StepDescriptor(string Key, string Name, string Description,
 
 /// <summary>A variable that a step passes to Brevo templates - available in the template as <c>{{ params.Name }}</c>.</summary>
 public sealed record MailParam(string Name, string Description);
+
+// Appointments of a form (#6): create, list, deactivate, delete. Master data of a slug.
+
+public interface IListAppointmentsUseCase
+{
+    /// <summary>Every appointment of a form for the admin - active and inactive, soonest start first.</summary>
+    Task<IReadOnlyList<Appointment>> ExecuteAsync(string slug, CancellationToken ct = default);
+}
+
+public interface ISaveAppointmentUseCase
+{
+    /// <summary>Creates (empty id → a new one is assigned) or updates an appointment, and returns the stored
+    /// value. Rejects an end that is not after its start (AC 6).</summary>
+    Task<Appointment> ExecuteAsync(Appointment appointment, CancellationToken ct = default);
+}
+
+public interface IDeactivateAppointmentUseCase
+{
+    /// <summary>Marks the appointment inactive; it stays in the admin and keeps its identity. Unknown id → not found.</summary>
+    Task ExecuteAsync(string slug, string id, CancellationToken ct = default);
+}
+
+public interface IDeleteAppointmentUseCase
+{
+    /// <summary>Removes the appointment. The caller is responsible for the explicit confirmation (AC 5).</summary>
+    Task ExecuteAsync(string slug, string id, CancellationToken ct = default);
+}
