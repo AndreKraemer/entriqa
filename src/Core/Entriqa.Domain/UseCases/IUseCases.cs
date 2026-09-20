@@ -410,7 +410,7 @@ public sealed record MailParam(string Name, string Description);
 
 public interface IListAppointmentsUseCase
 {
-    /// <summary>Every appointment of a form for the admin - active and inactive, newest start first.</summary>
+    /// <summary>Every appointment of a form for the admin - active and inactive, soonest start first.</summary>
     Task<IReadOnlyList<Appointment>> ExecuteAsync(string slug, CancellationToken ct = default);
 }
 

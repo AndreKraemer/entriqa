@@ -19,4 +19,5 @@ public static class ErrorCodes
     public const string StepUnknown = "pipeline.step_unknown";
     public const string StepConfigInvalid = "pipeline.step_config_invalid";
     public const string Infrastructure = "infrastructure.error";
+    public const string AppointmentNotFound = "appointments.not_found";
 }
