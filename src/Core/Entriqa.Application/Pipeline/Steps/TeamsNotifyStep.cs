@@ -23,6 +23,11 @@ public sealed class TeamsNotifyStep(IPostWebhookPort webhook) : ISubmissionStep
         if (!Uri.TryCreate(config.GetString("webhookUrl"), UriKind.Absolute, out var u) || u.Scheme != "https") yield return "Webhook-URL fehlt oder ist kein https.";
     }
 
+    public IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config)   // #21
+    {
+        return new[] { new Entriqa.Domain.UseCases.TestNote(Entriqa.Domain.Validation.ValidationMessages.TestNoteTeams, config.GetString("webhookUrl") ?? "") };
+    }
+
     public async Task<StepResult> ExecuteAsync(StepContext ctx, JsonElement config, CancellationToken ct)
     {
         var title = PayloadTemplate.Fill(config.GetString("title") ?? "Neue Einsendung: {{form}}", ctx);

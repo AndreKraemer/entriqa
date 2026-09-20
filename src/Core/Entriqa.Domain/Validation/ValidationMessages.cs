@@ -13,7 +13,11 @@ public static class ValidationMessages
         Choice = "choice", MaxLength = "maxLength", TooLong = "tooLong", TooBig = "tooBig", QuizMissing = "quizMissing",
         UploadInvalid = "uploadInvalid", UploadTooBig = "uploadTooBig", UploadType = "uploadType", Uploading = "uploading", Uploaded = "uploaded",
         Choose = "choose", Next = "next", Back = "back", AnswerRequired = "answerRequired", QuestionLabel = "question",
-        LoadError = "loadError", SubmitError = "submitError";
+        LoadError = "loadError", SubmitError = "submitError",
+        // #21: the admin test protocol, rendered by forms.js in the form's language (like every other string here).
+        TestReportTitle = "testReportTitle", TestMailTo = "testMailTo", TestNoAddress = "testNoAddress",
+        TestNoteList = "testNoteList", TestNoteCompany = "testNoteCompany", TestNoteFile = "testNoteFile",
+        TestNoteTemplate = "testNoteTemplate", TestNoteTarget = "testNoteTarget", TestNoteTeams = "testNoteTeams";
 
     private static readonly Dictionary<string, string> De = new()
     {
@@ -43,6 +47,15 @@ public static class ValidationMessages
         [UploadType] = "Dieser Dateityp ist nicht erlaubt.",
         [Uploading] = "lädt hoch …",
         [Uploaded] = "hochgeladen",
+        [TestReportTitle] = "Testprotokoll",
+        [TestMailTo] = "Testmails an:",
+        [TestNoAddress] = "Keine Adresse des angemeldeten Admins – der Testversand wurde nicht ausgeführt.",
+        [TestNoteList] = "Listen",
+        [TestNoteCompany] = "Firma",
+        [TestNoteFile] = "Datei",
+        [TestNoteTemplate] = "Vorlage",
+        [TestNoteTarget] = "Zieladresse",
+        [TestNoteTeams] = "Teams-Webhook",
     };
 
     private static readonly Dictionary<string, string> En = new()
@@ -73,6 +86,15 @@ public static class ValidationMessages
         [UploadType] = "This file type is not allowed.",
         [Uploading] = "uploading …",
         [Uploaded] = "uploaded",
+        [TestReportTitle] = "Test log",
+        [TestMailTo] = "Test mails to:",
+        [TestNoAddress] = "No address for the signed-in admin – the test mail was not sent.",
+        [TestNoteList] = "Lists",
+        [TestNoteCompany] = "Company",
+        [TestNoteFile] = "File",
+        [TestNoteTemplate] = "Template",
+        [TestNoteTarget] = "Target address",
+        [TestNoteTeams] = "Teams webhook",
     };
 
     /// <summary>The reference every other locale is measured against; German is the fallback, so it defines the keys.</summary>

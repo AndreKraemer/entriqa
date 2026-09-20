@@ -14,6 +14,7 @@ public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissio
     public string Description => "Schickt die Einsendung per Brevo-Transaktionsmail an eine interne Adresse.";
     public StepMode Mode => StepMode.Inline;
     public bool CriticalByDefault => false;         // notification: a failure does not block the pipeline
+    public StepTestBehavior TestBehavior => StepTestBehavior.Redirected;    // #21: in a test the notification goes to the admin
     public string ConfigSchema => """{"type":"object","required":["to","templateId"],"properties":{"to":{"type":"string","title":"E-Mail-Adresse(n), durch Komma getrennt"},"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template"}}}""";
     public IReadOnlyList<MailParam> MailParams => new MailParam[]
     {
@@ -47,7 +48,11 @@ public sealed class NotifyMailStep(ISendTransactionalMailPort mail) : ISubmissio
             ["replyTo"] = ctx.Email,
             ["adminUrl"] = $"{ctx.Options.BaseUrl.TrimEnd('/')}/admin/einsendung/{ctx.Submission.Id}",
         };
-        foreach (var to in config.GetString("to")!.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        // In a test the notification goes once to the signed-in admin, not to the configured recipients (#21).
+        var recipients = ctx.Test?.MailTo is { } admin
+            ? new[] { admin }
+            : config.GetString("to")!.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        foreach (var to in recipients)
             await mail.SendAsync(to, null, templateId, parameters, null, ct);
         return StepResult.Ok;
     }

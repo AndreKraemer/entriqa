@@ -24,7 +24,8 @@
     // and escapes it, so a translation carrying an apostrophe cannot break the page.
     var T = {
       incomplete: {{ i18n "eq_doi_link_incomplete" }},
-      failed: {{ i18n "eq_doi_failed" }}
+      failed: {{ i18n "eq_doi_failed" }},
+      test: {{ i18n "eq_doi_test" }}
     };
     function say(text, kind) { msg.textContent = text; msg.className = 'eq-message eq-message--' + kind; msg.hidden = false; }
     if (!token) { btn.hidden = true; say(T.incomplete, 'error'); return; }
@@ -37,6 +38,8 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token })
       }).then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
         .then(function (r) {
+          // #21: a link from a test mail confirms nothing - show a hint instead of redirecting or erroring.
+          if (r.ok && r.data && r.data.test) { btn.hidden = true; say(T.test, 'success'); return; }
           if (r.ok && r.data && r.data.redirect) { window.location.href = r.data.redirect; return; }
           btn.disabled = false;
           say((r.data && r.data.title) || T.failed, 'error');

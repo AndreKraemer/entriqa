@@ -15,5 +15,8 @@ other = "Dieser Link ist unvollständig – bitte den Link aus der E-Mail vollst
 [eq_doi_failed]
 other = "Die Bestätigung hat nicht geklappt – bitte erneut versuchen."
 
+[eq_doi_test]
+other = "Dieser Link stammt aus einem Test. Es wurde nichts bestätigt und keine Einsendung angelegt."
+
 [eq_standalone_no_form]
 other = "Kein Formular angegeben."

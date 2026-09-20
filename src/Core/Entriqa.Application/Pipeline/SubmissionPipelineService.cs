@@ -106,6 +106,68 @@ public sealed class SubmissionPipelineService(
         return deferredLeft;
     }
 
+    /// <summary>
+    /// Walks the whole pipeline for a test (#21) without any side effect: mail steps send to
+    /// <paramref name="adminMailTo"/>, steps with an external write are suppressed and describe what they
+    /// would have done, and every step - including those after the confirmation gate - gets a verdict.
+    /// Returns one <see cref="TestStepOutcome"/> per step; the submission is never persisted by this method.
+    /// </summary>
+    public async Task<IReadOnlyList<Domain.UseCases.TestStepOutcome>> RunTestAsync(
+        Submission submission, FormDefinition form, int version, string? adminMailTo, CancellationToken ct = default)
+    {
+        // One synchronous pass over the whole pipeline (#21): the inline/deferred split and the
+        // OnConfirm-Waiting gate are deliberately ignored, so every step - including those after
+        // doi.request - gets a verdict (AC3/AC8). Nothing here is persisted; the aggregate is discarded.
+        var ctx = new StepContext { Submission = submission, Form = form, FormVersion = version, Options = options.Value, Test = new TestRun(adminMailTo) };
+        var outcomes = new List<Domain.UseCases.TestStepOutcome>();
+
+        foreach (var def in form.Pipeline)
+        {
+            var step = Resolve(def.Step);
+            IReadOnlyList<Domain.UseCases.TestNote> notes = Array.Empty<Domain.UseCases.TestNote>();
+            StepRunStatus status;
+            string? error = null;
+
+            if (!ConditionMet(def.When, submission))
+            {
+                status = StepRunStatus.Skipped;                                     // same condition as a real run
+            }
+            else if (step.TestBehavior == StepTestBehavior.Redirected)
+            {
+                if (string.IsNullOrWhiteSpace(adminMailTo))
+                {
+                    // The issue's rule: report it, never send into the void. A ValidationMessages key, so
+                    // forms.js renders it in the form's language like the rest of the protocol (#21).
+                    status = StepRunStatus.Failed;
+                    error = Domain.Validation.ValidationMessages.TestNoAddress;
+                }
+                else
+                {
+                    try
+                    {
+                        var result = await step.ExecuteAsync(ctx, def.Config, ct);  // mail goes to the admin (ctx.Test.MailTo)
+                        status = result.Status;
+                        error = result.Error;
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        log.LogInformation(ex, "Testschritt {Step} für {Submission} fehlgeschlagen", def.Step, submission.Id);
+                        status = StepRunStatus.Failed;
+                        error = Trim(ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                status = StepRunStatus.Skipped;                                     // suppressed: no external write (AC5)
+                notes = step.DescribeTest(ctx, def.Config);                          // what it would have done (AC6)
+            }
+
+            outcomes.Add(new Domain.UseCases.TestStepOutcome(def.Id, def.Step, status, error, notes));
+        }
+        return outcomes;
+    }
+
     private static bool ConditionMet(string when, Submission s) => when switch
     {
         StepConditions.Always or "" or null => true,

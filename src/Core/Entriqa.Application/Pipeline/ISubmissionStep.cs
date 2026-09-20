@@ -7,6 +7,18 @@ namespace Entriqa.Application.Pipeline;
 public enum StepMode { Inline, Deferred }
 
 /// <summary>
+/// How a step behaves in a test run (#21). <see cref="Suppressed"/> is the default and the safe one:
+/// a step never performs its external write in a test unless it explicitly opts into <see cref="Redirected"/>.
+/// That is what keeps AC5 ("never a Brevo contact, webhook or Teams message") a structural guarantee -
+/// a step added later is suppressed until someone decides otherwise.
+/// </summary>
+public enum StepTestBehavior
+{
+    Suppressed,     // not executed; DescribeTest reports what it would have done
+    Redirected      // executed, but mail goes to the signed-in admin (mail steps only)
+}
+
+/// <summary>
 /// One post-processing step. Registered via DI (suffix "Step"); the admin reads the catalog through
 /// <see cref="StepCatalogService"/>. Neue Schritte: Klasse anlegen – fertig.
 /// </summary>
@@ -24,6 +36,15 @@ public interface ISubmissionStep
     /// <summary>Variables the step passes to Brevo templates ({{ params.… }}) - the admin shows them as help.</summary>
     IReadOnlyList<Entriqa.Domain.UseCases.MailParam> MailParams => Array.Empty<Entriqa.Domain.UseCases.MailParam>();
 
+    /// <summary>How this step behaves in a test run (#21). Suppressed by default - see <see cref="StepTestBehavior"/>.</summary>
+    StepTestBehavior TestBehavior => StepTestBehavior.Suppressed;
+
+    /// <summary>
+    /// For a suppressed step (#21): the resolved values it would have used, for the test protocol - the actual
+    /// list, template, file or target address, resolved for the submission's locale. Empty by default.
+    /// </summary>
+    IReadOnlyList<Entriqa.Domain.UseCases.TestNote> DescribeTest(StepContext ctx, JsonElement config) => Array.Empty<Entriqa.Domain.UseCases.TestNote>();
+
     /// <summary>Checks the configuration when publishing. Returns problems in plain words.</summary>
     IEnumerable<string> CheckConfig(JsonElement config, FormDefinition form, IReadOnlySet<string> producedBefore) => Array.Empty<string>();
 
@@ -31,6 +52,10 @@ public interface ISubmissionStep
 }
 
 public enum StepNeed { EmailField, ConsentField }
+
+/// <summary>Carried on <see cref="StepContext.Test"/> during a test run (#21). <see cref="MailTo"/> is the
+/// signed-in admin's address, or null when the principal carried no usable address.</summary>
+public sealed record TestRun(string? MailTo);
 
 public sealed record StepResult(StepRunStatus Status, string? Error = null)
 {
@@ -45,6 +70,9 @@ public sealed class StepContext
     public required FormDefinition Form { get; init; }
     public required int FormVersion { get; init; }
     public required EntriqaOptions Options { get; init; }
+
+    /// <summary>Non-null in a test run (#21): mail steps send to <see cref="TestRun.MailTo"/>, not the visitor.</summary>
+    public TestRun? Test { get; init; }
 
     public Dictionary<string, string> Artifacts => Submission.Artifacts;
     public string? Email => Submission.Email;

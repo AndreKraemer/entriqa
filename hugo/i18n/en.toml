@@ -13,5 +13,8 @@ other = "This link is incomplete – please open the full link from the email."
 [eq_doi_failed]
 other = "The confirmation did not work – please try again."
 
+[eq_doi_test]
+other = "This link comes from a test. Nothing was confirmed and no submission was created."
+
 [eq_standalone_no_form]
 other = "No form specified."

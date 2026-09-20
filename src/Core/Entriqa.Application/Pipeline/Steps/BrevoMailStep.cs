@@ -12,6 +12,7 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
     public string Name => "E-Mail an Teilnehmer";
     public string Description => "Verschickt eine Brevo-Vorlage an die angegebene Adresse – optional mit Datei oder Link aus einem vorherigen Schritt.";
     public StepMode Mode => StepMode.Inline;
+    public StepTestBehavior TestBehavior => StepTestBehavior.Redirected;    // #21: in a test the mail goes to the admin
     public IReadOnlyList<StepNeed> Needs => new[] { StepNeed.EmailField };
     public string ConfigSchema => """{"type":"object","required":["templateId"],"properties":{"templateId":{"type":"integer","title":"Brevo-Vorlage","format":"brevo-template","localizable":true},"attach":{"type":"string","enum":["none","download","report","reportLink"],"title":"Mitschicken","default":"none"},"linkHours":{"type":"integer","title":"Link gültig (Stunden), nur bei reportLink","default":72}}}""";
     public IReadOnlyList<MailParam> MailParams => new MailParam[]
@@ -50,7 +51,12 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
         }
 
         MailAttachment? attachment = null;
-        switch (config.GetString("attach") ?? "none")
+        // In a test the producing step (reportingcloud.pdf) is suppressed, so no "report" artifact exists.
+        // Send the mail without the attachment rather than throwing a false "Failed" (#21) - the producer is
+        // shown as skipped in its own protocol row. In a real run CheckConfig guarantees the artifact is present.
+        var attach = config.GetString("attach") ?? "none";
+        if (ctx.Test is not null && attach is "report" or "reportLink" && !ctx.Artifacts.ContainsKey("report")) attach = "none";
+        switch (attach)
         {
             case "download":
                 parameters["downloadUrl"] = ctx.Artifacts.GetValueOrDefault("download");
@@ -67,7 +73,8 @@ public sealed class BrevoMailStep(ISendTransactionalMailPort mail, IStoreArtifac
                 break;
         }
 
-        await mail.SendAsync(ctx.Email!, ctx.FirstName, config.GetInt("templateId", ctx.Submission.Locale)!.Value, parameters, attachment, ct);
+        var to = ctx.Test?.MailTo ?? ctx.Email!;                            // #21: in a test the mail goes to the admin
+        await mail.SendAsync(to, ctx.FirstName, config.GetInt("templateId", ctx.Submission.Locale)!.Value, parameters, attachment, ct);
         return StepResult.Ok;
     }
 }

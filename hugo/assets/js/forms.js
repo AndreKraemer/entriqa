@@ -32,6 +32,9 @@
     this.lang = host.getAttribute('data-lang') || (document.documentElement.lang || 'de').split('-')[0];
     this.def = null;
     this.token = null;
+    // #21: admin test mode - loads the draft, sends no anti-spam token, counts no view, and shows a
+    // protocol instead of submitting for real. Only reachable from the admin's authenticated test page.
+    this.test = host.getAttribute('data-test') === '1';
     this.quiz = null; // { index, answers: {}, history: [] }
   }
 
@@ -43,6 +46,13 @@
   FormWidget.prototype.load = function () {
     var self = this;
     self.host.innerHTML = '<div class="eq-loading" aria-busy="true"></div>';
+    if (self.test) {
+      // #21: render the DRAFT as a visitor would see it; a test needs no anti-spam token.
+      fetchJson(self.api + '/manage/forms/' + encodeURIComponent(self.slug) + '/test-form?lang=' + encodeURIComponent(self.lang), { cache: 'no-store' })
+        .then(function (def) { self.def = def; self.render(); })
+        .catch(function (err) { self.host.innerHTML = '<div class="eq-message eq-message--error">' + esc(messageFor(err, 'Das Formular konnte nicht geladen werden.')) + '</div>'; });
+      return;
+    }
     Promise.all([
       fetchJson(self.api + '/forms/' + encodeURIComponent(self.slug) + '?lang=' + encodeURIComponent(self.lang)),
       fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/token', self.lang), { cache: 'no-store' })
@@ -91,11 +101,14 @@
     this.watchVisibility();
 
     // Drop-off statistics without personal data: "view" once when rendering, "start" once on the first input.
-    this.track('view');
-    var self = this;
-    var started = function () { form.removeEventListener('input', started); form.removeEventListener('change', started); self.track('start'); };
-    form.addEventListener('input', started);
-    form.addEventListener('change', started);
+    // A test never counts (#21, AC7): the view count must not move for the admin's own trial.
+    if (!this.test) {
+      this.track('view');
+      var self = this;
+      var started = function () { form.removeEventListener('input', started); form.removeEventListener('change', started); self.track('start'); };
+      form.addEventListener('input', started);
+      form.addEventListener('change', started);
+    }
   };
 
   FormWidget.prototype.track = function (type) {
@@ -488,12 +501,33 @@
     if (Object.keys(errors).length) { this.showErrors(errors); return; }
     this.showErrors({});
 
-    var body = { token: this.token, lang: this.lang, values: values, website: this.form.querySelector('[name="' + HONEYPOT + '"]').value };
-    if (this.quiz) body.answers = this.quiz.answers;
-
     var self = this;
     self.form.classList.add('eq-form--busy');
     Array.prototype.forEach.call(self.form.querySelectorAll('.eq-submit'), function (b) { b.disabled = true; });
+
+    if (self.test) {
+      // #21: run against the draft - no token, no honeypot; the response is the protocol, not a submission.
+      var testBody = { lang: self.lang, values: values };
+      if (self.quiz) testBody.answers = self.quiz.answers;
+      fetchJson(withLang(self.api + '/manage/forms/' + encodeURIComponent(self.slug) + '/test', self.lang), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(testBody)
+      }).then(function (report) {
+        self.renderTestReport(report);
+      }).catch(function (err) {
+        self.form.classList.remove('eq-form--busy');
+        Array.prototype.forEach.call(self.form.querySelectorAll('.eq-submit'), function (b) { b.disabled = false; });
+        if (err.problem && err.problem.errors) {
+          var errs = {};
+          err.problem.errors.forEach(function (x) { errs[x.field] = x.message; });
+          self.showErrors(errs);
+        }
+        self.say(messageFor(err, self.t('submitError', 'Das hat leider nicht geklappt. Bitte versuche es erneut.')), 'error');
+      });
+      return;
+    }
+
+    var body = { token: this.token, lang: this.lang, values: values, website: this.form.querySelector('[name="' + HONEYPOT + '"]').value };
+    if (this.quiz) body.answers = this.quiz.answers;
 
     fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/submissions', self.lang), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
@@ -543,6 +577,42 @@
     this.form.classList.remove('eq-form--busy');
     this.form.classList.add('eq-form--done');
     this.host.dispatchEvent(new CustomEvent('entriqa:submitted', { bubbles: true, detail: { slug: this.slug, submissionId: result.submissionId, quiz: result.quiz || null } }));
+  };
+
+  // #21: the test protocol. Deliberately NOT eq-* classes - this is an admin-only view, not part of the
+  // theme markup contract (check-eq-classes.mjs guards eq-* only). Steps: [{stepKey, statusName, error, notes:[{label,value}]}].
+  FormWidget.prototype.renderTestReport = function (report) {
+    var self = this;    // captured once for the step/note callbacks below (strict mode: `this` is undefined inside forEach)
+    var keep = this.form.querySelector('.eq-form__intro');
+    this.form.innerHTML = '';
+    if (keep) this.form.appendChild(keep);
+    this.form.classList.remove('eq-form--busy');
+    this.form.classList.add('eq-form--done');
+
+    var box = el('div', { 'class': 'eqtest-report', role: 'status' });
+    box.appendChild(el('h3', { 'class': 'eqtest-report__title' }, this.t('testReportTitle', 'Testprotokoll')));
+    if (report && report.mailTo) box.appendChild(el('p', { 'class': 'eqtest-report__mailto' }, this.t('testMailTo', 'Testmails an:') + ' ' + report.mailTo));
+
+    var list = el('ul', { 'class': 'eqtest-steps' });
+    (report && report.steps || []).forEach(function (s) {
+      var name = (s.statusName || '').toLowerCase();
+      var li = el('li', { 'class': 'eqtest-step eqtest-step--' + name });
+      li.appendChild(el('span', { 'class': 'eqtest-step__key' }, s.stepKey));
+      li.appendChild(el('span', { 'class': 'eqtest-step__status' }, s.statusName || ''));
+      // Error and note labels are catalogue keys (a suppressed step's label, the no-address message); the
+      // server sends the key and this renders it in the form's language. Raw exception text is not a key,
+      // so t() returns it unchanged as the fallback.
+      if (s.error) li.appendChild(el('div', { 'class': 'eqtest-step__error' }, self.t(s.error, s.error)));
+      if (s.notes && s.notes.length) {
+        var nl = el('ul', { 'class': 'eqtest-notes' });
+        s.notes.forEach(function (n) { nl.appendChild(el('li', { 'class': 'eqtest-note' }, self.t(n.label, n.label) + ': ' + n.value)); });
+        li.appendChild(nl);
+      }
+      list.appendChild(li);
+    });
+    box.appendChild(list);
+    this.form.appendChild(box);
+    this.host.dispatchEvent(new CustomEvent('entriqa:tested', { bubbles: true, detail: { slug: this.slug } }));
   };
 
   FormWidget.prototype.say = function (text, kind) {
