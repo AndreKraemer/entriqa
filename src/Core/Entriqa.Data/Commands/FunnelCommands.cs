@@ -2,6 +2,7 @@ using Azure;
 using Azure.Data.Tables;
 using Entriqa.Application.Ports;
 using Entriqa.Data.Entities;
+using Entriqa.Domain.UseCases;
 
 namespace Entriqa.Data.Commands;
 
@@ -49,5 +50,32 @@ internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTot
             totals[type] = totals.GetValueOrDefault(type) + e.Count;
         }
         return totals;
+    }
+}
+
+/// <summary>
+/// View and start totals per form from <paramref name="from"/> onwards, across all forms (#16). A
+/// full-table scan of the tiny Funnel table (two rows per form and day) - uncritical at this volume.
+/// </summary>
+internal sealed class GetAllFunnelTotalsQuery(TableStorage storage) : IGetAllFunnelTotalsQuery
+{
+    public async Task<IReadOnlyDictionary<string, FunnelStats>> ExecuteAsync(DateOnly from, CancellationToken ct = default)
+    {
+        var table = await storage.GetAsync("Funnel");
+        var fromKey = $"{from:yyyyMMdd}|";
+        var views = new Dictionary<string, int>(StringComparer.Ordinal);
+        var starts = new Dictionary<string, int>(StringComparer.Ordinal);
+        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.RowKey.CompareTo(fromKey) >= 0, cancellationToken: ct))
+        {
+            var bucket = (e.RowKey.Split('|') is { Length: 2 } parts ? parts[1] : "?") switch
+            {
+                "view" => views,
+                "start" => starts,
+                _ => null,
+            };
+            if (bucket is not null) bucket[e.PartitionKey] = bucket.GetValueOrDefault(e.PartitionKey) + e.Count;
+        }
+        return views.Keys.Union(starts.Keys, StringComparer.Ordinal)
+            .ToDictionary(slug => slug, slug => new FunnelStats(views.GetValueOrDefault(slug), starts.GetValueOrDefault(slug)), StringComparer.Ordinal);
     }
 }

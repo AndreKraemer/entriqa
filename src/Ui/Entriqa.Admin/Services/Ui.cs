@@ -437,7 +437,6 @@ public sealed class Ui
         ["Alle Versionen"] = "All versions",
         ["Version {0}"] = "Version {0}",
         ["Zeitraum Verlauf: letzte 14 Tage"] = "Trend period: last 14 days",
-        ["Wähle ein veröffentlichtes Formular."] = "Choose a published form.",
         ["{0} per Weiche beendet"] = "{0} ended via branch",
         ["mit E-Mail-Adresse ({0})"] = "with an email address ({0})",
         ["Ø normierter Punktestand"] = "Ø normalized score",
@@ -453,6 +452,16 @@ public sealed class Ui
         ["Aufrufe (14 Tage)"] = "Views (14 days)",
         ["davon begonnen"] = "of which started",
         ["Abschlussquote (Einsendungen / begonnen, 14 Tage)"] = "Completion rate (submissions / started, 14 days)",
+        // cross-form overview (#16)
+        ["Einsendungen gesamt"] = "Submissions total",
+        ["DOI-Quote gesamt (bestätigt {0} / mit E-Mail {1})"] = "DOI rate overall (confirmed {0} / with email {1})",
+        ["Formulare nach Einsendungen"] = "Forms by submissions",
+        ["Aufrufe und Abschlussquote je Formular"] = "Views and completion rate per form",
+        ["Aufrufe und Abschlussquote der letzten 14 Tage."] = "Views and completion rate of the last 14 days.",
+        ["Aufrufe"] = "Views",
+        ["Abschlussquote"] = "Completion rate",
+        ["Noch kein Formular veröffentlicht – sobald eines veröffentlicht ist, erscheint hier die übergreifende Auswertung."] =
+            "No form published yet – once one is published, the cross-form insights appear here.",
 
         // settings
         ["Werte kommen aus den App-Settings der Static Web App (Präfix Entriqa__) – hier nur Status und Kontrolle, geändert wird in Azure."] =

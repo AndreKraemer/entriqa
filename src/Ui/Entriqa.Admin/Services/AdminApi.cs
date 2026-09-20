@@ -124,6 +124,8 @@ public sealed class AdminApi(HttpClient http)
     public Task<FormStats> GetStatsAsync(string slug, int? version) =>
         GetAsync<FormStats>($"api/manage/forms/{Uri.EscapeDataString(slug)}/stats" + (version is { } v ? $"?version={v}" : ""));
 
+    public Task<OverallStats> GetOverallStatsAsync() => GetAsync<OverallStats>("api/manage/stats");
+
     public Task<RecentSubmissions> ListRecentAsync(string? slug) =>
         GetAsync<RecentSubmissions>("api/manage/submissions" + (slug is null ? "" : $"?slug={Uri.EscapeDataString(slug)}"));
 
@@ -252,6 +254,11 @@ public sealed record FormStats(int Total, List<int> Daily, List<int> Versions, i
     FunnelStats? Funnel);
 public sealed record FunnelStats(int Views, int Starts);
 public sealed record StatsBar(string Label, int Count);
+
+// #16: statistics across all published forms - no quiz metrics (they do not compare across forms).
+public sealed record OverallStats(int Total, List<int> Daily, int WithEmail, int Confirmed,
+    int AwaitingConfirmation, int Failed, List<StatsBar> Sources, List<FormBreakdown> Forms);
+public sealed record FormBreakdown(string Slug, string Name, int Total, int Recent, int Views, int Starts);
 public sealed record QuizStats(List<StatsBar> Results, int AvgPct, int EndedByJump, List<QuestionStats> Questions);
 public sealed record QuestionStats(string Question, int Seen, List<StatsBar> Options);
 public sealed record FieldStats(string Label, List<StatsBar> Options);

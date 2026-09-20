@@ -31,6 +31,7 @@ public sealed class AdminFunctions(
     ISearchSubmissionsUseCase search,
     IMarkVisitedUseCase markVisited,
     IGetFormStatsUseCase stats,
+    IGetOverallStatsUseCase overallStats,
     IGetIntegrationDirectoryUseCase directory,
     IUploadLeadMagnetUseCase upload,
     IExportSubmissionsCsvUseCase exportCsv,
@@ -149,6 +150,14 @@ public sealed class AdminFunctions(
         principal.RequireRole(req, "admin");
         int? version = int.TryParse(req.Query["version"].FirstOrDefault(), out var v) ? v : null;
         return new OkObjectResult(await stats.ExecuteAsync(slug, version, ct));
+    }
+
+    /// <summary>Statistics across all published forms - the evaluation shown when no single form is chosen (#16).</summary>
+    [Function("AdminOverallStats")]
+    public async Task<IActionResult> OverallStats([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/stats")] HttpRequest req, CancellationToken ct)
+    {
+        principal.RequireRole(req, "admin");
+        return new OkObjectResult(await overallStats.ExecuteAsync(ct));
     }
 
     [Function("AdminListForms")]
