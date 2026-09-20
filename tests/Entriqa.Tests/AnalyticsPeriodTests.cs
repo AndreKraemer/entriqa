@@ -34,6 +34,22 @@ public class AnalyticsPeriodTests
         Assert.Equal(AnalyticsPeriods.All, AnalyticsPeriods.Offered(365));
     }
 
+    // ---- AC 4: a period longer than the retention is never computed, whatever asks for it ----
+
+    [Fact]
+    public void GivenAPeriodBeyondTheRetention_WhenClamping_ThenItFallsToTheLongestOfferedPeriod()
+    {
+        Assert.Equal(AnalyticsPeriod.Days90, AnalyticsPeriod.Months12.Clamp(180));   // 12mo asked, only up to 90 fits
+        Assert.Equal(AnalyticsPeriod.Days14, AnalyticsPeriod.Days90.Clamp(20));      // 90d asked, only up to 14 fits
+    }
+
+    [Fact]
+    public void GivenAPeriodWithinTheRetention_WhenClamping_ThenItIsKept()
+    {
+        Assert.Equal(AnalyticsPeriod.Days30, AnalyticsPeriod.Days30.Clamp(180));
+        Assert.Equal(AnalyticsPeriod.Months12, AnalyticsPeriod.Months12.Clamp(400));
+    }
+
     // ---- AC 1: the day periods bucket by day ----
 
     [Fact]
