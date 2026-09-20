@@ -46,4 +46,15 @@ public class OverallStatsPageGuardTests
         Assert.Contains("_overall.Forms.Count == 0", markup, StringComparison.Ordinal);
         Assert.Contains("Noch kein Formular veröffentlicht", markup, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void GivenAFormWithoutFunnelStarts_WhenInspectingTheStatsPage_ThenItsCompletionRateIsGuardedNotDividedByOne()
+    {
+        var markup = Stats();
+
+        // The completion cell must guard the zero-denominator case rather than divide by Max(Starts,1),
+        // which renders an impossible >100% rate (acceptance FAIL for #16). Reads the guard, not just a name.
+        Assert.Matches(new Regex(@"f\.Starts\s*==\s*0\s*\?", RegexOptions.Singleline), markup);
+        Assert.DoesNotContain("Math.Max(f.Starts", markup, StringComparison.Ordinal);
+    }
 }

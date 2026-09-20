@@ -70,7 +70,10 @@ else
                     <tbody>
                         @foreach (var f in _overall.Forms)
                         {
-                            <tr><td>@f.Name</td><td>@f.Views</td><td>@Pct(f.Recent, Math.Max(f.Starts, 1)) %</td></tr>
+                            @* A completion rate needs a denominator: without recorded starts it is undefined, not 0 -
+                               and dividing by Max(Starts,1) would render an impossible >100% figure. Mirror the
+                               per-form page, which shows no completion when there is no funnel data. *@
+                            <tr><td>@f.Name</td><td>@f.Views</td><td>@(f.Starts == 0 ? "–" : $"{Pct(f.Recent, f.Starts)} %")</td></tr>
                         }
                     </tbody>
                 </table>
