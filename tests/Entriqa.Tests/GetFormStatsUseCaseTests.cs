@@ -22,13 +22,15 @@ public class GetFormStatsUseCaseTests
     private static readonly DateTimeOffset Today = TestData.Time.GetUtcNow();      // 2026-08-21T10:00Z
     private static DateOnly TodayOnly => DateOnly.FromDateTime(Today.UtcDateTime);
 
-    private static Submission Sub(DateTimeOffset createdAt) => new()
+    private static Submission Sub(DateTimeOffset createdAt, string? source = null, string? email = null) => new()
     {
         Id = $"kontakt:{Guid.NewGuid():N}",
         Slug = "kontakt",
         Version = 1,
         CreatedAt = createdAt,
         Values = new Dictionary<string, string>(),
+        Source = source,
+        Email = email,
         StepRuns = { new StepRun { StepId = "s", StepKey = "notify-mail", Phase = StepPhase.OnSubmit, Status = StepRunStatus.Ok } },
     };
 
@@ -65,6 +67,26 @@ public class GetFormStatsUseCaseTests
         Assert.Equal(1, stats.Daily[0]);                                           // 29 days ago
         Assert.Equal(2, stats.Daily.Sum());                                        // the 30-days-ago one is outside
         Assert.Equal(AnalyticsPeriod.Days30, stats.Period);
+    }
+
+    // ---- AC 1 (windowed in full, gate-time clarification): the headline count and distributions cover only the period ----
+
+    [Fact]
+    public async Task GivenAThirtyDayPeriod_WhenGettingStats_ThenTheCountAndSourceDistributionCoverOnlyThePeriod()
+    {
+        var stats = await UseCase(
+            [
+                Sub(Today, source: "linkedin", email: "a@x.de"),
+                Sub(Today, source: "linkedin"),
+                Sub(Today.AddDays(-29), source: "newsletter"),
+                Sub(Today.AddDays(-40), source: "linkedin", email: "b@x.de"),      // outside the 30-day window
+            ])
+            .ExecuteAsync("kontakt", null, AnalyticsPeriod.Days30);
+
+        Assert.Equal(3, stats.Total);                                              // the 40-days-ago one is excluded
+        Assert.Equal(1, stats.WithEmail);                                          // ...including from the e-mail count
+        Assert.Equal(2, Assert.Single(stats.Sources, b => b.Label == "linkedin").Count);   // not 3 - the out-of-window linkedin drops
+        Assert.Contains(stats.Sources, b => b.Label == "newsletter");
     }
 
     // ---- AC 1 / #17 Q1: the year buckets the trend by calendar month, twelve buckets ----

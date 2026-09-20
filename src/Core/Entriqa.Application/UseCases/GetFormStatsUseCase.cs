@@ -22,8 +22,8 @@ internal sealed class GetFormStatsUseCase(
     public async Task<FormStats> ExecuteAsync(string slug, int? version, AnalyticsPeriod period, CancellationToken ct = default)
     {
         var all = await list.ExecuteAsync(slug, 5000, ct);
-        var versions = all.Select(s => s.Version).Distinct().OrderBy(v => v).ToList();
-        var items = version is { } v ? all.Where(s => s.Version == v).ToList() : all.ToList();
+        var versions = all.Select(s => s.Version).Distinct().OrderBy(v => v).ToList();   // all-time: the version filter's choices
+        var byVersion = version is { } v ? all.Where(s => s.Version == v).ToList() : all.ToList();
 
         var defVersion = version is { } rv
             ? await getVersion.ExecuteAsync(slug, rv, ct)
@@ -31,12 +31,24 @@ internal sealed class GetFormStatsUseCase(
         var def = defVersion?.Definition.Localize(null)
             ?? throw new NotFoundException(ErrorCodes.FormNotFound, ErrorMessages.FormNotPublished, AppException.Args("slug", slug));
 
-        var today = time.GetUtcNow().UtcDateTime.Date;
-        var daily = new int[14];
-        foreach (var s in items)
+        // AC 1/2/4: the chosen period, clamped to what the retention allows, drives every figure below.
+        var retentionDays = options.Value.RetentionDays;
+        var available = AnalyticsPeriods.Offered(retentionDays);
+        var applied = period.Clamp(retentionDays);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
+        var (from, to) = applied.Window(today);
+
+        // Every metric is computed from the submissions within the window; an all-time figure would
+        // mix periods (AC 1). The trend buckets them by the period's granularity (day, or month for the year).
+        var daily = new int[applied.BucketCount()];
+        var items = new List<Submission>();
+        foreach (var s in byVersion)
         {
-            var idx = 13 - (int)(today - s.CreatedAt.UtcDateTime.Date).TotalDays;
-            if (idx is >= 0 and <= 13) daily[idx]++;
+            if (applied.BucketIndex(today, DateOnly.FromDateTime(s.CreatedAt.UtcDateTime.Date)) is { } idx)
+            {
+                daily[idx]++;
+                items.Add(s);
+            }
         }
 
         var sources = items.Where(s => !string.IsNullOrEmpty(s.Source))
@@ -77,11 +89,9 @@ internal sealed class GetFormStatsUseCase(
             .Where(f => f.Options.Any(o => o.Count > 0))
             .ToList();
 
-        // SKELETON (#17): still the old fixed 14-day window; AvailablePeriods ignores the retention (AC 2
-        // filtering added in the implementation). The retention is read here only to wire the dependency.
-        _ = options.Value.RetentionDays;
-        var todayOnly = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
-        var totals = await funnel.ExecuteAsync(slug, todayOnly.AddDays(-13), todayOnly, ct);
+        // Funnel: view and start counters over the very same window (AC 4 - the completion rate the page
+        // derives divides submissions and starts of one period, never of two).
+        var totals = await funnel.ExecuteAsync(slug, from, to, ct);
         var funnelStats = totals.Count == 0 ? null : new FunnelStats(totals.GetValueOrDefault("view"), totals.GetValueOrDefault("start"));
 
         return new FormStats(
@@ -91,7 +101,7 @@ internal sealed class GetFormStatsUseCase(
             items.Count(s => s.State == SubmissionState.AwaitingConfirmation),
             items.Count(s => s.State == SubmissionState.Failed),
             sources, quiz, selectFields,
-            period, AnalyticsPeriods.All,
+            applied, available,
             funnelStats);
     }
 }
