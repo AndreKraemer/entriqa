@@ -240,3 +240,30 @@ public interface IDeleteConsentProofCommand
 {
     Task ExecuteAsync(ConsentProof proof, CancellationToken ct = default);
 }
+
+// Appointments (#6). Own table, partitioned by form slug - master data, never part of a FormVersion,
+// so a change is readable without a republish (AC 3). Seat counting is #8, the visitor view is #7.
+
+public interface IListAppointmentsQuery
+{
+    /// <summary>Every appointment of a form, active and inactive, for the admin. Ordering is the caller's job.</summary>
+    Task<IReadOnlyList<Appointment>> ExecuteAsync(string slug, CancellationToken ct = default);
+}
+
+public interface ITryGetAppointmentQuery
+{
+    /// <summary>One appointment by its stable id within a slug, or null when there is none.</summary>
+    Task<Appointment?> ExecuteAsync(string slug, string id, CancellationToken ct = default);
+}
+
+public interface ISaveAppointmentCommand
+{
+    /// <summary>Creates or replaces the one row (slug, id). Atomic: one upsert, one entity.</summary>
+    Task ExecuteAsync(Appointment appointment, CancellationToken ct = default);
+}
+
+public interface IDeleteAppointmentCommand
+{
+    /// <summary>Removes the one row (slug, id).</summary>
+    Task ExecuteAsync(string slug, string id, CancellationToken ct = default);
+}
