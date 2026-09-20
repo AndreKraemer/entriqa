@@ -141,6 +141,7 @@ public class FormTestModeTests
                 new StepDefinition("f", "leadmagnet.link", "always", TestData.Json("""{"blob":"leadmagnets/guide.pdf"}""")),
                 new StepDefinition("p", "reportingcloud.pdf", "always", TestData.Json("""{"template":"vorlage-a"}""")),
                 new StepDefinition("co", "brevo.company", "always", TestData.Json("""{"field":"topic"}""")),
+                new StepDefinition("t", "teams.notify", "always", TestData.Json("""{"webhookUrl":"https://teams.example.com/x"}""")),
             },
         };
 
@@ -150,6 +151,7 @@ public class FormTestModeTests
         Assert.Contains(outcomes.Single(o => o.StepId == "f").Notes, n => n.Value == "leadmagnets/guide.pdf");
         Assert.Contains(outcomes.Single(o => o.StepId == "p").Notes, n => n.Value == "vorlage-a");
         Assert.Contains(outcomes.Single(o => o.StepId == "co").Notes, n => n.Value == "Acme");
+        Assert.Contains(outcomes.Single(o => o.StepId == "t").Notes, n => n.Value == "https://teams.example.com/x");
     }
 
     // AC8, regression (review round 1): a mail step that would attach an artifact from a suppressed producer
@@ -262,7 +264,7 @@ public class FormTestModeTests
     // AC11: the test endpoint is never reachable without the admin role. Source guard - Functions is not
     // referenced by the test host, so the role check is asserted by reading the source (mutation-verify after impl).
     [Fact]
-    public void TheTestFormEndpointRequiresTheAdminRole()
+    public void GivenTheTestFormEndpoints_WhenReadingTheSource_ThenBothRequireTheAdminRole()
     {
         var source = ReadFunctionSource("AdminFunctions.cs");
         var blocks = Regex.Split(source, @"(?=\[Function\()");
