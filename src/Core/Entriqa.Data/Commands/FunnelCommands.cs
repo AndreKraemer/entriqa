@@ -43,8 +43,9 @@ internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTot
     {
         var table = await storage.GetAsync("Funnel");
         var fromKey = $"{from:yyyyMMdd}|";
+        var toKeyExclusive = $"{to.AddDays(1):yyyyMMdd}|";                          // rowkeys are "yyyyMMdd|type"; the day after `to` bounds it inclusively
         var totals = new Dictionary<string, int>();
-        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.PartitionKey == slug && x.RowKey.CompareTo(fromKey) >= 0, cancellationToken: ct))
+        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.PartitionKey == slug && x.RowKey.CompareTo(fromKey) >= 0 && x.RowKey.CompareTo(toKeyExclusive) < 0, cancellationToken: ct))
         {
             var type = e.RowKey.Split('|') is { Length: 2 } parts ? parts[1] : "?";
             totals[type] = totals.GetValueOrDefault(type) + e.Count;
@@ -63,9 +64,10 @@ internal sealed class GetAllFunnelTotalsQuery(TableStorage storage) : IGetAllFun
     {
         var table = await storage.GetAsync("Funnel");
         var fromKey = $"{from:yyyyMMdd}|";
+        var toKeyExclusive = $"{to.AddDays(1):yyyyMMdd}|";                          // rowkeys are "yyyyMMdd|type"; the day after `to` bounds it inclusively
         var views = new Dictionary<string, int>(StringComparer.Ordinal);
         var starts = new Dictionary<string, int>(StringComparer.Ordinal);
-        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.RowKey.CompareTo(fromKey) >= 0, cancellationToken: ct))
+        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.RowKey.CompareTo(fromKey) >= 0 && x.RowKey.CompareTo(toKeyExclusive) < 0, cancellationToken: ct))
         {
             var bucket = (e.RowKey.Split('|') is { Length: 2 } parts ? parts[1] : "?") switch
             {
