@@ -31,8 +31,11 @@ public class StatsPeriodPageGuardTests
     {
         var markup = Stats();
 
-        // AC 1/2: the filter bar offers the periods the server says are available for the current retention.
-        Assert.Contains("AvailablePeriods", markup, StringComparison.Ordinal);
+        // AC 1/2: a selector wired to the period handler, iterating the periods the server offers for the
+        // current retention. Read the wiring, not just that the name appears somewhere (the @code property
+        // is called AvailablePeriods too, so a bare Contains would pass even with the selector rewired).
+        Assert.Matches(new Regex(@"@onchange=""@?OnPeriodChange""", RegexOptions.Singleline), markup);
+        Assert.Matches(new Regex(@"\bin\s+AvailablePeriods\b", RegexOptions.Singleline), markup);
     }
 
     [Fact]
