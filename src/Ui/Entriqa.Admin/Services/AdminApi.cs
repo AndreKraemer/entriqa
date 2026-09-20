@@ -187,6 +187,38 @@ public sealed class AdminApi(HttpClient http)
         await ThrowIfError(res);
     }
 
+    // Appointments of a form (#6): master data of the slug, maintained without republishing the form.
+
+    public Task<List<AppointmentView>> ListAppointmentsAsync(string slug) =>
+        GetAsync<List<AppointmentView>>($"api/manage/forms/{Uri.EscapeDataString(slug)}/appointments");
+
+    public async Task<AppointmentView> CreateAppointmentAsync(string slug, AppointmentInput input)
+    {
+        var res = await http.PostAsJsonAsync($"api/manage/forms/{Uri.EscapeDataString(slug)}/appointments", input, Json);
+        await ThrowIfError(res);
+        return (await res.Content.ReadFromJsonAsync<AppointmentView>(Json))!;
+    }
+
+    public async Task<AppointmentView> UpdateAppointmentAsync(string slug, string id, AppointmentInput input)
+    {
+        var res = await http.PutAsJsonAsync($"api/manage/forms/{Uri.EscapeDataString(slug)}/appointments/{Uri.EscapeDataString(id)}", input, Json);
+        await ThrowIfError(res);
+        return (await res.Content.ReadFromJsonAsync<AppointmentView>(Json))!;
+    }
+
+    /// <summary>Takes the appointment out of service without deleting it - it stays in the list and keeps its registrations (AC 4).</summary>
+    public async Task DeactivateAppointmentAsync(string slug, string id)
+    {
+        var res = await http.PostAsync($"api/manage/forms/{Uri.EscapeDataString(slug)}/appointments/{Uri.EscapeDataString(id)}/deactivate", null);
+        await ThrowIfError(res);
+    }
+
+    public async Task DeleteAppointmentAsync(string slug, string id)
+    {
+        var res = await http.DeleteAsync($"api/manage/forms/{Uri.EscapeDataString(slug)}/appointments/{Uri.EscapeDataString(id)}");
+        await ThrowIfError(res);
+    }
+
     private async Task<T> GetAsync<T>(string url)
     {
         var res = await http.GetAsync(url);
@@ -240,6 +272,8 @@ public sealed record StepDescriptorDto(string Key, string Name, string Descripti
     List<string> Needs, string? Produces, string ConfigSchema, bool CriticalByDefault,
     List<MailParamDto>? MailParams = null);
 public sealed record MailParamDto(string Name, string Description);
+public sealed record AppointmentView(string Slug, string Id, DateTimeOffset Start, DateTimeOffset? End, int Capacity, string? Title, bool WaitlistEnabled, bool Active);
+public sealed record AppointmentInput(DateTimeOffset Start, DateTimeOffset? End, int Capacity, string? Title, bool WaitlistEnabled, bool Active);
 public sealed record FormDraft(string Slug, string Status, int PublishedVersion, DateTimeOffset UpdatedAt, string UpdatedBy, JsonElement Definition);
 public sealed record CheckResult(List<string> Issues);
 public sealed record PublishResult(int Version, List<string> Issues);

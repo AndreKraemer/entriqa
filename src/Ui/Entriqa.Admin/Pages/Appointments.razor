@@ -1,0 +1,161 @@
+@page "/termine/{Slug}"
+@inject AdminApi Api
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject Ui T
+
+@* Appointments of a form (#6): master data of the slug, reached from the forms list. Times are entered
+   in the operator's own browser time; on save the browser's UTC offset is attached to the value, so no
+   site-wide timezone has to be configured. The visitor-facing display, seat counting and registrations
+   are #7/#8. *@
+<div class="page-head">
+    <h1><Icon Name="calendar" /> @T.F("Termine · {0}", Slug)</h1>
+    @if (_appointments is not null)
+    {
+        <button class="btn btn--primary" @onclick="OpenCreate"><Icon Name="plus" /> @T["Neuer Termin"]</button>
+    }
+</div>
+
+<p><a href="">@T["‹ Zurück zu den Formularen"]</a></p>
+
+@if (_error is not null) { <p class="error">@_error</p> }
+@if (_appointments is null) { <p>@T["Lade …"]</p> }
+else if (_appointments.Count == 0) { <p class="hint">@T["Noch keine Termine angelegt."]</p> }
+else
+{
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>@T["Beginn"]</th><th>@T["Ende"]</th><th>@T["Plätze"]</th><th>@T["Titel"]</th><th>@T["Status"]</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var a in _appointments)
+        {
+            <tr>
+                <td>@a.Start.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@(a.End is { } end ? end.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "–")</td>
+                <td>@a.Capacity</td>
+                <td>@(string.IsNullOrEmpty(a.Title) ? "–" : a.Title)</td>
+                <td><span class="chip @(a.Active ? "chip--ok" : "chip--busy")">@(a.Active ? T["Aktiv"] : T["Deaktiviert"])</span></td>
+                <td>
+                    <div class="row-actions">
+                        <button class="btn" @onclick="() => OpenEdit(a)"><Icon Name="pencil" /> @T["Bearbeiten"]</button>
+                        @if (a.Active)
+                        {
+                            <button class="btn" @onclick="() => Deactivate(a)">@T["Deaktivieren"]</button>
+                        }
+                        <button class="btn" @onclick="() => Delete(a)"><Icon Name="trash-2" /> @T["Löschen"]</button>
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+}
+
+@if (_editOpen)
+{
+    <div class="scrim" @onclick="() => _editOpen = false">
+        <div class="modal" @onclick:stopPropagation>
+            <h2 style="margin-top:0">@(_editId is null ? T["Neuer Termin"] : T["Termin bearbeiten"])</h2>
+            <label class="create-field ltext-label">@T["Beginn"]
+                <input type="datetime-local" @bind="_start" />
+            </label>
+            <label class="create-field ltext-label">@T["Ende (optional)"]
+                <input type="datetime-local" @bind="_end" />
+            </label>
+            <label class="create-field ltext-label">@T["Plätze"]
+                <input type="number" min="0" @bind="_capacity" />
+            </label>
+            <label class="create-field ltext-label">@T["Titel (optional)"]
+                <input @bind="_title" />
+            </label>
+            <label class="ltext-label"><input type="checkbox" @bind="_waitlist" /> @T["Warteliste zulassen"]</label>
+            @if (EndBeforeStart) { <p class="hint">@T["Das Ende muss nach dem Beginn liegen."]</p> }
+            @if (_saveError is not null) { <p class="error">@_saveError</p> }
+            <div class="actions">
+                <button class="btn" @onclick="() => _editOpen = false">@T["Abbrechen"]</button>
+                <span class="spacer"></span>
+                <button class="btn btn--primary" disabled="@(!_start.HasValue || EndBeforeStart || _busy)" @onclick="SaveAppointment">@T["Speichern"]</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private List<AppointmentView>? _appointments;
+    private string? _error, _saveError, _editId;
+    private bool _editOpen, _busy, _waitlist;
+    private DateTime? _start, _end;
+    private int _capacity = 10;
+    private string _title = "";
+
+    // The client mirror of AC 6; the server enforces it too, so a stale form cannot slip a bad range through.
+    private bool EndBeforeStart => _start is { } s && _end is { } e && e <= s;
+
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load()
+    {
+        try { _appointments = await Api.ListAppointmentsAsync(Slug); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null; _start = null; _end = null; _capacity = 10; _title = ""; _waitlist = false; _saveError = null;
+        _editOpen = true;
+    }
+
+    private void OpenEdit(AppointmentView a)
+    {
+        // LocalDateTime renders the stored instant in the operator's browser time for the datetime-local inputs.
+        _editId = a.Id;
+        _start = a.Start.LocalDateTime;
+        _end = a.End?.LocalDateTime;
+        _capacity = a.Capacity;
+        _title = a.Title ?? "";
+        _waitlist = a.WaitlistEnabled;
+        _saveError = null;
+        _editOpen = true;
+    }
+
+    private async Task SaveAppointment()
+    {
+        if (!_start.HasValue || EndBeforeStart) return;
+        _busy = true; _saveError = null;
+        try
+        {
+            // new DateTimeOffset(unspecified) attaches the browser's offset - "past" is compared in UTC server-side.
+            var input = new AppointmentInput(
+                new DateTimeOffset(_start.Value),
+                _end.HasValue ? new DateTimeOffset(_end.Value) : null,
+                _capacity,
+                string.IsNullOrWhiteSpace(_title) ? null : _title.Trim(),
+                _waitlist,
+                // Editing carries the current Active forward; deactivation is its own explicit action, never an edit side effect.
+                Active: _editId is null || (_appointments?.FirstOrDefault(x => x.Id == _editId)?.Active ?? true));
+            if (_editId is null) await Api.CreateAppointmentAsync(Slug, input);
+            else await Api.UpdateAppointmentAsync(Slug, _editId, input);
+            _editOpen = false;
+            await Load();
+        }
+        catch (Exception ex) { _saveError = Errors.Friendly(ex, T); }
+        finally { _busy = false; }
+    }
+
+    private async Task Deactivate(AppointmentView a)
+    {
+        try { await Api.DeactivateAppointmentAsync(Slug, a.Id); await Load(); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+
+    private async Task Delete(AppointmentView a)
+    {
+        // AC 5: a delete never happens without an explicit confirmation.
+        if (!await Js.InvokeAsync<bool>("confirm", T["Diesen Termin wirklich löschen?"])) return;
+        try { await Api.DeleteAppointmentAsync(Slug, a.Id); await Load(); }
+        catch (Exception ex) { _error = Errors.Friendly(ex, T); }
+    }
+}
