@@ -55,8 +55,8 @@ internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTot
 }
 
 /// <summary>
-/// View and start totals per form from <paramref name="from"/> onwards, across all forms (#16). A
-/// full-table scan of the tiny Funnel table (two rows per form and day) - uncritical at this volume.
+/// View and start totals per form over the inclusive window [<paramref name="from"/>, <paramref name="to"/>],
+/// across all forms (#16). A full-table scan of the tiny Funnel table (two rows per form and day) - uncritical at this volume.
 /// </summary>
 internal sealed class GetAllFunnelTotalsQuery(TableStorage storage) : IGetAllFunnelTotalsQuery
 {

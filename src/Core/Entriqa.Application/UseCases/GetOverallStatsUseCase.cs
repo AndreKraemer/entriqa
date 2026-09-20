@@ -9,8 +9,10 @@ namespace Entriqa.Application.UseCases;
 /// A separate use case from <see cref="GetFormStatsUseCase"/> on purpose: it needs no form definition
 /// (there is none across forms) and deliberately carries no quiz metrics. Only forms that are currently
 /// published contribute, so submissions of an unpublished slug are left out of every figure.
-/// Totals are all-time; the daily trend and the funnel (views, starts) cover the same 14 days as the
-/// per-form view, and per form the completion rate divides those 14-day submissions by the starts.
+/// The cross-form headline totals (Total, WithEmail, Confirmed, …) stay all-time by design - they are
+/// the "gesamt" tiles this landing view is built around (#16). The daily trend and the funnel (views,
+/// starts) cover the selected, retention-clamped period (#17), and per form the completion rate divides
+/// that period's submissions by its starts.
 /// </summary>
 internal sealed class GetOverallStatsUseCase(
     IListAllSubmissionsForStatsQuery list,

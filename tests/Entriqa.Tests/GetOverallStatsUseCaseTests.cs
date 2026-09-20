@@ -254,6 +254,20 @@ public class GetOverallStatsUseCaseTests
         Assert.Equal(AnalyticsPeriod.Days30, stats.Period);
     }
 
+    // ---- #17 (gate decision): the cross-form headline totals stay all-time; only the trend windows ----
+
+    [Fact]
+    public async Task GivenAShortPeriodWithOlderSubmissions_WhenExecuting_ThenTheHeadlineTotalStaysAllTimeWhileTheTrendWindows()
+    {
+        var stats = await UseCase(
+            [Sub("kontakt", daysAgo: 0), Sub("kontakt", daysAgo: 40)],              // one inside, one before a 30-day window
+            [Published("kontakt", "Kontakt")])
+            .ExecuteAsync(AnalyticsPeriod.Days30);
+
+        Assert.Equal(2, stats.Total);                                               // "gesamt" tile: all-time, the 40-days-ago one included
+        Assert.Equal(1, stats.Daily.Sum());                                         // trend: only the in-window one
+    }
+
     // ---- #17 Criterion 4: the funnel is scanned over the very same window as the submissions ----
 
     [Fact]
