@@ -16,9 +16,10 @@ internal sealed class GetOverallStatsUseCase(
     IListAllSubmissionsForStatsQuery list,
     IListFormsQuery forms,
     IGetAllFunnelTotalsQuery funnel,
+    Microsoft.Extensions.Options.IOptions<EntriqaOptions> options,
     TimeProvider time) : IGetOverallStatsUseCase
 {
-    public async Task<OverallStats> ExecuteAsync(CancellationToken ct = default)
+    public async Task<OverallStats> ExecuteAsync(AnalyticsPeriod period, CancellationToken ct = default)
     {
         var published = (await forms.ExecuteAsync(ct)).Where(f => f.Status == "published").ToList();
         var publishedSlugs = published.Select(f => f.Slug).ToHashSet(StringComparer.Ordinal);
@@ -38,7 +39,10 @@ internal sealed class GetOverallStatsUseCase(
             .GroupBy(s => s.Source!).Select(g => new StatsBar(g.Key, g.Count()))
             .OrderByDescending(b => b.Count).ToList();
 
-        var funnelTotals = await funnel.ExecuteAsync(DateOnly.FromDateTime(today).AddDays(-13), ct);
+        // SKELETON (#17): still the old fixed 14-day window; AvailablePeriods ignores the retention (AC 2
+        // filtering added in the implementation). The retention is read here only to wire the dependency.
+        _ = options.Value.RetentionDays;
+        var funnelTotals = await funnel.ExecuteAsync(DateOnly.FromDateTime(today).AddDays(-13), DateOnly.FromDateTime(today), ct);
         var bySlug = items.GroupBy(s => s.Slug).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
         var breakdown = published.Select(f =>
         {
@@ -54,6 +58,7 @@ internal sealed class GetOverallStatsUseCase(
             items.Count(s => s.IsConfirmed),
             items.Count(s => s.State == SubmissionState.AwaitingConfirmation),
             items.Count(s => s.State == SubmissionState.Failed),
-            sources, breakdown);
+            sources, breakdown,
+            period, AnalyticsPeriods.All);
     }
 }

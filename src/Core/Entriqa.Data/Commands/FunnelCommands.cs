@@ -39,7 +39,7 @@ internal sealed class IncrementFunnelCommand(TableStorage storage) : IIncrementF
 
 internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTotalsQuery
 {
-    public async Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         var table = await storage.GetAsync("Funnel");
         var fromKey = $"{from:yyyyMMdd}|";
@@ -59,7 +59,7 @@ internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTot
 /// </summary>
 internal sealed class GetAllFunnelTotalsQuery(TableStorage storage) : IGetAllFunnelTotalsQuery
 {
-    public async Task<IReadOnlyDictionary<string, FunnelStats>> ExecuteAsync(DateOnly from, CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<string, FunnelStats>> ExecuteAsync(DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         var table = await storage.GetAsync("Funnel");
         var fromKey = $"{from:yyyyMMdd}|";

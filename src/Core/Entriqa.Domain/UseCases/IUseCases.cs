@@ -148,13 +148,13 @@ public interface IResendDoiUseCase
 
 public interface IGetFormStatsUseCase
 {
-    /// <summary>Statistics for a form: 14-day history, quiz, lead-magnet and choice-field distributions. <paramref name="version"/> null = all.</summary>
-    Task<FormStats> ExecuteAsync(string slug, int? version, CancellationToken ct = default);
+    /// <summary>Statistics for a form over <paramref name="period"/>: trend, quiz, lead-magnet and choice-field distributions. <paramref name="version"/> null = all.</summary>
+    Task<FormStats> ExecuteAsync(string slug, int? version, AnalyticsPeriod period, CancellationToken ct = default);
 }
 
 public sealed record FormStats(
     int Total,
-    IReadOnlyList<int> Daily,                              // 14 entries, [0] = 13 days ago … [13] = today (UTC)
+    IReadOnlyList<int> Daily,                              // one bucket per day of the period, oldest first; twelve monthly buckets for the year
     IReadOnlyList<int> Versions,                           // versions present (for the filter)
     int WithEmail,
     int Confirmed,                                         // DOI confirmed
@@ -163,7 +163,9 @@ public sealed record FormStats(
     IReadOnlyList<StatsBar> Sources,                       // utm_source
     QuizStats? Quiz,
     IReadOnlyList<FieldStats> SelectFields,
-    FunnelStats? Funnel = null);                           // aggregated view and start counters (14 days, no personal data)
+    AnalyticsPeriod Period,                                // the period these figures were computed for (AC 1/3)
+    IReadOnlyList<AnalyticsPeriod> AvailablePeriods,       // the periods the admin may choose, given the retention (AC 2)
+    FunnelStats? Funnel = null);                           // aggregated view and start counters over the same window, no personal data
 
 public sealed record FunnelStats(int Views, int Starts);
 
@@ -173,26 +175,28 @@ public interface IGetOverallStatsUseCase
     /// Statistics across all published forms - the view shown when no single form is chosen (#16).
     /// Carries no quiz metrics: questions, options and results differ per form and do not compare across forms.
     /// </summary>
-    Task<OverallStats> ExecuteAsync(CancellationToken ct = default);
+    Task<OverallStats> ExecuteAsync(AnalyticsPeriod period, CancellationToken ct = default);
 }
 
 public sealed record OverallStats(
     int Total,                                             // all-time submissions across all forms
-    IReadOnlyList<int> Daily,                              // 14 entries, [0] = 13 days ago … [13] = today (UTC), summed over all forms
+    IReadOnlyList<int> Daily,                              // one bucket per day of the period, oldest first, summed over all forms; twelve monthly buckets for the year
     int WithEmail,
     int Confirmed,                                         // DOI confirmed
     int AwaitingConfirmation,
     int Failed,
     IReadOnlyList<StatsBar> Sources,                       // utm_source across all forms
-    IReadOnlyList<FormBreakdown> Forms);                   // every published form, submissions descending; empty = no published form
+    IReadOnlyList<FormBreakdown> Forms,                    // every published form, submissions descending; empty = no published form
+    AnalyticsPeriod Period,                                // the period these figures were computed for (AC 1/3)
+    IReadOnlyList<AnalyticsPeriod> AvailablePeriods);      // the periods the admin may choose, given the retention (AC 2)
 
 public sealed record FormBreakdown(
     string Slug,
     string Name,
     int Total,                                             // all-time submissions of this form
-    int Recent,                                            // submissions in the last 14 days (for the completion rate)
-    int Views,                                             // funnel views, last 14 days
-    int Starts);                                           // funnel starts, last 14 days
+    int Recent,                                            // submissions within the period (numerator of the completion rate)
+    int Views,                                             // funnel views over the period
+    int Starts);                                           // funnel starts over the period
 
 public interface ICountFormEventUseCase
 {

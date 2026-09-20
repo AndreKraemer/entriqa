@@ -1,8 +1,10 @@
+using Entriqa.Application;
 using Entriqa.Application.Ports;
 using Entriqa.Application.UseCases;
 using Entriqa.Domain.Quiz;
 using Entriqa.Domain.Submissions;
 using Entriqa.Domain.UseCases;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
 
@@ -55,16 +57,25 @@ public class GetOverallStatsUseCaseTests
     private static GetOverallStatsUseCase UseCase(
         IReadOnlyList<Submission> submissions,
         IReadOnlyList<FormListItem> forms,
-        IReadOnlyDictionary<string, FunnelStats>? funnel = null)
+        IReadOnlyDictionary<string, FunnelStats>? funnel = null,
+        int retentionDays = 180)
+        => Build(submissions, forms, funnel, retentionDays).UseCase;
+
+    private static (GetOverallStatsUseCase UseCase, IGetAllFunnelTotalsQuery Funnel) Build(
+        IReadOnlyList<Submission> submissions,
+        IReadOnlyList<FormListItem> forms,
+        IReadOnlyDictionary<string, FunnelStats>? funnel = null,
+        int retentionDays = 180)
     {
         var list = Substitute.For<IListAllSubmissionsForStatsQuery>();
         list.ExecuteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(submissions);
         var formsQuery = Substitute.For<IListFormsQuery>();
         formsQuery.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(forms);
         var funnelQuery = Substitute.For<IGetAllFunnelTotalsQuery>();
-        funnelQuery.ExecuteAsync(Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+        funnelQuery.ExecuteAsync(Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(funnel ?? new Dictionary<string, FunnelStats>());
-        return new GetOverallStatsUseCase(list, formsQuery, funnelQuery, TestData.Time);
+        var options = Options.Create(new EntriqaOptions { RetentionDays = retentionDays });
+        return (new GetOverallStatsUseCase(list, formsQuery, funnelQuery, options, TestData.Time), funnelQuery);
     }
 
     // ---- Criterion 2: the cross-form figures ----
@@ -81,7 +92,7 @@ public class GetOverallStatsUseCaseTests
                 Sub("whitepaper", status: StepRunStatus.Waiting, email: "d@x.de"),// awaiting confirmation
             ],
             [Published("kontakt", "Kontakt"), Published("whitepaper", "Whitepaper", "leadmagnet")])
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         Assert.Equal(5, stats.Total);
         Assert.Equal(4, stats.WithEmail);
@@ -101,7 +112,7 @@ public class GetOverallStatsUseCaseTests
                 Sub("kontakt", daysAgo: 20),                                      // outside the 14-day window
             ],
             [Published("kontakt", "Kontakt"), Published("whitepaper", "Whitepaper")])
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         Assert.Equal(14, stats.Daily.Count);
         Assert.Equal(2, stats.Daily[13]);                                          // today, both forms
@@ -120,7 +131,7 @@ public class GetOverallStatsUseCaseTests
                 Sub("kontakt"),                                                    // no source - not a bar
             ],
             [Published("kontakt", "Kontakt"), Published("whitepaper", "Whitepaper")])
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         Assert.Equal(new[] { "linkedin", "newsletter" }, stats.Sources.Select(b => b.Label));
         Assert.Equal(2, stats.Sources[0].Count);
@@ -137,7 +148,7 @@ public class GetOverallStatsUseCaseTests
                 Sub("entwurf"),                                                    // belongs to a draft form - must not count
             ],
             [Published("kontakt", "Kontakt"), Published("whitepaper", "Whitepaper"), Draft("entwurf", "Entwurf")])
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         Assert.Equal(new[] { "Whitepaper", "Kontakt" }, stats.Forms.Select(f => f.Name));
         Assert.Equal(3, stats.Forms[0].Total);
@@ -153,7 +164,7 @@ public class GetOverallStatsUseCaseTests
             [Sub("kontakt", daysAgo: 0), Sub("kontakt", daysAgo: 1)],
             [Published("kontakt", "Kontakt")],
             new Dictionary<string, FunnelStats> { ["kontakt"] = new FunnelStats(Views: 40, Starts: 10) })
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         var kontakt = Assert.Single(stats.Forms);
         Assert.Equal(40, kontakt.Views);
@@ -169,7 +180,7 @@ public class GetOverallStatsUseCaseTests
         var stats = await UseCase(
             [Sub("kontakt")],
             [Published("kontakt", "Kontakt"), Published("leer", "Leeres Formular")])
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         var empty = Assert.Single(stats.Forms, f => f.Slug == "leer");
         Assert.Equal(0, empty.Total);
@@ -190,7 +201,7 @@ public class GetOverallStatsUseCaseTests
                 Sub("kontakt"),
             ],
             [Published("kontakt", "Kontakt"), Published("selbsttest", "Selbsttest", "quiz")])
-            .ExecuteAsync();
+            .ExecuteAsync(AnalyticsPeriods.Default);
 
         Assert.Equal(3, stats.Total);                                              // quiz submissions counted as ordinary
         Assert.Equal(2, Assert.Single(stats.Forms, f => f.Slug == "selbsttest").Total);
@@ -206,8 +217,53 @@ public class GetOverallStatsUseCaseTests
         // VACUOUSLY GREEN against the skeleton (it returns empty Forms). Debt recorded on the plan comment:
         // a use case that returns empty Forms unconditionally (ignoring IListFormsQuery) also passes this,
         // but fails the ranking test and the zero-submission test above - they are its discriminating backstop.
-        var stats = await UseCase([], [Draft("entwurf", "Entwurf")]).ExecuteAsync();
+        var stats = await UseCase([], [Draft("entwurf", "Entwurf")]).ExecuteAsync(AnalyticsPeriods.Default);
 
         Assert.Empty(stats.Forms);
+    }
+
+    // ---- #17 Criterion 2: the offered periods shrink with the retention ----
+
+    [Fact]
+    public async Task GivenARetentionShorterThanThirtyDays_WhenExecuting_ThenOnlyPeriodsWithinTheRetentionAreOffered()
+    {
+        var stats = await UseCase([], [Published("kontakt", "Kontakt")], retentionDays: 20)
+            .ExecuteAsync(AnalyticsPeriods.Default);
+
+        Assert.Equal(new[] { AnalyticsPeriod.Days7, AnalyticsPeriod.Days14 }, stats.AvailablePeriods);
+    }
+
+    // ---- #17 Criterion 1: a chosen period drives the trend window ----
+
+    [Fact]
+    public async Task GivenAThirtyDayPeriod_WhenExecuting_ThenTheTrendCoversThirtyDaysAndIgnoresOlderSubmissions()
+    {
+        var stats = await UseCase(
+            [
+                Sub("kontakt", daysAgo: 0),
+                Sub("kontakt", daysAgo: 29),
+                Sub("kontakt", daysAgo: 30),                                       // outside the 30-day window
+            ],
+            [Published("kontakt", "Kontakt")])
+            .ExecuteAsync(AnalyticsPeriod.Days30);
+
+        Assert.Equal(30, stats.Daily.Count);
+        Assert.Equal(1, stats.Daily[^1]);                                          // today
+        Assert.Equal(1, stats.Daily[0]);                                           // 29 days ago
+        Assert.Equal(2, stats.Daily.Sum());                                        // the 30-days-ago one is not counted
+        Assert.Equal(AnalyticsPeriod.Days30, stats.Period);
+    }
+
+    // ---- #17 Criterion 4: the funnel is scanned over the very same window as the submissions ----
+
+    [Fact]
+    public async Task GivenAThirtyDayPeriod_WhenExecuting_ThenTheFunnelIsScannedOverThatWindowNotFourteenDays()
+    {
+        var (useCase, funnel) = Build([], [Published("kontakt", "Kontakt")]);
+
+        await useCase.ExecuteAsync(AnalyticsPeriod.Days30);
+
+        var today = DateOnly.FromDateTime(TestData.Time.GetUtcNow().UtcDateTime);
+        await funnel.Received(1).ExecuteAsync(today.AddDays(-29), today, Arg.Any<CancellationToken>());
     }
 }

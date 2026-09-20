@@ -3,6 +3,7 @@ using Entriqa.Domain.Errors;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Submissions;
 using Entriqa.Domain.UseCases;
+using Microsoft.Extensions.Options;
 
 namespace Entriqa.Application.UseCases;
 
@@ -15,9 +16,10 @@ internal sealed class GetFormStatsUseCase(
     ITryGetPublishedFormQuery getPublished,
     ITryGetFormVersionQuery getVersion,
     IGetFunnelTotalsQuery funnel,
+    IOptions<EntriqaOptions> options,
     TimeProvider time) : IGetFormStatsUseCase
 {
-    public async Task<FormStats> ExecuteAsync(string slug, int? version, CancellationToken ct = default)
+    public async Task<FormStats> ExecuteAsync(string slug, int? version, AnalyticsPeriod period, CancellationToken ct = default)
     {
         var all = await list.ExecuteAsync(slug, 5000, ct);
         var versions = all.Select(s => s.Version).Distinct().OrderBy(v => v).ToList();
@@ -75,8 +77,11 @@ internal sealed class GetFormStatsUseCase(
             .Where(f => f.Options.Any(o => o.Count > 0))
             .ToList();
 
-        // Funnel: aggregated view and start counters of the same 14 days (version-independent - the counters know no version)
-        var totals = await funnel.ExecuteAsync(slug, DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime).AddDays(-13), ct);
+        // SKELETON (#17): still the old fixed 14-day window; AvailablePeriods ignores the retention (AC 2
+        // filtering added in the implementation). The retention is read here only to wire the dependency.
+        _ = options.Value.RetentionDays;
+        var todayOnly = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
+        var totals = await funnel.ExecuteAsync(slug, todayOnly.AddDays(-13), todayOnly, ct);
         var funnelStats = totals.Count == 0 ? null : new FunnelStats(totals.GetValueOrDefault("view"), totals.GetValueOrDefault("start"));
 
         return new FormStats(
@@ -85,6 +90,8 @@ internal sealed class GetFormStatsUseCase(
             items.Count(s => s.IsConfirmed),
             items.Count(s => s.State == SubmissionState.AwaitingConfirmation),
             items.Count(s => s.State == SubmissionState.Failed),
-            sources, quiz, selectFields, funnelStats);
+            sources, quiz, selectFields,
+            period, AnalyticsPeriods.All,
+            funnelStats);
     }
 }
