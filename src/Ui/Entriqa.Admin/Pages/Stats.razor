@@ -1,5 +1,10 @@
 @page "/auswertungen"
 @page "/auswertungen/{Slug}"
+@using Entriqa.Domain.UseCases
+@* the wire DTOs are the admin's own mirrors; only AnalyticsPeriod + its extensions come from the domain namespace *@
+@using FormStats = Entriqa.Admin.Services.FormStats
+@using OverallStats = Entriqa.Admin.Services.OverallStats
+@using FormListItem = Entriqa.Admin.Services.FormListItem
 @inject AdminApi Api
 @inject Ui T
 
@@ -24,7 +29,9 @@ else
                 @foreach (var v in _stats.Versions) { <option value="@v" selected="@(_version == v)">@T.F("Version {0}", v)</option> }
             </select>
         }
-        <span class="hint" style="margin-left:auto">@T["Zeitraum Verlauf: letzte 14 Tage"]</span>
+        <select value="@_period.ToKey()" @onchange="OnPeriodChange" style="margin-left:auto" aria-label="@T["Zeitraum"]">
+            @foreach (var p in AvailablePeriods) { <option value="@p.ToKey()" selected="@(_period == p)">@PeriodShort(p)</option> }
+        </select>
     </div>
 
     @if (Slug is null)
@@ -49,11 +56,11 @@ else
                     {
                         <div class="day-col">
                             <span class="hint">@(d > 0 ? d.ToString() : "")</span>
-                            <div class="day-bar @(i >= 7 ? "day-bar--recent" : "")" style="height:@(BarHeight(d, _overall.Daily))px"></div>
+                            <div class="day-bar @(IsRecent(i, _overall.Daily.Count) ? "day-bar--recent" : "")" style="height:@(BarHeight(d, _overall.Daily))px"></div>
                         </div>
                     }
                 </div>
-                <div class="day-legend"><span>@T["vor 14 Tagen"]</span><span>@T["heute"]</span></div>
+                <div class="day-legend"><span>@PeriodStart(_overall.Period)</span><span>@T["heute"]</span></div>
             </div>
 
             <div class="card">
@@ -64,7 +71,7 @@ else
 
             <div class="card">
                 <h2 style="margin-top:0">@T["Aufrufe und Abschlussquote je Formular"]</h2>
-                <p class="hint">@T["Aufrufe und Abschlussquote der letzten 14 Tage."]</p>
+                <p class="hint">@T.F("Aufrufe und Abschlussquote im Zeitraum {0}.", PeriodShort(_overall.Period))</p>
                 <table>
                     <thead><tr><th>@T["Formular"]</th><th>@T["Aufrufe"]</th><th>@T["Abschlussquote"]</th></tr></thead>
                     <tbody>
@@ -108,9 +115,9 @@ else
         @if (_stats.Funnel is { } fu)
         {
             <div class="kpis">
-                <div class="kpi"><div class="kpi-v">@fu.Views</div><div class="kpi-l">@T["Aufrufe (14 Tage)"]</div></div>
+                <div class="kpi"><div class="kpi-v">@fu.Views</div><div class="kpi-l">@T.F("Aufrufe ({0})", PeriodShort(_stats.Period))</div></div>
                 <div class="kpi"><div class="kpi-v">@fu.Starts</div><div class="kpi-l">@T["davon begonnen"]</div></div>
-                <div class="kpi"><div class="kpi-v">@Pct(_stats.Daily.Sum(), Math.Max(fu.Starts, 1)) %</div><div class="kpi-l">@T["Abschlussquote (Einsendungen / begonnen, 14 Tage)"]</div></div>
+                <div class="kpi"><div class="kpi-v">@Pct(_stats.Daily.Sum(), Math.Max(fu.Starts, 1)) %</div><div class="kpi-l">@T.F("Abschlussquote (Einsendungen / begonnen, {0})", PeriodShort(_stats.Period))</div></div>
             </div>
         }
 
@@ -121,11 +128,11 @@ else
                 {
                     <div class="day-col">
                         <span class="hint">@(d > 0 ? d.ToString() : "")</span>
-                        <div class="day-bar @(i >= 7 ? "day-bar--recent" : "")" style="height:@(BarHeight(d))px"></div>
+                        <div class="day-bar @(IsRecent(i, _stats.Daily.Count) ? "day-bar--recent" : "")" style="height:@(BarHeight(d))px"></div>
                     </div>
                 }
             </div>
-            <div class="day-legend"><span>@T["vor 14 Tagen"]</span><span>@T["heute"]</span></div>
+            <div class="day-legend"><span>@PeriodStart(_stats.Period)</span><span>@T["heute"]</span></div>
         </div>
 
         @if (_stats.Quiz is { } quiz)
@@ -172,7 +179,15 @@ else
     private FormStats? _stats;
     private OverallStats? _overall;
     private int? _version;
+    // The chosen period is deliberately NOT reset when the form changes: it is kept across the switch
+    // between the overview and a single form (AC 5 of #17). The form dropdown mutates state without
+    // navigating, so plain component state is enough - no query state, no re-render subscription.
+    private AnalyticsPeriod _period = AnalyticsPeriods.Default;
     private string? _error;
+
+    // The periods the server offers for the current retention (AC 2); every period until the first load.
+    private IReadOnlyList<AnalyticsPeriod> AvailablePeriods =>
+        (_stats?.AvailablePeriods ?? _overall?.AvailablePeriods) is { Count: > 0 } a ? a : AnalyticsPeriods.All;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -191,8 +206,8 @@ else
         _overall = null;
         try
         {
-            if (Slug is null) { _overall = await Api.GetOverallStatsAsync(); }
-            else { _stats = await Api.GetStatsAsync(Slug, _version); }
+            if (Slug is null) { _overall = await Api.GetOverallStatsAsync(_period); }
+            else { _stats = await Api.GetStatsAsync(Slug, _version, _period); }
             _error = null;
         }
         catch (Exception ex) { _error = Errors.Friendly(ex, T); }
@@ -229,4 +244,20 @@ else
         _version = int.TryParse(e.Value?.ToString(), out var v) ? v : null;
         await LoadStats();
     }
+
+    private async Task OnPeriodChange(ChangeEventArgs e)
+    {
+        _period = AnalyticsPeriods.ParseOrDefault(e.Value?.ToString());
+        await LoadStats();
+    }
+
+    // AC 3: the chosen period is named on every figure. "7 Tage" … "12 Monate"; "vor 30 Tagen" on the trend axis.
+    private string PeriodShort(AnalyticsPeriod p) =>
+        p == AnalyticsPeriod.Months12 ? T.F("{0} Monate", 12) : T.F("{0} Tage", p.LengthInDays());
+
+    private string PeriodStart(AnalyticsPeriod p) =>
+        p == AnalyticsPeriod.Months12 ? T.F("vor {0} Monaten", 12) : T.F("vor {0} Tagen", p.LengthInDays());
+
+    // The more recent half of the trend is highlighted, whatever the period's length.
+    private static bool IsRecent(int i, int count) => i >= count / 2;
 }

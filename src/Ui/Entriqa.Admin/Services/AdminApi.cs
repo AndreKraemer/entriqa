@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Entriqa.Domain.UseCases;   // AnalyticsPeriod - an enum shared on the wire, not mirrored (its numeric value must match)
 
 namespace Entriqa.Admin.Services;
 
@@ -121,10 +122,11 @@ public sealed class AdminApi(HttpClient http)
         await ThrowIfError(res);
     }
 
-    public Task<FormStats> GetStatsAsync(string slug, int? version) =>
-        GetAsync<FormStats>($"api/manage/forms/{Uri.EscapeDataString(slug)}/stats" + (version is { } v ? $"?version={v}" : ""));
+    public Task<FormStats> GetStatsAsync(string slug, int? version, AnalyticsPeriod period) =>
+        GetAsync<FormStats>($"api/manage/forms/{Uri.EscapeDataString(slug)}/stats?period={period.ToKey()}" + (version is { } v ? $"&version={v}" : ""));
 
-    public Task<OverallStats> GetOverallStatsAsync() => GetAsync<OverallStats>("api/manage/stats");
+    public Task<OverallStats> GetOverallStatsAsync(AnalyticsPeriod period) =>
+        GetAsync<OverallStats>($"api/manage/stats?period={period.ToKey()}");
 
     public Task<RecentSubmissions> ListRecentAsync(string? slug) =>
         GetAsync<RecentSubmissions>("api/manage/submissions" + (slug is null ? "" : $"?slug={Uri.EscapeDataString(slug)}"));
@@ -285,13 +287,14 @@ public sealed record SubmissionSearchResult(List<SubmissionListItem> Items, Date
 
 public sealed record FormStats(int Total, List<int> Daily, List<int> Versions, int WithEmail, int Confirmed,
     int AwaitingConfirmation, int Failed, List<StatsBar> Sources, QuizStats? Quiz, List<FieldStats> SelectFields,
-    FunnelStats? Funnel);
+    AnalyticsPeriod Period, List<AnalyticsPeriod> AvailablePeriods, FunnelStats? Funnel);
 public sealed record FunnelStats(int Views, int Starts);
 public sealed record StatsBar(string Label, int Count);
 
 // #16: statistics across all published forms - no quiz metrics (they do not compare across forms).
 public sealed record OverallStats(int Total, List<int> Daily, int WithEmail, int Confirmed,
-    int AwaitingConfirmation, int Failed, List<StatsBar> Sources, List<FormBreakdown> Forms);
+    int AwaitingConfirmation, int Failed, List<StatsBar> Sources, List<FormBreakdown> Forms,
+    AnalyticsPeriod Period, List<AnalyticsPeriod> AvailablePeriods);
 public sealed record FormBreakdown(string Slug, string Name, int Total, int Recent, int Views, int Starts);
 public sealed record QuizStats(List<StatsBar> Results, int AvgPct, int EndedByJump, List<QuestionStats> Questions);
 public sealed record QuestionStats(string Question, int Seen, List<StatsBar> Options);

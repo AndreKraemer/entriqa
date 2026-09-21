@@ -59,8 +59,8 @@ public interface IIncrementFunnelCommand
 
 public interface IGetFunnelTotalsQuery
 {
-    /// <summary>Totals per event type from <paramref name="from"/> onwards (inclusive).</summary>
-    Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, CancellationToken ct = default);
+    /// <summary>Totals per event type over the inclusive window [<paramref name="from"/>, <paramref name="to"/>].</summary>
+    Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, DateOnly to, CancellationToken ct = default);
 }
 
 // Contact view (a scan across the submissions - small volume, bounded by the retention period)
@@ -105,8 +105,8 @@ public interface IListAllSubmissionsForStatsQuery
 
 public interface IGetAllFunnelTotalsQuery
 {
-    /// <summary>View and start totals per form slug from <paramref name="from"/> onwards (inclusive), across all forms (#16).</summary>
-    Task<IReadOnlyDictionary<string, Domain.UseCases.FunnelStats>> ExecuteAsync(DateOnly from, CancellationToken ct = default);
+    /// <summary>View and start totals per form slug over the inclusive window [<paramref name="from"/>, <paramref name="to"/>], across all forms (#16).</summary>
+    Task<IReadOnlyDictionary<string, Domain.UseCases.FunnelStats>> ExecuteAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
 }
 
 public interface IGetLastVisitQuery

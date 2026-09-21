@@ -39,12 +39,13 @@ internal sealed class IncrementFunnelCommand(TableStorage storage) : IIncrementF
 
 internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTotalsQuery
 {
-    public async Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<string, int>> ExecuteAsync(string slug, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         var table = await storage.GetAsync("Funnel");
         var fromKey = $"{from:yyyyMMdd}|";
+        var toKeyExclusive = $"{to.AddDays(1):yyyyMMdd}|";                          // rowkeys are "yyyyMMdd|type"; the day after `to` bounds it inclusively
         var totals = new Dictionary<string, int>();
-        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.PartitionKey == slug && x.RowKey.CompareTo(fromKey) >= 0, cancellationToken: ct))
+        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.PartitionKey == slug && x.RowKey.CompareTo(fromKey) >= 0 && x.RowKey.CompareTo(toKeyExclusive) < 0, cancellationToken: ct))
         {
             var type = e.RowKey.Split('|') is { Length: 2 } parts ? parts[1] : "?";
             totals[type] = totals.GetValueOrDefault(type) + e.Count;
@@ -54,18 +55,19 @@ internal sealed class GetFunnelTotalsQuery(TableStorage storage) : IGetFunnelTot
 }
 
 /// <summary>
-/// View and start totals per form from <paramref name="from"/> onwards, across all forms (#16). A
-/// full-table scan of the tiny Funnel table (two rows per form and day) - uncritical at this volume.
+/// View and start totals per form over the inclusive window [<paramref name="from"/>, <paramref name="to"/>],
+/// across all forms (#16). A full-table scan of the tiny Funnel table (two rows per form and day) - uncritical at this volume.
 /// </summary>
 internal sealed class GetAllFunnelTotalsQuery(TableStorage storage) : IGetAllFunnelTotalsQuery
 {
-    public async Task<IReadOnlyDictionary<string, FunnelStats>> ExecuteAsync(DateOnly from, CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<string, FunnelStats>> ExecuteAsync(DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         var table = await storage.GetAsync("Funnel");
         var fromKey = $"{from:yyyyMMdd}|";
+        var toKeyExclusive = $"{to.AddDays(1):yyyyMMdd}|";                          // rowkeys are "yyyyMMdd|type"; the day after `to` bounds it inclusively
         var views = new Dictionary<string, int>(StringComparer.Ordinal);
         var starts = new Dictionary<string, int>(StringComparer.Ordinal);
-        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.RowKey.CompareTo(fromKey) >= 0, cancellationToken: ct))
+        await foreach (var e in table.QueryAsync<FunnelEntity>(x => x.RowKey.CompareTo(fromKey) >= 0 && x.RowKey.CompareTo(toKeyExclusive) < 0, cancellationToken: ct))
         {
             var bucket = (e.RowKey.Split('|') is { Length: 2 } parts ? parts[1] : "?") switch
             {

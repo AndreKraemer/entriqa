@@ -25,7 +25,7 @@ public class OverallStatsPageGuardTests
         // being present anywhere would not reveal - fails this test. See test-conventions: "the pull is
         // what makes it a guard rather than a grep".
         Assert.Matches(
-            new Regex(@"Slug\s+is\s+null\s*\)\s*\{\s*_overall\s*=\s*await\s+Api\.GetOverallStatsAsync\(\)", RegexOptions.Singleline),
+            new Regex(@"Slug\s+is\s+null\s*\)\s*\{\s*_overall\s*=\s*await\s+Api\.GetOverallStatsAsync\(", RegexOptions.Singleline),
             markup);
         // Criterion 4: the chosen-form path keeps the existing per-form call.
         Assert.Contains("Api.GetStatsAsync(", markup, StringComparison.Ordinal);

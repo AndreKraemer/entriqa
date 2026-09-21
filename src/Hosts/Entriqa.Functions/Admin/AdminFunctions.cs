@@ -155,7 +155,8 @@ public sealed class AdminFunctions(
     {
         principal.RequireRole(req, "admin");
         int? version = int.TryParse(req.Query["version"].FirstOrDefault(), out var v) ? v : null;
-        return new OkObjectResult(await stats.ExecuteAsync(slug, version, ct));
+        var period = AnalyticsPeriods.ParseOrDefault(req.Query["period"].FirstOrDefault());
+        return new OkObjectResult(await stats.ExecuteAsync(slug, version, period, ct));
     }
 
     /// <summary>Statistics across all published forms - the evaluation shown when no single form is chosen (#16).</summary>
@@ -163,7 +164,8 @@ public sealed class AdminFunctions(
     public async Task<IActionResult> OverallStats([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "manage/stats")] HttpRequest req, CancellationToken ct)
     {
         principal.RequireRole(req, "admin");
-        return new OkObjectResult(await overallStats.ExecuteAsync(ct));
+        var period = AnalyticsPeriods.ParseOrDefault(req.Query["period"].FirstOrDefault());
+        return new OkObjectResult(await overallStats.ExecuteAsync(period, ct));
     }
 
     [Function("AdminListForms")]
