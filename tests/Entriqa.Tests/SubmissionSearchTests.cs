@@ -88,23 +88,23 @@ public class SubmissionSearchTests
     {
         var useCase = Search(out _, candidates:
         [
-            Candidate("hit", 0, "kim@example.org", "Rückruf für die Odysys AG erbeten."),
+            Candidate("hit", 0, "kim@example.org", "Rückruf für die Nordlicht AG erbeten."),
             Candidate("miss", 1, "robin@example.org", "Bitte um Rückruf zum Angebot."),
         ]);
 
-        var result = await useCase.ExecuteAsync(null, "Odysys", TestData.AdminMe);
+        var result = await useCase.ExecuteAsync(null, "Nordlicht", TestData.AdminMe);
 
         Assert.Equal(["hit"], Ids(result.Items));
     }
 
     /// <summary>AC2 - and the direction that matters, since the stored text is what varies in practice.</summary>
     [Theory]
-    [InlineData("odysys")]
-    [InlineData("ODYSYS")]
-    [InlineData("OdYsYs")]
+    [InlineData("nordlicht")]
+    [InlineData("NORDLICHT")]
+    [InlineData("NoRdLiChT")]
     public async Task GivenATermInAnotherCase_WhenSearching_ThenTheMatchIsFoundAnyway(string term)
     {
-        var useCase = Search(out _, candidates: [Candidate("hit", 0, "Rückruf für die Odysys AG erbeten.")]);
+        var useCase = Search(out _, candidates: [Candidate("hit", 0, "Rückruf für die Nordlicht AG erbeten.")]);
 
         Assert.Equal(["hit"], Ids((await useCase.ExecuteAsync(null, term, TestData.AdminMe)).Items));
     }
@@ -121,7 +121,7 @@ public class SubmissionSearchTests
     {
         var useCase = Search(out var query, candidates: []);
 
-        await useCase.ExecuteAsync(slug, "odysys", TestData.AdminMe, scanMax: 250);
+        await useCase.ExecuteAsync(slug, "nordlicht", TestData.AdminMe, scanMax: 250);
 
         // The ceiling is asserted here rather than waved through with Arg.Any: it arrives from the endpoint,
         // where it is clamped, and a use case that substituted one of its own would make that clamp a lie.
@@ -132,9 +132,9 @@ public class SubmissionSearchTests
     [Fact]
     public async Task GivenTheScanHitItsCeiling_WhenSearching_ThenTheResultSaysSoAndHowManyWereSearched()
     {
-        var useCase = Search(out _, scanned: 5000, capped: true, candidates: [Candidate("hit", 0, "Odysys")]);
+        var useCase = Search(out _, scanned: 5000, capped: true, candidates: [Candidate("hit", 0, "Nordlicht")]);
 
-        var result = await useCase.ExecuteAsync(null, "odysys", TestData.AdminMe);
+        var result = await useCase.ExecuteAsync(null, "nordlicht", TestData.AdminMe);
 
         Assert.Equal(5000, result.Scanned);
         Assert.True(result.Capped);
@@ -144,9 +144,9 @@ public class SubmissionSearchTests
     [Fact]
     public async Task GivenTheCallersLastVisit_WhenSearching_ThenItTravelsWithTheHits()
     {
-        var useCase = Search(out _, lastVisit: Noon, candidates: [Candidate("hit", 0, "Odysys")]);
+        var useCase = Search(out _, lastVisit: Noon, candidates: [Candidate("hit", 0, "Nordlicht")]);
 
-        Assert.Equal(Noon, (await useCase.ExecuteAsync(null, "odysys", TestData.AdminMe)).LastVisitAt);
+        Assert.Equal(Noon, (await useCase.ExecuteAsync(null, "nordlicht", TestData.AdminMe)).LastVisitAt);
     }
 
     /// <summary>
@@ -159,12 +159,12 @@ public class SubmissionSearchTests
     {
         var useCase = Search(out _, candidates:
         [
-            Candidate("older", 5, "Odysys"),
-            Candidate("newest", 0, "Odysys"),
-            Candidate("middle", 2, "Odysys"),
+            Candidate("older", 5, "Nordlicht"),
+            Candidate("newest", 0, "Nordlicht"),
+            Candidate("middle", 2, "Nordlicht"),
         ]);
 
-        Assert.Equal(["newest", "middle", "older"], Ids((await useCase.ExecuteAsync(null, "odysys", TestData.AdminMe)).Items));
+        Assert.Equal(["newest", "middle", "older"], Ids((await useCase.ExecuteAsync(null, "nordlicht", TestData.AdminMe)).Items));
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public class SubmissionSearchTests
     [Fact]
     public async Task GivenATermOfOnlyWhitespace_WhenSearching_ThenNothingMatches()
     {
-        var useCase = Search(out _, candidates: [Candidate("hit", 0, "Rückruf für die Odysys AG erbeten.")]);
+        var useCase = Search(out _, candidates: [Candidate("hit", 0, "Rückruf für die Nordlicht AG erbeten.")]);
 
         Assert.Empty((await useCase.ExecuteAsync(null, " ", TestData.AdminMe)).Items);
     }
@@ -243,7 +243,7 @@ public class SubmissionSearchTests
     public void GivenASelectionWithATermAndARange_WhenTurningItIntoAnAddressAndBack_ThenItIsUnchanged()
     {
         var selection = new SubmissionSelection("kontakt", "failed,todo", 2, TestData.AdminMe,
-            "Odysys AG", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 20));
+            "Nordlicht AG", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 20));
         var url = selection.DetailUrl("s07");
 
         Assert.Equal(selection, SubmissionSelection.FromQuery(null, url[url.IndexOf('?', StringComparison.Ordinal)..]));
@@ -299,9 +299,9 @@ public class SubmissionSearchTests
     /// highlighting would show a permanently narrowed list with an empty search box.
     /// </summary>
     [Theory]
-    [InlineData(null, "Odysys")]
-    [InlineData("Odysys", null)]
-    [InlineData("Odysys", "Odyssey")]
+    [InlineData(null, "Nordlicht")]
+    [InlineData("Nordlicht", null)]
+    [InlineData("Nordlicht", "Nordlich")]
     public void GivenTheTermChanged_WhenAskingWhetherToReload_ThenItReloads(string? before, string? after) =>
         Assert.True(new SubmissionSelection(null, null, 1, null, after)
             .NeedsReload(new SubmissionSelection(null, null, 1, null, before)));
@@ -316,8 +316,8 @@ public class SubmissionSearchTests
     /// </summary>
     [Fact]
     public void GivenOnlyTheOtherNarrowingsChanged_WhenAskingWhetherToReload_ThenItDoesNot() =>
-        Assert.False(new SubmissionSelection("kontakt", "failed,todo", 4, TestData.AdminMe, "Odysys", DayOf(2), DayOf(0))
-            .NeedsReload(new SubmissionSelection("kontakt", null, 1, null, "Odysys")));
+        Assert.False(new SubmissionSelection("kontakt", "failed,todo", 4, TestData.AdminMe, "Nordlicht", DayOf(2), DayOf(0))
+            .NeedsReload(new SubmissionSelection("kontakt", null, 1, null, "Nordlicht")));
 
     // ---- What the list says about its search (AC5, AC6, AC7) ----
 
@@ -327,7 +327,7 @@ public class SubmissionSearchTests
 
     [Fact]
     public void GivenASearchOverEveryStoredSubmission_WhenAskingForTheSummary_ThenItNamesHowManyWereSearched() =>
-        Assert.Contains("120", Term("Odysys").SearchSummary(new Ui(), 120, capped: false), StringComparison.Ordinal);
+        Assert.Contains("120", Term("Nordlicht").SearchSummary(new Ui(), 120, capped: false), StringComparison.Ordinal);
 
     /// <summary>
     /// AC6. Asserted as a difference rather than against a wording, so the guard survives an edit of the
@@ -336,7 +336,7 @@ public class SubmissionSearchTests
     [Fact]
     public void GivenTheCeilingWasReached_WhenAskingForTheSummary_ThenItDiffersFromACompleteOne()
     {
-        var selection = Term("Odysys");
+        var selection = Term("Nordlicht");
 
         var capped = selection.SearchSummary(new Ui(), 5000, capped: true);
 
@@ -347,7 +347,7 @@ public class SubmissionSearchTests
     /// <summary>AC7: the reader has to see which term found nothing, not that something found nothing.</summary>
     [Fact]
     public void GivenASearchWithoutHits_WhenAskingForTheEmptyMessage_ThenItNamesTheTerm() =>
-        Assert.Contains("Odysys AG", Term("Odysys AG").EmptyMessage(new Ui()), StringComparison.Ordinal);
+        Assert.Contains("Nordlicht AG", Term("Nordlicht AG").EmptyMessage(new Ui()), StringComparison.Ordinal);
 
     [Fact]
     public void GivenNoSearchIsRunning_WhenAskingForTheEmptyMessage_ThenItIsTheOrdinaryEmptyText()
@@ -366,7 +366,7 @@ public class SubmissionSearchTests
     {
         var en = new Ui();
         en.Init("en");
-        var selection = Term("Odysys");
+        var selection = Term("Nordlicht");
 
         Assert.NotEqual(selection.SearchSummary(new Ui(), 120, capped: false), selection.SearchSummary(en, 120, capped: false));
         // The capped sentence is its own key, so it needs its own entry - and the duplicate-key guard in
