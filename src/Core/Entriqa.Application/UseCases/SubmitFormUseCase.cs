@@ -74,6 +74,8 @@ internal sealed class SubmitFormUseCase(
         var offered = await offer.ForAsync(def, ct);
         FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains, offered);
         var quiz = def.Quiz is null ? null : QuizEngine.Evaluate(def.Quiz, request.Answers!);
+        var appointment = AppointmentOfferService.Freeze(def, values, offered,
+            AppointmentLabel.ResolveZone(request.TimeZone, o.DefaultTimeZone), locale);
 
         // 5. Consume the nonce (only now - the input is valid) and save before any step runs.
         if (!await consumeNonce.ExecuteAsync(payload.Nonce, payload.IssuedAt.AddHours(o.MaxSubmitHours), ct))
@@ -94,6 +96,7 @@ internal sealed class SubmitFormUseCase(
             IpHash = ipHash,
             Quiz = quiz,
             ConsentText = def.ConsentField?.Text?.ToString(),
+            Appointment = appointment,
             StepRuns = pipeline.CreateRuns(def),
             Handling = def.Handling ? HandlingStates.Open : HandlingStates.None,
         };
