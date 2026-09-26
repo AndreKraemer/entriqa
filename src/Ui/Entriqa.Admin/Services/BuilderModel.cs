@@ -136,7 +136,7 @@ public sealed class FieldModel
         ("text", "Textzeile"), ("email", "E-Mail"), ("tel", "Telefon"), ("textarea", "Mehrzeiliger Text"), ("number", "Zahl"),
         ("file", "Datei-Upload"),
         ("select", "Auswahl"), ("multiselect", "Mehrfachauswahl"), ("checkbox", "Checkbox"), ("date", "Datum"),
-        ("rating", "Bewertungsskala"), ("consent", "Einwilligung"), ("hidden", "Verstecktes Feld"),
+        ("rating", "Bewertungsskala"), ("appointment", "Terminauswahl"), ("consent", "Einwilligung"), ("hidden", "Verstecktes Feld"),
         ("section", "Zwischenüberschrift"), ("divider", "Trennlinie"), ("page", "Seitenumbruch"),
     };
 

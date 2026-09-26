@@ -21,7 +21,8 @@ public static class MarkupGenerator
         foreach (var f in m.Fields)
         {
             var id = $"eq-{m.Slug}-{f.Id}";
-            var req = f.Required ? " eq-field--required" : "";
+            var required = f.Required || f.Type == "appointment";   // #7: forms.js always marks the appointment field required
+            var req = required ? " eq-field--required" : "";
             switch (f.Type)
             {
                 case "section": L(1, $"<h3 class=\"eq-section\">{E(f.Label.Get(loc))}</h3>"); continue;
@@ -36,21 +37,28 @@ public static class MarkupGenerator
             if (f.Type is "consent" or "checkbox")
             {
                 L(2, $"<label class=\"eq-field__label\" for=\"{id}\">");
-                L(3, $"<input class=\"eq-field__control\" type=\"checkbox\" id=\"{id}\" name=\"{f.Id}\"{(f.Required ? " required" : "")}>");
-                L(3, $"<span>{E((f.Type == "consent" ? f.ConsentText : f.Label).Get(loc))}{(f.Required ? " <span class=\"eq-field__required\">*</span>" : "")}</span>");
+                L(3, $"<input class=\"eq-field__control\" type=\"checkbox\" id=\"{id}\" name=\"{f.Id}\"{(required ? " required" : "")}>");
+                L(3, $"<span>{E((f.Type == "consent" ? f.ConsentText : f.Label).Get(loc))}{(required ? " <span class=\"eq-field__required\">*</span>" : "")}</span>");
                 L(2, "</label>");
             }
             else
             {
-                L(2, $"<label class=\"eq-field__label\" for=\"{id}\">{E(f.Label.Get(loc))}{(f.Required ? " <span class=\"eq-field__required\">*</span>" : "")}</label>");
+                L(2, $"<label class=\"eq-field__label\" for=\"{id}\">{E(f.Label.Get(loc))}{(required ? " <span class=\"eq-field__required\">*</span>" : "")}</label>");
                 switch (f.Type)
                 {
-                    case "textarea": L(2, $"<textarea class=\"eq-field__control\" id=\"{id}\" name=\"{f.Id}\"{(f.Required ? " required" : "")}></textarea>"); break;
+                    case "textarea": L(2, $"<textarea class=\"eq-field__control\" id=\"{id}\" name=\"{f.Id}\"{(required ? " required" : "")}></textarea>"); break;
                     case "select":
-                        L(2, $"<select class=\"eq-field__control\" id=\"{id}\" name=\"{f.Id}\"{(f.Required ? " required" : "")}>");
+                        L(2, $"<select class=\"eq-field__control\" id=\"{id}\" name=\"{f.Id}\"{(required ? " required" : "")}>");
                         L(3, "<option value=\"\">Bitte wählen</option>");
                         foreach (var o in f.Options) L(3, $"<option>{E(o.Get(loc))}</option>");
                         L(2, "</select>");
+                        break;
+                    case "appointment":
+                        L(2, $"<select class=\"eq-field__control\" id=\"{id}\" name=\"{f.Id}\" required>");
+                        L(3, "<option value=\"\">Bitte wählen</option>");
+                        L(3, "<option value=\"{Termin-Id}\">Di., 13.10.2026, 10:00–12:00 · Titel</option>  <!-- je buchbarem Termin, in der Zeitzone des Besuchers -->");
+                        L(2, "</select>");
+                        L(2, "<!-- Ohne buchbaren Termin statt der Auswahl: <p class=\"eq-field__notice\" role=\"status\">…</p>, der Absende-Button ist gesperrt -->");
                         break;
                     case "multiselect":
                         L(2, "<div class=\"eq-field__options\" role=\"group\">");
@@ -63,12 +71,12 @@ public static class MarkupGenerator
                         L(2, "</div>");
                         break;
                     case "file":
-                        L(2, $"<input class=\"eq-field__control\" type=\"file\" id=\"{id}\" name=\"{f.Id}\"{(f.Required ? " required" : "")} accept=\"…\">");
+                        L(2, $"<input class=\"eq-field__control\" type=\"file\" id=\"{id}\" name=\"{f.Id}\"{(required ? " required" : "")} accept=\"…\">");
                         L(2, "<p class=\"eq-field__file-status\" hidden></p>  <!-- Upload-Status -->");
                         break;
                     default:
                         var type = f.Type is "email" or "number" or "date" or "tel" ? f.Type : "text";
-                        L(2, $"<input class=\"eq-field__control\" type=\"{type}\" id=\"{id}\" name=\"{f.Id}\"{(f.Required ? " required" : "")}>");
+                        L(2, $"<input class=\"eq-field__control\" type=\"{type}\" id=\"{id}\" name=\"{f.Id}\"{(required ? " required" : "")}>");
                         break;
                 }
                 if (f.Help.Get(loc) is { Length: > 0 } help) L(2, $"<p class=\"eq-field__help\">{E(help)}</p>");

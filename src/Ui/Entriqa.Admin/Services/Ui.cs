@@ -213,6 +213,10 @@ public sealed class Ui
         ["Bewertungsskala"] = "Rating scale",
         ["Seitenumbruch"] = "Page break",
         ["Datei-Upload"] = "File upload",
+        ["Terminauswahl"] = "Appointment selection",
+        ["Die Auswahl zeigt die aktiven, noch nicht begonnenen Termine aus der Terminverwaltung dieses Formulars. Jede Anmeldung braucht einen Termin – das Feld ist immer Pflicht und kann nicht bedingt sichtbar sein."] =
+            "The selection shows this form's active appointments that have not begun yet, from its appointment list. Every registration needs an appointment – the field is always required and cannot be conditional.",
+        ["Termine aus der Terminverwaltung"] = "Appointments from the appointment list",
         ["Erlaubt: PDF, Word, Excel, PowerPoint, Text und Bilder (PNG, JPG, GIF, WebP) – höchstens 10 MB. Die Datei liegt privat; der Admin bekommt zeitlich begrenzte Download-Links."] =
             "Allowed: PDF, Word, Excel, PowerPoint, text, and images (PNG, JPG, GIF, WebP) – at most 10 MB. Files are stored privately; the admin gets time-limited download links.",
         ["Herunterladen"] = "Download",
