@@ -34,4 +34,10 @@ public sealed record Appointment
     /// <summary>A deactivated appointment stays in the admin and keeps its registrations, but is offered
     /// nowhere new on the form (#7). Active by default.</summary>
     public bool Active { get; init; } = true;
+
+    /// <summary>
+    /// Whether a visitor may pick this appointment at <paramref name="now"/> (#7, AC 2 and 3): active and not
+    /// yet begun. The end plays no part - it only shows up in the label.
+    /// </summary>
+    public bool IsOfferedAt(DateTimeOffset now) => throw new NotImplementedException("#7");
 }

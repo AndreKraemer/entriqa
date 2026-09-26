@@ -28,6 +28,7 @@ internal sealed class SubmitFormUseCase(
     IpHasher ipHasher,
     SubmissionPipelineService pipeline,
     ConsentProofService consentProofs,
+    AppointmentOfferService offer,
     IOptions<EntriqaOptions> options,
     TimeProvider time,
     ILogger<SubmitFormUseCase> log) : ISubmitFormUseCase
@@ -70,7 +71,8 @@ internal sealed class SubmitFormUseCase(
         var values = CollectValues(def, request.Values);
         if (values.Sum(kv => kv.Key.Length + kv.Value.Length + 8) > MaxValuesChars)
             throw new ValidationException(new[] { new FieldError("", ValidationMessages.Get(locale, ValidationMessages.TooBig)) });
-        FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains);
+        var offered = await offer.ForAsync(def, ct);
+        FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains, offered);
         var quiz = def.Quiz is null ? null : QuizEngine.Evaluate(def.Quiz, request.Answers!);
 
         // 5. Consume the nonce (only now - the input is valid) and save before any step runs.

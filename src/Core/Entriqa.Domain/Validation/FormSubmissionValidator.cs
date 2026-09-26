@@ -10,11 +10,13 @@ namespace Entriqa.Domain.Validation;
 /// forms.js mirrors the same rules for UX only. Reports all errors at once.
 /// Expects a definition already resolved via <see cref="FormDefinition.Localize"/>;
 /// <paramref name="locale"/> only controls the language of the error messages.
+/// <paramref name="offered"/> are the appointments a visitor may pick right now (#7) - the caller filters,
+/// the validator only checks that the posted id is one of them.
 /// </summary>
 public static class FormSubmissionValidator
 {
     public static void ValidateAndThrow(FormDefinition def, Dictionary<string, string> values, Dictionary<string, string>? answers,
-        string? locale = null, IReadOnlySet<string>? extraFreemailDomains = null)
+        string? locale = null, IReadOnlySet<string>? extraFreemailDomains = null, IReadOnlyCollection<Appointment>? offered = null)
     {
         var m = ValidationMessages.For(locale);
         var errors = new List<FieldError>();

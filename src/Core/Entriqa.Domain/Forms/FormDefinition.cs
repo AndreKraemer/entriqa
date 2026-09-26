@@ -95,10 +95,11 @@ public static class FieldTypes
     public const string Text = "text", Email = "email", Number = "number", Textarea = "textarea",
         Select = "select", Multiselect = "multiselect", Checkbox = "checkbox", Date = "date",
         Consent = "consent", Hidden = "hidden", Section = "section", Divider = "divider",
-        Tel = "tel", Rating = "rating", Page = "page", File = "file";
+        Tel = "tel", Rating = "rating", Page = "page", File = "file",
+        Appointment = "appointment";                   // #7: one of the form's appointments; its options are master data, not part of the definition
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>
-        { Text, Email, Number, Textarea, Select, Multiselect, Checkbox, Date, Consent, Hidden, Section, Divider, Tel, Rating, Page, File };
+        { Text, Email, Number, Textarea, Select, Multiselect, Checkbox, Date, Consent, Hidden, Section, Divider, Tel, Rating, Page, File, Appointment };
 
     /// <summary>Field types that carry no value.</summary>
     public static bool IsLayout(string type) => type is Section or Divider or Page;

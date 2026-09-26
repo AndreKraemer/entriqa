@@ -7,6 +7,7 @@ using Entriqa.Domain.Forms;
 using Entriqa.Admin.Services;
 using Entriqa.Application.Consent;
 using Entriqa.Application.Ports;
+using Entriqa.Application.UseCases;
 using Entriqa.Domain.Consent;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -16,6 +17,17 @@ namespace Entriqa.Tests;
 internal static class TestData
 {
     public static readonly FakeTimeProvider Time = new(new DateTimeOffset(2026, 8, 21, 10, 0, 0, TimeSpan.Zero));
+
+    /// <summary>
+    /// The appointment offer of #7 over the given rows, on <paramref name="clock"/> (default <see cref="Time"/>).
+    /// Empty by default - what every form without an appointment field needs.
+    /// </summary>
+    public static AppointmentOfferService Appointments(TimeProvider? clock = null, params Appointment[] rows)
+    {
+        var list = Substitute.For<IListAppointmentsQuery>();
+        list.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(rows);
+        return new AppointmentOfferService(list, clock ?? Time);
+    }
 
     public static EntriqaOptions Options() => new()
     {

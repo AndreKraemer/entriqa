@@ -32,7 +32,8 @@ public sealed class EntriqaOptions
     public string FreemailBlocklist { get; set; } = "";                     // additional freemail domains (comma separated), extends FreemailDomains.Default
     public string Locales { get; set; } = "de,en";                          // languages of the website (comma separated); codes without visitor texts are dropped
     public string LicenseKey { get; set; } = "";                            // Entriqa production license (empty = development, the admin shows a notice)
-    public int SearchScanMax { get; set; } = 5000;                          // how many submissions one inbox search looks at before it stops and says so (#12)
+    public int SearchScanMax { get; set; } = 5000;
+    public string DefaultTimeZone { get; set; } = "Europe/Berlin";          // #7: appointment labels when the visitor sent no (known) zone                          // how many submissions one inbox search looks at before it stops and says so (#12)
 
     /// <summary>
     /// The ceiling one inbox search honours, never below one. A configured zero is the misconfiguration

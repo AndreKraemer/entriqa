@@ -19,6 +19,7 @@ namespace Entriqa.Application.UseCases;
 internal sealed class RunFormTestUseCase(
     ITryGetFormDraftQuery getDraft,
     SubmissionPipelineService pipeline,
+    AppointmentOfferService offer,
     IOptions<EntriqaOptions> options,
     TimeProvider time) : IRunFormTestUseCase
 {
@@ -32,7 +33,8 @@ internal sealed class RunFormTestUseCase(
 
         // Same validation and scoring as SubmitFormUseCase - a test must catch what a real submission would (AC3).
         var values = CollectValues(def, request.Values);
-        FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains);
+        var offered = await offer.ForAsync(def, ct);
+        FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains, offered);
         var quiz = def.Quiz is null ? null : QuizEngine.Evaluate(def.Quiz, request.Answers!);
 
         var submission = new Submission

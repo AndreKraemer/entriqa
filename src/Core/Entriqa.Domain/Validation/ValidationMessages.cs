@@ -14,6 +14,8 @@ public static class ValidationMessages
         UploadInvalid = "uploadInvalid", UploadTooBig = "uploadTooBig", UploadType = "uploadType", Uploading = "uploading", Uploaded = "uploaded",
         Choose = "choose", Next = "next", Back = "back", AnswerRequired = "answerRequired", QuestionLabel = "question",
         LoadError = "loadError", SubmitError = "submitError",
+        // #7: an appointment that is not (or no longer) on offer, and the notice when none is left.
+        AppointmentChoice = "appointmentChoice", NoAppointments = "noAppointments",
         // #21: the admin test protocol, rendered by forms.js in the form's language (like every other string here).
         TestReportTitle = "testReportTitle", TestMailTo = "testMailTo", TestNoAddress = "testNoAddress",
         TestNoteList = "testNoteList", TestNoteCompany = "testNoteCompany", TestNoteFile = "testNoteFile",

@@ -8,7 +8,8 @@ public sealed record SubmitFormRequest(
     Dictionary<string, string>? Answers,                   // quiz: question id -> option id
     string? Honeypot,                                      // field "website" - has to be empty
     string? ClientIp,                                      // set by the function from the request, never by the client
-    string? Lang = null);                                  // language of the hosting page (data-lang); unknown -> default locale
+    string? Lang = null,                                   // language of the hosting page (data-lang); unknown -> default locale
+    string? TimeZone = null);                              // #7: the visitor's IANA zone (Intl); unknown -> EntriqaOptions.DefaultTimeZone
 
 public sealed record SubmitFormResult(
     string SubmissionId,
