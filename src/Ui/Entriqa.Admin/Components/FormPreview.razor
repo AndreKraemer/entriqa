@@ -49,6 +49,12 @@
                     {
                         <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label><input type="file" disabled /></div>
                     }
+                    else if (field.Type == "appointment")
+                    {
+                        <div class="pv-f"><label>@field.Label.Get(CurrentLocale) *</label>
+                            <select disabled><option>@T["Termine aus der Terminverwaltung"]</option></select>
+                        </div>
+                    }
                     else if (field.Type == "rating")
                     {
                         <div class="pv-f"><label>@field.Label.Get(CurrentLocale)@(field.Required ? " *" : "")</label>

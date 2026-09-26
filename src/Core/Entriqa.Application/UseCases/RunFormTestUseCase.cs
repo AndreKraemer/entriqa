@@ -19,6 +19,7 @@ namespace Entriqa.Application.UseCases;
 internal sealed class RunFormTestUseCase(
     ITryGetFormDraftQuery getDraft,
     SubmissionPipelineService pipeline,
+    AppointmentOfferService offer,
     IOptions<EntriqaOptions> options,
     TimeProvider time) : IRunFormTestUseCase
 {
@@ -32,8 +33,13 @@ internal sealed class RunFormTestUseCase(
 
         // Same validation and scoring as SubmitFormUseCase - a test must catch what a real submission would (AC3).
         var values = CollectValues(def, request.Values);
-        FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains);
+        var offered = await offer.ForAsync(def, ct);
+        FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains, offered);
         var quiz = def.Quiz is null ? null : QuizEngine.Evaluate(def.Quiz, request.Answers!);
+        // The steps see the label in place of the id, as for a real submission. The admin's request carries no
+        // visitor zone, so it is the label a visitor without one would get. The snapshot itself is dropped:
+        // no step reads it, and a test submission is never stored.
+        _ = AppointmentOfferService.Freeze(def, values, offered, AppointmentLabel.ResolveZone(null, o.DefaultTimeZone), locale);
 
         var submission = new Submission
         {

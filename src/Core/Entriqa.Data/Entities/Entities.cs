@@ -47,6 +47,8 @@ internal sealed class SubmissionEntity : ITableEntity
     public string ValuesJson { get; set; } = "{}";
     public string? QuizJson { get; set; }
     public string? ConsentText { get; set; }
+    // #7: the chosen appointment, frozen at submission time. Absent on older rows and on forms without one.
+    public string? AppointmentJson { get; set; }
     public string StepRunsJson { get; set; } = "[]";
     // #14. Missing on every row written before this feature, which deserializes to the default "[]" -
     // an empty history, which is exactly what those submissions have. No migration.

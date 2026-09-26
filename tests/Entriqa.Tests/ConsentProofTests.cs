@@ -59,7 +59,7 @@ public class ConsentProofTests
         var useCase = new SubmitFormUseCase(
             getPublished, Substitute.For<IStoreSubmissionCommand>(), Substitute.For<ISaveSubmissionCommand>(),
             nonce, rateLimit, Substitute.For<IStoreArtifactPort>(), tokens, new IpHasher(opts), pipeline,
-            proofs, opts, clock, NullLogger<SubmitFormUseCase>.Instance);
+            proofs, TestData.Appointments(), opts, clock, NullLogger<SubmitFormUseCase>.Instance);
 
         var token = tokens.Issue(FormTokenService.KindForm, form.Slug);
         clock.Advance(TimeSpan.FromSeconds(10));                        // the token has to be older than MinSubmitSeconds

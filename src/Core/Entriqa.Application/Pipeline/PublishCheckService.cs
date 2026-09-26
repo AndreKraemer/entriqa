@@ -38,6 +38,11 @@ public sealed class PublishCheckService(SubmissionPipelineService pipeline)
             }
         }
         if (form.Fields.GroupBy(f => f.Id).Any(g => g.Count() > 1)) issues.Add("Feld-IDs sind nicht eindeutig.");
+        // #7: one form is one event - one appointment field, and one that is always there (AC 7, AC 8).
+        var appointmentFields = form.Fields.Where(f => f.Type == FieldTypes.Appointment).ToList();
+        if (appointmentFields.Count > 1) issues.Add("Ein Formular kann nur ein Terminfeld haben.");
+        foreach (var f in appointmentFields.Where(f => f.VisibleIf is not null))
+            issues.Add($"Feld '{f.Label}': Ein Terminfeld kann nicht bedingt sichtbar sein – jede Anmeldung braucht einen Termin.");
         if (form.Quiz is not null && form.Fields.Any(f => f.Type == FieldTypes.Page))
             issues.Add("Seitenumbrüche wirken nur in normalen Formularen – ein Quiz führt bereits Frage für Frage.");
 

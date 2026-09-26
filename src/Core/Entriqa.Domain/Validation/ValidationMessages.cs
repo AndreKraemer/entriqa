@@ -14,6 +14,8 @@ public static class ValidationMessages
         UploadInvalid = "uploadInvalid", UploadTooBig = "uploadTooBig", UploadType = "uploadType", Uploading = "uploading", Uploaded = "uploaded",
         Choose = "choose", Next = "next", Back = "back", AnswerRequired = "answerRequired", QuestionLabel = "question",
         LoadError = "loadError", SubmitError = "submitError",
+        // #7: an appointment that is not (or no longer) on offer, and the notice when none is left.
+        AppointmentChoice = "appointmentChoice", NoAppointments = "noAppointments",
         // #21: the admin test protocol, rendered by forms.js in the form's language (like every other string here).
         TestReportTitle = "testReportTitle", TestMailTo = "testMailTo", TestNoAddress = "testNoAddress",
         TestNoteList = "testNoteList", TestNoteCompany = "testNoteCompany", TestNoteFile = "testNoteFile",
@@ -42,6 +44,8 @@ public static class ValidationMessages
         [QuestionLabel] = "Frage",
         [LoadError] = "Das Formular konnte nicht geladen werden.",
         [SubmitError] = "Das hat leider nicht geklappt. Bitte versuche es erneut.",
+        [AppointmentChoice] = "Dieser Termin ist nicht mehr verfügbar – bitte wähle einen anderen.",
+        [NoAppointments] = "Derzeit ist kein Termin verfügbar.",
         [UploadInvalid] = "Die Datei konnte nicht übernommen werden – bitte erneut hochladen.",
         [UploadTooBig] = "Die Datei ist zu groß (höchstens {max} MB).",
         [UploadType] = "Dieser Dateityp ist nicht erlaubt.",
@@ -81,6 +85,8 @@ public static class ValidationMessages
         [QuestionLabel] = "Question",
         [LoadError] = "The form could not be loaded.",
         [SubmitError] = "Something went wrong. Please try again.",
+        [AppointmentChoice] = "This date is no longer available – please choose another one.",
+        [NoAppointments] = "No date is currently available.",
         [UploadInvalid] = "The file could not be accepted – please upload it again.",
         [UploadTooBig] = "The file is too large (at most {max} MB).",
         [UploadType] = "This file type is not allowed.",

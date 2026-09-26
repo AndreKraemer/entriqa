@@ -238,7 +238,7 @@ public class FormTestModeTests
         var getDraft = Substitute.For<ITryGetFormDraftQuery>();
         getDraft.ExecuteAsync("kontakt", Arg.Any<CancellationToken>())
             .Returns(new FormDraft("kontakt", "draft", 7, TestData.Time.GetUtcNow(), "seed", draftDef));
-        var useCase = new RunFormTestUseCase(getDraft, rig.Pipeline, Options.Create(TestData.Options()), TestData.Time);
+        var useCase = new RunFormTestUseCase(getDraft, rig.Pipeline, TestData.Appointments(), Options.Create(TestData.Options()), TestData.Time);
 
         var result = await useCase.ExecuteAsync(new FormTestRequest("kontakt", "de",
             new() { ["name"] = "Max", ["email"] = "visitor@example.com", ["msg"] = "Hi", ["consent"] = "on" }, null, Admin));
@@ -254,7 +254,7 @@ public class FormTestModeTests
         var getDraft = Substitute.For<ITryGetFormDraftQuery>();
         getDraft.ExecuteAsync("kontakt", Arg.Any<CancellationToken>())
             .Returns(new FormDraft("kontakt", "draft", 0, TestData.Time.GetUtcNow(), "seed", TestData.Contact()));
-        var useCase = new RunFormTestUseCase(getDraft, rig.Pipeline, Options.Create(TestData.Options()), TestData.Time);
+        var useCase = new RunFormTestUseCase(getDraft, rig.Pipeline, TestData.Appointments(), Options.Create(TestData.Options()), TestData.Time);
 
         // "msg" is required and missing -> the validator must reject it.
         await Assert.ThrowsAsync<ValidationException>(() => useCase.ExecuteAsync(

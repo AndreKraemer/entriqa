@@ -10,11 +10,13 @@ namespace Entriqa.Domain.Validation;
 /// forms.js mirrors the same rules for UX only. Reports all errors at once.
 /// Expects a definition already resolved via <see cref="FormDefinition.Localize"/>;
 /// <paramref name="locale"/> only controls the language of the error messages.
+/// <paramref name="offered"/> are the appointments a visitor may pick right now (#7) - the caller filters,
+/// the validator only checks that the posted id is one of them.
 /// </summary>
 public static class FormSubmissionValidator
 {
     public static void ValidateAndThrow(FormDefinition def, Dictionary<string, string> values, Dictionary<string, string>? answers,
-        string? locale = null, IReadOnlySet<string>? extraFreemailDomains = null)
+        string? locale = null, IReadOnlySet<string>? extraFreemailDomains = null, IReadOnlyCollection<Appointment>? offered = null)
     {
         var m = ValidationMessages.For(locale);
         var errors = new List<FieldError>();
@@ -40,7 +42,14 @@ public static class FormSubmissionValidator
                 continue;
             }
 
-            var required = f.Required || (f.Type == FieldTypes.Email && def.Quiz?.CollectEmail == "required");
+            // #7: a registration always names one appointment (AC 8) - with none on offer there is nothing to name (AC 6).
+            if (f.Type == FieldTypes.Appointment && offered is not { Count: > 0 })
+            {
+                errors.Add(new(f.Id, m[ValidationMessages.NoAppointments]));
+                continue;
+            }
+
+            var required = f.Required || f.Type == FieldTypes.Appointment || (f.Type == FieldTypes.Email && def.Quiz?.CollectEmail == "required");
             if (string.IsNullOrEmpty(value) || (f.Type is FieldTypes.Consent or FieldTypes.Checkbox && !IsTrue(value)))
             {
                 if (required) errors.Add(new(f.Id, f.Type == FieldTypes.Consent ? m[ValidationMessages.ConsentRequired] : m[ValidationMessages.Required]));
@@ -79,6 +88,10 @@ public static class FormSubmissionValidator
                     var allowed = OptionValues(f);
                     foreach (var part in SplitMulti(value))
                         if (!allowed.Contains(part)) { errors.Add(new(f.Id, m[ValidationMessages.Choice])); break; }
+                    break;
+                case FieldTypes.Appointment:
+                    // The id comes from the browser and is not trusted: only one on offer right now counts (AC 3).
+                    if (!offered!.Any(a => a.Id == value)) errors.Add(new(f.Id, m[ValidationMessages.AppointmentChoice]));
                     break;
                 case FieldTypes.Tel:
                     if (!LooksLikePhone(value)) errors.Add(new(f.Id, m[ValidationMessages.Tel]));

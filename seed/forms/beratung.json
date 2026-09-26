@@ -42,6 +42,8 @@
     { "id": "beschreibung", "type": "textarea", "label": { "de": "Kurz beschrieben", "en": "In short" }, "required": true, "maxLength": 2000 },
     { "id": "budget", "type": "number", "label": { "de": "Budgetrahmen in Euro", "en": "Budget in euros" }, "min": 500, "max": 250000 },
     { "id": "starttermin", "type": "date", "label": { "de": "Gewünschter Start", "en": "Preferred start" } },
+    { "id": "erstgespraech", "type": "appointment", "required": true,
+      "label": { "de": "Termin für das Erstgespräch", "en": "Date for the first call" } },
     { "id": "dringlichkeit", "type": "rating", "label": { "de": "Wie dringend ist es?", "en": "How urgent is it?" }, "max": 5,
       "help": { "de": "1 = hat Zeit, 5 = brennt.", "en": "1 = no rush, 5 = urgent." } },
     { "id": "briefing", "type": "file", "label": { "de": "Briefing anhängen", "en": "Attach a briefing" },

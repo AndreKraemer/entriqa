@@ -79,6 +79,10 @@
     {
         <p class="hint">@T["Erlaubt: PDF, Word, Excel, PowerPoint, Text und Bilder (PNG, JPG, GIF, WebP) – höchstens 10 MB. Die Datei liegt privat; der Admin bekommt zeitlich begrenzte Download-Links."]</p>
     }
+    @if (Field.Type == "appointment")
+    {
+        <p class="hint">@T["Die Auswahl zeigt die aktiven, noch nicht begonnenen Termine aus der Terminverwaltung dieses Formulars. Jede Anmeldung braucht einen Termin – das Feld ist immer Pflicht und kann nicht bedingt sichtbar sein."]</p>
+    }
     @if (Field.Type == "rating")
     {
         <div class="row">
@@ -88,7 +92,7 @@
     }
 
     @* Visibility: only show the field while an EARLIER field is in a given state *@
-    @if (!Field.IsLayout && Field.Type != "hidden" && ConditionSources.Count > 0)
+    @if (!Field.IsLayout && Field.Type is not ("hidden" or "appointment") && ConditionSources.Count > 0)
     {
         <div class="visibleif">
             <label class="ltext-label">@T["Nur anzeigen, wenn …"]</label>

@@ -20,6 +20,9 @@ public sealed class Submission
     public string? IpHash { get; init; }                           // only for rate limiting and DOI evidence
     public QuizOutcome? Quiz { get; init; }
     public string? ConsentText { get; init; }                      // the exact text at the time of submission
+    /// <summary>The appointment the registration is for (#7), frozen at submission time - it stays readable when
+    /// the appointment is later changed or deleted (AC 5). Null for forms without an appointment field.</summary>
+    public AppointmentSnapshot? Appointment { get; set; }
     public List<StepRun> StepRuns { get; init; } = new();
     /// <summary>What happened to this submission and who did it (#14). Append-only, see <see cref="Record"/>.</summary>
     public SubmissionHistory History { get; init; } = new();

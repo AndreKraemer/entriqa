@@ -8,11 +8,12 @@ menu:
 ---
 
 Dieses Formular deckt alle übrigen Feldtypen ab: `section`, `divider`, `page`, `select`,
-`multiselect`, `checkbox`, `date`, `number`, `tel`, `rating`, `file` und `hidden`.
+`multiselect`, `checkbox`, `date`, `number`, `tel`, `rating`, `file`, `appointment` und `hidden`.
 
 Zwei Dinge lohnen einen genauen Blick: Der Seitenumbruch teilt das Formular in zwei
 Schritte, und das Feld „Und zwar?" erscheint erst, wenn oben „Etwas anderes" gewählt wird –
-die Bedingung arbeitet mit Options-Indizes, damit sie sprachneutral bleibt.
+die Bedingung arbeitet mit Options-Indizes, damit sie sprachneutral bleibt. Die Terminauswahl
+zeigt nur Termine, die noch nicht begonnen haben, in der Zeitzone deines Browsers.
 
 {{< entriqa "beratung" >}}
 
