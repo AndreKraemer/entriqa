@@ -115,6 +115,7 @@ public static class MarkupGenerator
         ("eq-field__scale", "Container der Bewertungsskala (role=radiogroup)"),
         ("eq-field__scale-option", "Eine Stufe der Bewertungsskala (label mit Radio)"),
         ("eq-field__file-status", "Status unter einem Datei-Feld; sichtbar während und nach dem Upload"),
+        ("eq-field__notice", "Hinweis statt der Terminauswahl, wenn kein Termin mehr buchbar ist; der Absende-Button ist dann gesperrt"),
         ("eq-section", "Zwischenüberschrift"),
         ("eq-divider", "Trennlinie (<hr>)"),
         ("eq-page", "Eine Seite eines mehrseitigen Formulars (data-page=\"n\")"),

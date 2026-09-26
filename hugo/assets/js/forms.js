@@ -94,6 +94,9 @@
     this.message = el('div', { 'class': 'eq-message', hidden: 'hidden', role: 'status', 'aria-live': 'polite' });
     form.appendChild(this.message);
 
+    // #7: an appointment field with nothing left to pick - the notice stands in for the list, and submitting is off.
+    if (this.noAppointments) Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"]'), function (b) { b.disabled = true; });
+
     form.addEventListener('submit', this.onSubmit.bind(this));
     this.form = form;
     this.host.innerHTML = '';
@@ -269,6 +272,18 @@
         ctl = el('select', { 'class': 'eq-field__control', id: id, name: f.id, required: f.required });
         ctl.appendChild(el('option', { value: '' }, this.t('choose', 'Bitte wählen')));
         (f.options || []).forEach(function (o) { ctl.appendChild(el('option', { value: o }, o)); });
+      } else if (f.type === 'appointment') {
+        // #7: the server sends UTC and only what is on offer; the times are shown on the visitor's own clock.
+        var offered = f.appointments || [];
+        if (!offered.length) {
+          this.noAppointments = true;
+          wrap.appendChild(el('p', { 'class': 'eq-field__notice', role: 'status' }, this.t('noAppointments', 'Derzeit ist kein Termin verfügbar.')));
+          return wrap;
+        }
+        var lang = this.lang;
+        ctl = el('select', { 'class': 'eq-field__control', id: id, name: f.id, required: true });
+        ctl.appendChild(el('option', { value: '' }, this.t('choose', 'Bitte wählen')));
+        offered.forEach(function (a) { ctl.appendChild(el('option', { value: a.id }, appointmentLabel(a, lang))); });
       } else if (f.type === 'multiselect') {
         ctl = el('div', { 'class': 'eq-field__options', role: 'group', 'aria-labelledby': id + '-label' });
         (f.options || []).forEach(function (o, i) {
@@ -495,6 +510,7 @@
   };
 
   FormWidget.prototype.submit = function () {
+    if (this.noAppointments) return;                            // #7: nothing to register for (AC 6)
     if (this.uploading) { this.say(this.t('uploading', 'lädt hoch …'), 'error'); return; }
     var values = this.collect();
     var errors = this.validate(values);
@@ -526,7 +542,7 @@
       return;
     }
 
-    var body = { token: this.token, lang: this.lang, values: values, website: this.form.querySelector('[name="' + HONEYPOT + '"]').value };
+    var body = { token: this.token, lang: this.lang, timeZone: visitorTimeZone(), values: values, website: this.form.querySelector('[name="' + HONEYPOT + '"]').value };
     if (this.quiz) body.answers = this.quiz.answers;
 
     fetchJson(withLang(self.api + '/forms/' + encodeURIComponent(self.slug) + '/submissions', self.lang), {
@@ -643,6 +659,22 @@
     if (l.indexOf('unternehmen') >= 0 || l.indexOf('firma') >= 0) return 'organization';
     if (l.indexOf('telefon') >= 0) return 'tel';
     return null;
+  }
+
+  // #7: the visitor's clock, so that the stored label (mails, PDF) shows the time they picked. Sent with the
+  // submission only - never stored in the browser.
+  function visitorTimeZone() {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (e) { return null; }
+  }
+
+  function appointmentLabel(a, lang) {
+    var day = { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }, time = { hour: '2-digit', minute: '2-digit' };
+    var start = new Date(a.start), end = a.end ? new Date(a.end) : null;
+    var text = start.toLocaleDateString(lang, day) + ', ' + start.toLocaleTimeString(lang, time);
+    if (end) text += start.toDateString() === end.toDateString()
+      ? '–' + end.toLocaleTimeString(lang, time)
+      : ' – ' + end.toLocaleDateString(lang, day) + ', ' + end.toLocaleTimeString(lang, time);
+    return a.title ? text + ' · ' + a.title : text;
   }
 
   // The server answers errors in the language it is asked for; without this the visitor would get
