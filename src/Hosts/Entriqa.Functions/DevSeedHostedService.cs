@@ -28,6 +28,8 @@ public sealed class DevSeedHostedService(
     IListRecentSubmissionsQuery recent,
     IRecordAdminSeenCommand recordAdminSeen,
     IStoreSubmissionCommand storeSubmission,
+    IListAppointmentsQuery listAppointments,
+    ISaveAppointmentCommand saveAppointment,
     SubmissionPipelineService pipeline,
     ConsentProofService consentProofs,
     IOptions<EntriqaOptions> options,
@@ -56,6 +58,7 @@ public sealed class DevSeedHostedService(
             catch (Exception ex) { log.LogWarning(ex, "Seed {File} übersprungen", file); }
         }
 
+        await SeedAppointmentsAsync(cancellationToken);
         await SeedAdminsAsync(cancellationToken);
         await SeedSubmissionsAsync(cancellationToken);
     }
@@ -98,6 +101,32 @@ public sealed class DevSeedHostedService(
     /// admin's German interface, next to Labels.SubmissionState, and a half-English inbox would be worse
     /// than either language. CLAUDE.md's exception list names this file for that reason (#11).
     /// </summary>
+    /// <summary>
+    /// The appointments of the consulting sample (#7), relative to startup: one already past, one
+    /// deactivated, one ahead - so its appointment field offers exactly one, and deactivating that one in
+    /// the admin shows the "no date left" notice. Only on a form that has none yet; an older environment
+    /// keeps its own, and its "ahead" one eventually becomes past like any real appointment.
+    /// </summary>
+    private async Task SeedAppointmentsAsync(CancellationToken ct)
+    {
+        const string slug = "beratung";
+        try
+        {
+            if (await getPublished.ExecuteAsync(slug, ct) is null || (await listAppointments.ExecuteAsync(slug, ct)).Count > 0) return;
+
+            var day = new DateTimeOffset(time.GetUtcNow().UtcDateTime.Date, TimeSpan.Zero);
+            Appointment[] seed =
+            [
+                new() { Slug = slug, Id = "seed-vergangen", Start = day.AddDays(-3).AddHours(8), End = day.AddDays(-3).AddHours(9), Capacity = 10, Title = "Erstgespräch" },
+                new() { Slug = slug, Id = "seed-deaktiviert", Start = day.AddDays(12).AddHours(8), End = day.AddDays(12).AddHours(9), Capacity = 10, Title = "Erstgespräch", Active = false },
+                new() { Slug = slug, Id = "seed-kommend", Start = day.AddDays(10).AddHours(8), End = day.AddDays(10).AddHours(9), Capacity = 10, Title = "Erstgespräch" },
+            ];
+            foreach (var a in seed) await saveAppointment.ExecuteAsync(a, ct);
+            log.LogInformation("Seed: {Count} Termine für {Slug} angelegt", seed.Length, slug);
+        }
+        catch (Exception ex) { log.LogWarning(ex, "Seed-Termine für {Slug} übersprungen", slug); }
+    }
+
     private async Task SeedSubmissionsAsync(CancellationToken ct)
     {
         if ((await recent.ExecuteAsync(null, 1, ct)).Count > 0) return;   // never touch a store that has data
@@ -145,6 +174,7 @@ public sealed class DevSeedHostedService(
     {
         var def = published.Definition;
         var values = DemoValues(def, index, longValue: def.Slug == "kontakt" && i == 2);
+        var appointment = DemoAppointment(def, values, createdAt);
         var runs = pipeline.CreateRuns(def);
         Stage(runs, def.Slug, i);
 
@@ -164,10 +194,25 @@ public sealed class DevSeedHostedService(
             Source = "linkedin",
             Quiz = null,
             ConsentText = def.ConsentField?.Text?.Resolve("de"),
+            Appointment = appointment,
             StepRuns = runs,
             Handling = def.Handling ? (i < 16 ? HandlingStates.Open : HandlingStates.Done) : HandlingStates.None,
             Assignee = def.Handling ? Assignee(def.Slug, i) : null,
         };
+    }
+
+    /// <summary>
+    /// A registration for a week after the demo submission (#7), frozen like a real one - the appointment
+    /// itself need not exist, which is exactly what a snapshot has to cope with (AC 5).
+    /// </summary>
+    private static AppointmentSnapshot? DemoAppointment(FormDefinition def, Dictionary<string, string> values, DateTimeOffset createdAt)
+    {
+        if (def.Fields.FirstOrDefault(f => f.Type == FieldTypes.Appointment) is not { } field) return null;
+        var start = new DateTimeOffset(createdAt.UtcDateTime.Date, TimeSpan.Zero).AddDays(7).AddHours(8);
+        var zone = AppointmentLabel.ResolveZone("Europe/Berlin", "Europe/Berlin");
+        var label = AppointmentLabel.Format(new Appointment { Slug = def.Slug, Id = "seed-demo", Start = start, End = start.AddHours(1), Capacity = 10, Title = "Erstgespräch" }, zone, "de");
+        values[field.Id] = label;
+        return new AppointmentSnapshot("seed-demo", start, start.AddHours(1), "Erstgespräch", zone.Id, label);
     }
 
     /// <summary>
