@@ -220,9 +220,9 @@ public sealed class DevSeedHostedService(
     private static readonly string[] DemoMessages =
     {
         "Bitte um Rückruf zum Angebot.",
-        "Wir sind die Odysys AG und bräuchten ein Angebot für 40 Arbeitsplätze.",
+        "Wir sind die Nordlicht AG und bräuchten ein Angebot für 40 Arbeitsplätze.",
         "Bitte um Unterlagen per Post.",
-        "Anfrage im Auftrag der Odysys AG – bitte an die Buchhaltung weiterleiten.",
+        "Anfrage im Auftrag der Nordlicht AG – bitte an die Buchhaltung weiterleiten.",
         "Wann wäre ein Termin in der kommenden Woche möglich?",
     };
 
