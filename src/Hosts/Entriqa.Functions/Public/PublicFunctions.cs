@@ -25,7 +25,7 @@ public sealed class PublicFunctions(
     public async Task<IActionResult> GetForm([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "forms/{slug}")] HttpRequest req, string slug, CancellationToken ct)
     {
         var view = await getForm.ExecuteAsync(slug, req.Query["lang"].FirstOrDefault(), ct);
-        var etag = $"\"v{view.Version}-{view.Lang}\"";
+        var etag = view.CacheTag();                                       // #7: changes with the appointments on offer, not only with the version
         req.HttpContext.Response.Headers.CacheControl = "public, max-age=300";
         req.HttpContext.Response.Headers.Vary = "Accept-Language";
         req.HttpContext.Response.Headers.ETag = etag;
@@ -48,7 +48,7 @@ public sealed class PublicFunctions(
         // The language of the submission also settles the error title, otherwise the field errors would speak
         // the form's language and the title the browser's. The middleware cannot read the body itself - it is gone by then.
         RequestLocale.Remember(req.HttpContext, body.Lang);
-        var request = new SubmitFormRequest(slug, body.Token ?? "", body.Values ?? new(), body.Answers, body.Website, SwaPrincipalReader.ClientIp(req), body.Lang);
+        var request = new SubmitFormRequest(slug, body.Token ?? "", body.Values ?? new(), body.Answers, body.Website, SwaPrincipalReader.ClientIp(req), body.Lang, body.TimeZone);
         return new OkObjectResult(await submit.ExecuteAsync(request, ct));
     }
 
@@ -96,7 +96,7 @@ public sealed class PublicFunctions(
         return new OkObjectResult(new { redirect = result.RedirectUrl + (result.AlreadyConfirmed ? "?already=1" : ""), already = result.AlreadyConfirmed, test = result.IsTest });
     }
 
-    private sealed record SubmitBody(string? Token, Dictionary<string, string>? Values, Dictionary<string, string>? Answers, string? Website, string? Lang);
+    private sealed record SubmitBody(string? Token, Dictionary<string, string>? Values, Dictionary<string, string>? Answers, string? Website, string? Lang, string? TimeZone);
     private sealed record RunBody(string? Token);
     private sealed record EventBody(string? Type);
     private sealed record ConfirmBody(string? Token);

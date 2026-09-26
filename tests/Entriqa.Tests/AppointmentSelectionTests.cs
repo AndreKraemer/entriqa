@@ -110,7 +110,8 @@ public class AppointmentSelectionTests
     public void GivenTheGetFormEndpoint_WhenReadingTheSource_ThenItsETagIsTheViewsCacheTag()
     {
         var source = File.ReadAllText(Path.Combine(SourceText.RepoDirectory("src", "Hosts", "Entriqa.Functions"), "Public", "PublicFunctions.cs"));
-        var body = SourceText.Block(source, "public async Task<IActionResult> GetForm", "PublicFunctions no longer has GetForm - update this guard.");
+        // Up to the next function, not Block(): the route template "forms/{slug}" holds the first brace.
+        var body = SourceText.Between(source, "public async Task<IActionResult> GetForm", "[Function(", "PublicFunctions no longer has GetForm - update this guard.");
 
         Assert.Matches(new Regex(@"^[^\S\r\n]*var etag = view\.CacheTag\(\);", RegexOptions.Multiline), body);
     }
