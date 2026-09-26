@@ -14,6 +14,7 @@ using Entriqa.Domain.Errors;
 using Entriqa.Domain.Forms;
 using Entriqa.Domain.Submissions;
 using Entriqa.Domain.UseCases;
+using Entriqa.Domain.Validation;
 using Xunit;
 
 namespace Entriqa.Tests;
@@ -70,12 +71,15 @@ public class AppointmentSelectionTests
     public async Task GivenPastDeactivatedAndFutureAppointments_WhenLoadingThePublishedForm_ThenOnlyTheFutureOneIsOffered()
     {
         var getPublished = Substitute.For<ITryGetPublishedFormQuery>();
-        getPublished.ExecuteAsync("webinar", Arg.Any<CancellationToken>()).Returns(new FormVersion("webinar", 3, Registration(), Now, "test"));
+        // Saved as optional: the view must still hand forms.js a required field (AC 8).
+        var optional = new FieldDefinition("termin", FieldTypes.Appointment, "Termin", Required: false);
+        getPublished.ExecuteAsync("webinar", Arg.Any<CancellationToken>()).Returns(new FormVersion("webinar", 3, Registration(optional), Now, "test"));
         var useCase = new GetPublishedFormUseCase(getPublished, TestData.Appointments(new FakeTimeProvider(Now), Past, Deactivated, Future));
 
         var view = await useCase.ExecuteAsync("webinar", "de");
 
         var field = view.Fields.Single(f => f.Type == FieldTypes.Appointment);
+        Assert.True(field.Required);
         var option = Assert.Single(field.Appointments!);
         Assert.Equal(new PublicAppointmentOption("future", Future.Start, Future.End, "Grundlagen"), option);
     }
@@ -130,13 +134,14 @@ public class AppointmentSelectionTests
         Assert.Contains(ex.Errors, e => e.Field == "termin");
     }
 
+    // The message tells this branch apart from "not offered": the posted id is not on offer here either.
     [Fact]
-    public async Task GivenNoAppointmentIsLeft_WhenSubmitting_ThenTheSubmissionIsRejected()
+    public async Task GivenNoAppointmentIsLeft_WhenSubmitting_ThenTheSubmissionIsRejectedAsHavingNoneLeft()
     {
         var ex = await Assert.ThrowsAsync<ValidationException>(() =>
             SubmitAsync(Values("past"), rows: [Past, Deactivated]));
 
-        Assert.Contains(ex.Errors, e => e.Field == "termin");
+        Assert.Contains(ex.Errors, e => e.Field == "termin" && e.Message == ValidationMessages.Get("de", ValidationMessages.NoAppointments));
     }
 
     // AC 8: a registration always names one appointment - even when the field was saved as optional.
@@ -174,6 +179,39 @@ public class AppointmentSelectionTests
         var stored = await SubmitAsync(Values("future"), timeZone: null, options: options, rows: [Future]);
 
         Assert.Equal("Di., 13.10.2026, 17:00–19:00 (Asia/Tokyo) · Grundlagen", stored.Values["termin"]);
+    }
+
+    // The admin's test run (#21) validates against the same offer and hands the steps the label, not the id.
+    [Fact]
+    public async Task GivenAnAppointmentForm_WhenRunningATest_ThenTheStepsSeeTheLabelInTheConfiguredZone()
+    {
+        var getDraft = Substitute.For<ITryGetFormDraftQuery>();
+        getDraft.ExecuteAsync("webinar", Arg.Any<CancellationToken>()).Returns(new Entriqa.Application.Ports.FormDraft("webinar", "draft", 3, Now, "test", Registration()));
+        var mail = Substitute.For<ISendTransactionalMailPort>();
+        IReadOnlyDictionary<string, object?>? sent = null;
+        mail.SendAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Do<IReadOnlyDictionary<string, object?>>(p => sent = p),
+            Arg.Any<MailAttachment?>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var clock = new FakeTimeProvider(Now);
+        var pipeline = new SubmissionPipelineService([new NotifyMailStep(mail)], Options.Create(TestData.Options()), clock,
+            NullLogger<SubmissionPipelineService>.Instance);
+        var useCase = new RunFormTestUseCase(getDraft, pipeline, TestData.Appointments(clock, Past, Future), Options.Create(TestData.Options()), clock);
+
+        await useCase.ExecuteAsync(new FormTestRequest("webinar", "de", Values("future"), null, "admin@example.org"));
+
+        var fields = Assert.IsAssignableFrom<IEnumerable<object>>(sent!["fields"]);
+        var values = fields.Select(o => o.GetType().GetProperty("value")!.GetValue(o) as string);
+        Assert.Contains("Di., 13.10.2026, 10:00–12:00 (Europe/Berlin) · Grundlagen", values);
+    }
+
+    // Functions is not loaded by the test host, so the endpoint is read. Without the zone every label falls back
+    // to the configured one. Mutation to re-run: pass null instead of body.TimeZone.
+    [Fact]
+    public void GivenTheSubmitEndpoint_WhenReadingTheSource_ThenTheVisitorsZoneReachesTheRequest()
+    {
+        var source = File.ReadAllText(Path.Combine(SourceText.RepoDirectory("src", "Hosts", "Entriqa.Functions"), "Public", "PublicFunctions.cs"));
+        var body = SourceText.Between(source, "public async Task<IActionResult> Submit", "[Function(", "PublicFunctions no longer has Submit - update this guard.");
+
+        Assert.Matches(new Regex(@"new SubmitFormRequest\([^;]*,\s*body\.TimeZone\);"), body);
     }
 
     // AC 5: the snapshot has to reach the table, or the label is gone the moment the appointment is.

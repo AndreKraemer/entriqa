@@ -36,9 +36,10 @@ internal sealed class RunFormTestUseCase(
         var offered = await offer.ForAsync(def, ct);
         FormSubmissionValidator.ValidateAndThrow(def, values, request.Answers, locale, o.ExtraFreemailDomains, offered);
         var quiz = def.Quiz is null ? null : QuizEngine.Evaluate(def.Quiz, request.Answers!);
-        // The admin's request carries no visitor zone; the steps see the label a visitor without one would get.
-        var appointment = AppointmentOfferService.Freeze(def, values, offered,
-            AppointmentLabel.ResolveZone(null, o.DefaultTimeZone), locale);
+        // The steps see the label in place of the id, as for a real submission. The admin's request carries no
+        // visitor zone, so it is the label a visitor without one would get. The snapshot itself is dropped:
+        // no step reads it, and a test submission is never stored.
+        _ = AppointmentOfferService.Freeze(def, values, offered, AppointmentLabel.ResolveZone(null, o.DefaultTimeZone), locale);
 
         var submission = new Submission
         {
@@ -52,7 +53,6 @@ internal sealed class RunFormTestUseCase(
             FirstName = FirstNameOf(def, values),
             Quiz = quiz,
             ConsentText = def.ConsentField?.Text?.ToString(),
-            Appointment = appointment,
             StepRuns = pipeline.CreateRuns(def),
         };
 

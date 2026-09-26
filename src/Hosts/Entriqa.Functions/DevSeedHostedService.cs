@@ -89,19 +89,6 @@ public sealed class DevSeedHostedService(
     private const string DevColleague = "martina.weiss@example.org";
 
     /// <summary>
-    /// Demo submissions, so the inbox is not empty on a fresh environment. Without them the admin's list,
-    /// its quick filters and the paging have nothing to show, and every criterion about them can only be
-    /// exercised by filling in forms by hand twenty times.
-    ///
-    /// The shape is chosen so that each branch of the list exists: "kontakt" is long enough for a second
-    /// page (18 &gt; 15 per page), every quick filter is non-empty, and exactly one submission has failed -
-    /// so the "Fehler" selection holds a single entry and both walking directions are dead at once.
-    ///
-    /// The demo values below are German, like the content of seed/forms/*.json: they are read in the
-    /// admin's German interface, next to Labels.SubmissionState, and a half-English inbox would be worse
-    /// than either language. CLAUDE.md's exception list names this file for that reason (#11).
-    /// </summary>
-    /// <summary>
     /// The appointments of the consulting sample (#7), relative to startup: one already past, one
     /// deactivated, one ahead - so its appointment field offers exactly one, and deactivating that one in
     /// the admin shows the "no date left" notice. Only on a form that has none yet; an older environment
@@ -127,6 +114,19 @@ public sealed class DevSeedHostedService(
         catch (Exception ex) { log.LogWarning(ex, "Seed-Termine für {Slug} übersprungen", slug); }
     }
 
+    /// <summary>
+    /// Demo submissions, so the inbox is not empty on a fresh environment. Without them the admin's list,
+    /// its quick filters and the paging have nothing to show, and every criterion about them can only be
+    /// exercised by filling in forms by hand twenty times.
+    ///
+    /// The shape is chosen so that each branch of the list exists: "kontakt" is long enough for a second
+    /// page (18 &gt; 15 per page), every quick filter is non-empty, and exactly one submission has failed -
+    /// so the "Fehler" selection holds a single entry and both walking directions are dead at once.
+    ///
+    /// The demo values below are German, like the content of seed/forms/*.json: they are read in the
+    /// admin's German interface, next to Labels.SubmissionState, and a half-English inbox would be worse
+    /// than either language. CLAUDE.md's exception list names this file for that reason (#11).
+    /// </summary>
     private async Task SeedSubmissionsAsync(CancellationToken ct)
     {
         if ((await recent.ExecuteAsync(null, 1, ct)).Count > 0) return;   // never touch a store that has data
