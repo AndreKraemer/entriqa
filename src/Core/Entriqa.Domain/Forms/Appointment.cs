@@ -39,5 +39,5 @@ public sealed record Appointment
     /// Whether a visitor may pick this appointment at <paramref name="now"/> (#7, AC 2 and 3): active and not
     /// yet begun. The end plays no part - it only shows up in the label.
     /// </summary>
-    public bool IsOfferedAt(DateTimeOffset now) => throw new NotImplementedException("#7");
+    public bool IsOfferedAt(DateTimeOffset now) => Active && Start > now;
 }

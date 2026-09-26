@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Entriqa.Domain.Validation;
 
 namespace Entriqa.Domain.Forms;
@@ -28,7 +30,7 @@ public sealed record PublicFormView(
     public static PublicFormView From(FormDefinition d, int version, string lang, IReadOnlyList<Appointment>? offered = null) => new(
         d.Slug, d.Name, d.Type, version, lang,
         d.Intro?.ToString(), d.SubmitLabel?.ToString(),
-        d.Fields.Select(PublicFieldView.From).ToList(),
+        d.Fields.Select(f => PublicFieldView.From(f, offered)).ToList(),
         d.Quiz is null ? null : new PublicQuizView(
             d.Quiz.CollectEmail,
             d.Quiz.Questions.Select(q => new PublicQuizQuestion(q.Id, q.Text.ToString(),
@@ -40,7 +42,14 @@ public sealed record PublicFormView(
     /// The HTTP cache validator of this view (#7). The version alone is not enough once appointments are on
     /// offer: they change without a new version, and a 304 on the old tag would keep a stale list alive.
     /// </summary>
-    public string CacheTag() => throw new NotImplementedException("#7");
+    public string CacheTag()
+    {
+        if (!Fields.Any(f => f.Type == FieldTypes.Appointment)) return $"\"v{Version}-{Lang}\"";
+        var offer = Fields.SelectMany(f => f.Appointments ?? [])
+            .Select(a => $"{a.Id}|{a.Start.UtcTicks}|{a.End?.UtcTicks}|{a.Title}");
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\n', offer)));
+        return $"\"v{Version}-{Lang}-{Convert.ToHexStringLower(hash.AsSpan(0, 6))}\"";
+    }
 }
 
 public sealed record PublicFieldView(
@@ -48,10 +57,13 @@ public sealed record PublicFieldView(
     IReadOnlyList<string>? Options, string? Text, string? Source, int? MaxLength, decimal? Min, decimal? Max, bool BusinessOnly,
     PublicVisibleIf? VisibleIf, IReadOnlyList<PublicAppointmentOption>? Appointments = null)
 {
-    public static PublicFieldView From(FieldDefinition f) => new(
-        f.Id, f.Type, f.Label.ToString(), f.Required, f.Placeholder?.ToString(), f.Help?.ToString(),
+    public static PublicFieldView From(FieldDefinition f, IReadOnlyList<Appointment>? offered = null) => new(
+        f.Id, f.Type, f.Label.ToString(), f.Required || f.Type == FieldTypes.Appointment, f.Placeholder?.ToString(), f.Help?.ToString(),
         f.Options?.Select(o => o.ToString()).ToList(), f.Text?.ToString(), f.Source, f.MaxLength, f.Min, f.Max, f.BusinessOnly,
-        f.VisibleIf is null ? null : new PublicVisibleIf(f.VisibleIf.Field, f.VisibleIf.Options));
+        f.VisibleIf is null ? null : new PublicVisibleIf(f.VisibleIf.Field, f.VisibleIf.Options),
+        f.Type == FieldTypes.Appointment
+            ? (offered ?? []).Select(a => new PublicAppointmentOption(a.Id, a.Start.ToUniversalTime(), a.End?.ToUniversalTime(), a.Title)).ToList()
+            : null);
 }
 
 /// <summary>One appointment on offer (#7). Times are UTC; the browser formats them in the visitor's zone.</summary>
