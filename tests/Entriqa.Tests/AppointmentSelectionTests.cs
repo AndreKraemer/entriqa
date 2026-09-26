@@ -192,15 +192,17 @@ public class AppointmentSelectionTests
         mail.SendAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Do<IReadOnlyDictionary<string, object?>>(p => sent = p),
             Arg.Any<MailAttachment?>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         var clock = new FakeTimeProvider(Now);
+        var options = TestData.Options();
+        options.DefaultTimeZone = "Asia/Tokyo";                         // not the built-in default, so a hard-coded zone shows
         var pipeline = new SubmissionPipelineService([new NotifyMailStep(mail)], Options.Create(TestData.Options()), clock,
             NullLogger<SubmissionPipelineService>.Instance);
-        var useCase = new RunFormTestUseCase(getDraft, pipeline, TestData.Appointments(clock, Past, Future), Options.Create(TestData.Options()), clock);
+        var useCase = new RunFormTestUseCase(getDraft, pipeline, TestData.Appointments(clock, Past, Future), Options.Create(options), clock);
 
         await useCase.ExecuteAsync(new FormTestRequest("webinar", "de", Values("future"), null, "admin@example.org"));
 
         var fields = Assert.IsAssignableFrom<IEnumerable<object>>(sent!["fields"]);
         var values = fields.Select(o => o.GetType().GetProperty("value")!.GetValue(o) as string);
-        Assert.Contains("Di., 13.10.2026, 10:00–12:00 (Europe/Berlin) · Grundlagen", values);
+        Assert.Contains("Di., 13.10.2026, 17:00–19:00 (Asia/Tokyo) · Grundlagen", values);
     }
 
     // Functions is not loaded by the test host, so the endpoint is read. Without the zone every label falls back
